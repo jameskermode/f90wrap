@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+# HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# HF X
+# HF X   f90wrap: F90 to Python interface generator with derived type support
+# HF X
+# HF X   Copyright James Kermode 2011
+# HF X
+# HF X   These portions of the source code are released under the GNU General
+# HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
+# HF X
+# HF X   If you would like to license the source code under different terms,
+# HF X   please contact James Kermode, james.kermode@gmail.com
+# HF X
+# HF X   When using this software, please cite the following reference:
+# HF X
+# HF X   http://www.jrkermode.co.uk/f90wrap
+# HF X
+# HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+import optparse
+from f90wrap.parser import read_files
+from f90wrap.fortran import *
+from f90wrap.wrapgen import *
+
+p = optparse.OptionParser(usage='%prog [options] <input file>...')
+
+p.add_option('-p', '--prefix', action='store',
+             help="""Prefix to prepend to arguments and subroutines.""",
+             default='f90wrap_')
+p.add_option('-c', '--callback', action='append',
+             help="""Callback routines.""")
+p.add_option('-k', '--kind', action='append',
+             help="""Fortran kind declarations to use in each wrapper.""")
+p.add_option('-i', '--init', action='append',
+             help="""Special initialisation lines used when constructing a particular type.""")
+p.add_option('-v', '--verbose', action='store_true',
+             help="""Enable verbose mode, with debug-level logging output.""")
+
+opt, args = p.parse_args()
+tree = read_files(args)
+
+### TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
+callbacks = []
+kinds = [('system_module', ('dp',))]
+initlines={'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
+                                      'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
+
+if opt.verbose:
+    logging.root.setLevel(logging.DEBUG)
+
+types = find_types(tree)
+
+tree = transform_to_f90_wrapper(tree, types, kinds, callbacks, initlines)
+
+F90WrapperGenerator(opt.prefix).visit(tree)
+
