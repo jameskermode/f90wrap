@@ -373,7 +373,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
 
         self.print_line(r'\index{general}{'+node.name+' subroutine}')
         
-        if node.recur=='':            
+        if 'recursive' not in node.attributes:           
             self.print_line( self.sections[self.depth]+r""" {Subroutine \texttt{"""+node.name)
         else:
             self.print_line( self.sections[self.depth],r"""{Recursive subroutine \texttt{""",node.name)
@@ -482,7 +482,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         else:
             argl=''
         
-        if node.recur=='':
+        if 'recursive' not in node.attributes:
             self.print_line( self.sections[self.depth]+r"""{Function \texttt{"""+node.name)
         else:
             self.print_line( self.sections[self.depth]+r"""{Recursive function\texttt{"""+node.name)

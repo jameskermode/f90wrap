@@ -16,21 +16,18 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-import weakref
 import logging
 
 class Fortran(object):
     """
     Abstract base class for all nodes in Fortran parser tree. Has
-    attributes *parent* (weak reference to parent node or None),
-    *name*, *filename*, *doc*, *lineno*.
+    attributes *name*, *filename*, *doc*, *lineno*.
     """
 
     _fields = []
 
-    def __init__(self, parent=None, name='', filename='', doc=None,
+    def __init__(self, name='', filename='', doc=None,
                  lineno=0):
-        self.parent = parent
         self.name = name
         self.filename = filename
         if doc is None:
@@ -58,9 +55,9 @@ class Root(Fortran):
 
     _fields = ['programs', 'modules', 'procedures']
 
-    def __init__(self, parent=None, name='', filename='', doc=None, lineno=0,
+    def __init__(self, name='', filename='', doc=None, lineno=0,
                  programs=None, modules=None, procedures=None):
-        Fortran.__init__(self, parent, name, filename, doc, lineno)
+        Fortran.__init__(self, name, filename, doc, lineno)
         if programs is None:
             programs = []
         self.programs = programs
@@ -90,9 +87,9 @@ class Program(Fortran):
 
     _fields = ['procedures']
 
-    def __init__(self, parent=None, name='', filename='', doc=None, lineno=0,
+    def __init__(self, name='', filename='', doc=None, lineno=0,
                  procedures=None):
-        Fortran.__init__(self, parent, name, filename, doc, lineno)
+        Fortran.__init__(self, name, filename, doc, lineno)
         if procedures is None:
             procedures = []
         self.procedures = procedures
@@ -117,11 +114,11 @@ class Module(Fortran):
 
     _fields = ['types', 'elements', 'procedures', 'interfaces', 'uses']
 
-    def __init__(self, parent=None, name='', filename='', doc=None, lineno=0,
+    def __init__(self, name='', filename='', doc=None, lineno=0,
                  types=None, elements=None, procedures=None,
                  interfaces=None, uses=None, default_access='public',
                  public_symbols=None, private_symbols=None):
-        Fortran.__init__(self, parent, name, filename, doc, lineno)
+        Fortran.__init__(self, name, filename, doc, lineno)
         if types is None:
             types = []
         self.types = types
@@ -169,14 +166,15 @@ class Procedure(Fortran):
 
     _fields = ['arguments']
 
-    def __init__(self, parent=None, name='', filename='', doc=None, lineno=0,
-                 arguments=None, uses=None, recur=''):
-        Fortran.__init__(self, parent, name, filename, doc, lineno)
+    def __init__(self, name='', filename='', doc=None, lineno=0,
+                 arguments=None, uses=None, attributes=None):
+        Fortran.__init__(self, name, filename, doc, lineno)
         if arguments is None: arguments = []
         self.arguments = arguments
         if uses is None: uses = []
         self.uses = uses
-        self.recur = recur
+        if attributes is None: attributes = []
+        self.attributes = attributes
 
     def __eq__(self, other):
         if other is None: return False
@@ -184,7 +182,7 @@ class Procedure(Fortran):
                 self.arguments == other.arguments and
                 self.doc == other.doc and
                 self.uses == other.uses and
-                self.recur == other.recur)
+                self.attributes == other.attributes)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -204,11 +202,11 @@ class Function(Procedure):
 
     _fields = ['arguments', 'ret_val']
 
-    def __init__(self, parent=None, name='', filename='', doc=None, lineno=0,
-                 arguments=None, uses=None, recur='',
+    def __init__(self, name='', filename='', doc=None, lineno=0,
+                 arguments=None, uses=None, attributes=None,
                  ret_val=None, ret_val_doc=None):
-        Procedure.__init__(self, parent, name, filename, doc,
-                           lineno, arguments, uses, recur)
+        Procedure.__init__(self, name, filename, doc,
+                           lineno, arguments, uses, attributes)
         if ret_val is None:
             ret_val = Argument()
         self.ret_val = ret_val
@@ -222,7 +220,7 @@ class Function(Procedure):
                 self.uses == other.uses and
                 self.ret_val == other.ret_val and
                 self.ret_val_doc == other.ret_val_doc and
-                self.recur == other.recur)
+                self.attributes == other.attributes)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -243,9 +241,9 @@ class Declaration(Fortran):
     *attributes* and *value*.
     """
 
-    def __init__(self, parent=None, name='', filename='', doc=None, lineno=0,
+    def __init__(self, name='', filename='', doc=None, lineno=0,
                  attributes=None, type='', value=''):
-        Fortran.__init__(self, parent, name, filename, doc, lineno)
+        Fortran.__init__(self, name, filename, doc, lineno)
         if attributes is None: attributes = []
         self.attributes = attributes
         self.type = type
@@ -271,24 +269,30 @@ class Argument(Declaration):
 class Type(Fortran):
     """
     Representation of a Fortran derived type. Additional attributes
-    *elements* and *methods*.
+    *elements* and *procedures*.
     """
 
-    _fields = ['elements', 'methods']
+    _fields = ['elements', 'procedures', 'interfaces']
 
-    def __init__(self, parent=None, name='', filename='', doc=None,
-                 lineno=0, elements=None, methods=None):
-        Fortran.__init__(self, parent, name, filename, doc, lineno)
+    def __init__(self, name='', filename='', doc=None,
+                 lineno=0, elements=None, procedures=None, interfaces=None,
+                 mod_name=None):
+        Fortran.__init__(self, name, filename, doc, lineno)
         if elements is None: elements = []
         self.elements = elements
-        if methods is None: methods = []
-        self.methods = methods
+        if procedures is None: procedures = []
+        self.procedures = procedures
+        if interfaces is None: interfaces = []
+        self.interfaces = interfaces
+        self.mod_name = mod_name
 
     def __eq__(self, other):
         if other is None: return False
         return (self.name == other.name and
                 self.elements == other.elements and
-                self.doc == other.doc)
+                self.doc == other.doc and
+                self.procedures == other.procedures and
+                self.mod_name == other.mod_name)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -302,9 +306,9 @@ class Interface(Fortran):
 
     _fields = ['procedures']
 
-    def __init__(self, parent=None, name='', filename='', doc=None,
+    def __init__(self, name='', filename='', doc=None,
                  lineno=0, procedures=None):
-        Fortran.__init__(self, parent, name, filename, doc, lineno)
+        Fortran.__init__(self, name, filename, doc, lineno)
         if procedures is None: procedures = []
         self.procedures = procedures
 
@@ -364,21 +368,7 @@ def walk_modules(node):
         if isinstance(child, Module):
             yield child
 
-def find_parent_module(node):
-    """
-    Return the Module in which *node* appears, or None if it's defined
-    at top-level Goes up the tree starting at *node* until either a
-    module parent or the root is located.
-    """
-
-    while True:
-        if node.parent is None:
-            return None
-        node = node.parent()
-        if isinstance(node, Module) or node is None:
-            return node
-
-def walk_procedures(tree, include_ret_val=True, skip_if_outside_module=True):
+def walk_procedures(tree, include_ret_val=True):
     """
     Walk over all nodes in tree and yield tuples
     (module, procedure, arguments).
@@ -388,17 +378,21 @@ def walk_procedures(tree, include_ret_val=True, skip_if_outside_module=True):
     `skip_if_outside_module` is True, top-level subroutines and
     functions are not included.
     """
-    for node in walk(tree):
-        if isinstance(node, Procedure):
-            mod = find_parent_module(node)
-            if mod is None and skip_if_outside_module:
+    for mod in walk_modules(tree):
+        for node in walk(mod):
+            if not isinstance(node, Procedure):
                 continue
-
+            
             arguments = node.arguments[:]
             if include_ret_val and isinstance(node, Function):
                 arguments.append(node.ret_val)
 
             yield (mod, node, arguments)
+
+def find(tree, pattern):
+    for node in walk(tree):
+        if pattern.search(node.name):
+            yield node
 
 
 class FortranVisitor(object):
@@ -506,27 +500,22 @@ def print_source(node, out=None):
     source = find_source(node)
     out.writelines(source)
 
-def fix_parents(node):
-    """Update parent references in the tree starting at *node*."""
-    def _fix(node):
-        for child in iter_child_nodes(node):
-            child.parent = weakref.ref(node)
-            _fix(child)
-    _fix(node)
-    return node
-
 def find_types(tree):
     """
-    Walk over all the nodes in tree, building a map from
-    type to module names.
+    Walk over all the nodes in tree, building up a dictionary:
+      types: maps type names to Type instances
+
+    Returns a pair (types, types_to_mod_names)
     """
     types = {}
-    for node in walk(tree):
-        if isinstance(node, Type):
-            mod = find_parent_module(node)
-            logging.debug('type %s defined in module %s' %
-                          (node.name, mod.name))
-            types['type(%s)' % node.name] = types[node.name] = mod.name
+
+    for mod in walk_modules(tree):
+        for node in walk(mod):
+            if isinstance(node, Type):
+                logging.debug('type %s defined in module %s' % (node.name, mod.name))
+                node.mod_name = mod.name  # save module name in Type instance
+                types['type(%s)' % node.name] = types[node.name] = node
+            
     return types
 
 
@@ -538,8 +527,9 @@ def fix_argument_attributes(node):
     for mod, sub, arguments in walk_procedures(node):
         for arg in arguments:
             if not hasattr(arg, 'attributes'):
-                arg.is_callback = True
-                arg.attributes = []
+                arg.attributes = ['callback']
+            if not hasattr(arg, 'type'):
+                arg.type = None
     return node
 
 
@@ -565,13 +555,11 @@ class LowerCaseConverter(FortranTransformer):
         node.uses = [u.lower() for u in node.uses]
         return self.generic_visit(node)
 
-    def visit_Subroutine(self, node):
+    def visit_Procedure(self, node):
         node.orig_name = node.name
         node.name = node.name.lower()
         node.uses = [u.lower() for u in node.uses]
         return self.generic_visit(node)
-
-    visit_Function = visit_Subroutine
 
     def visit_Interface(self, node):
         node.orig_name = node.name
@@ -597,42 +585,50 @@ class AccessUpdater(FortranTransformer):
        access; (ii) public and private statements at module level;
        (iii) public and private attibutes."""
 
+    def __init__(self):
+        self.mod = None
+
+    def visit_Module(self, mod):
+        # keep track of the current module
+        self.mod = mod
+        self.generic_visit(mod)
+        self.mod = None
+
     def visit(self, node):
-        mod = find_parent_module(node)
-        if mod is None:
+        if self.mod is None:
             return self.generic_visit(node)
 
-        if mod.default_access == 'public':
+        if self.mod.default_access == 'public':
             if ('private' not in getattr(node, 'attributes', {}) and
-                   node.name not in mod.private_symbols):
+                   node.name not in self.mod.private_symbols):
 
                 # symbol should be marked as public if it's not already
-                if node.name not in mod.public_symbols:
+                if node.name not in self.mod.public_symbols:
                     logging.debug('marking public symbol '+ node.name)
-                    mod.public_symbols.append(node.name)
+                    self.mod.public_symbols.append(node.name)
             else:
                 # symbol should be marked as private if it's not already
-                if node.name not in mod.private_symbols:
+                if node.name not in self.mod.private_symbols:
                     logging.debug('marking private symbol '+ node.name)
-                    mod.private_symbols.append(node.name)
+                    self.mod.private_symbols.append(node.name)
 
-        elif mod.default_access == 'private':
+        elif self.mod.default_access == 'private':
             if ('public' not in getattr(node, 'attributes', {}) and
-                   node.name not in mod.public_symbols):
+                   node.name not in self.mod.public_symbols):
 
                 # symbol should be marked as private if it's not already
-                if node.name not in mod.private_symbols:
+                if node.name not in self.mod.private_symbols:
                     logging.debug('marking private symbol '+ node.name)
-                    mod.private_symbols.append(node.name)
+                    self.mod.private_symbols.append(node.name)
             else:
                 # symbol should be marked as public if it's not already
-                if node.name not in mod.public_symbols:
+                if node.name not in self.mod.public_symbols:
                     logging.debug('marking public symbol '+ node.name)
-                    mod.public_symbols.append(node.name)
+                    self.mod.public_symbols.append(node.name)
 
         else:
             raise ValueError('bad default access %s for module %s' %
-                               (mod.default_access, mod.name))
+                               (self.mod.default_access, self.mod.name))
 
         return node # no need to recurse further
 
@@ -642,12 +638,20 @@ class PrivateSymbolsRemover(FortranTransformer):
     Transform a tree by removing private symbols.
     """
 
+    def __init__(self):
+        self.mod = None
+
+    def visit_Module(self, mod):
+        # keep track of the current module
+        self.mod = mod
+        self.generic_visit(mod)
+        self.mod = None    
+
     def visit(self, node):
-        mod = find_parent_module(node)
-        if mod is None:
+        if self.mod is None:
             return self.generic_visit(node)
 
-        if node.name in mod.private_symbols:
+        if node.name in self.mod.private_symbols:
             logging.debug('removing private symbol '+node.name)
             return None
         else:

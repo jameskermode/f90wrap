@@ -582,7 +582,7 @@ def check_subt(cl,file, grab_hold_doc=True):
         # Check if recursive
 
         if re.match(recursive,cl)!=None:
-            out.recur='recursive'
+            out.attributes.append('recursive')
         
         # Get subt name
 
@@ -724,7 +724,7 @@ def check_funct(cl,file,grab_hold_doc=True):
         # Check if recursive
 
         if re.search(recursive,cl)!=None:
-            out.recur='recursive'
+            out.attributes.append('recursive')
             cl=recursive.sub('',cl)
 
         # Get return type, if present
@@ -1265,9 +1265,8 @@ def read_files(args):
             cline=file.next()
 
     # apply some rules to the parsed tree
-    from fortran import fix_parents, fix_argument_attributes, LowerCaseConverter
+    from fortran import fix_argument_attributes, LowerCaseConverter
     
-    root = fix_parents(root)
     root = fix_argument_attributes(root)
     root = LowerCaseConverter().visit(root)
     return root
