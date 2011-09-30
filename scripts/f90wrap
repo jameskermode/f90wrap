@@ -43,15 +43,33 @@ tree = read_files(args)
 ### TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
 callbacks = []
 kinds = [('system_module', ('dp',))]
-initlines={'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
+init_lines={'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
                                       'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
 
 if opt.verbose:
     logging.root.setLevel(logging.DEBUG)
 
-types = find_types(tree)
+constructors = ('initialise_ptr', 'initialise', 'allocate')
+destructors =  ('finalise',)
+short_names = {}
 
-tree = transform_to_f90_wrapper(tree, types, kinds, callbacks, initlines)
+string_lengths = {
+    'key_len':256,
+    'value_len':1024,
+    'value_length':1023,
+    'field_length':1023,
+    'string_length':1023,
+    'table_string_length':10,
+    'dict_char_a_len': 10
+}
+default_string_length = 1024
+
+types = find_types(tree)
+tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
+                                constructors, destructors,
+                                short_names, init_lines,
+                                string_lengths,
+                                default_string_length)
 
 F90WrapperGenerator(opt.prefix).visit(tree)
 
