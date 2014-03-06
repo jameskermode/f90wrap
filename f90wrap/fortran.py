@@ -325,32 +325,27 @@ class Interface(Fortran):
 
 def iter_fields(node):
     """
-    Yield a tuple of ``(fieldname, value)`` for each field in ``node.a``
+    Yield a tuple of ``(fieldname, value)`` for each field in ``node._fields``
     that is present on *node*.
     """
-    d = node.a.todict()
-    for name,value in d.iteritems():
-        yield (name, value)
+    for field in node._fields:
+        try:
+            yield (field, getattr(node, field))
+        except AttributeError:
+            pass
 
 def iter_child_nodes(node):
     """
     Yield all direct child nodes of *node*, that is, all fields that are nodes
-    and all items in fields that are lists or dictionaries that are nodes.
+    and all items of fields that are lists of nodes.
     """
-    classes = node.get_classes()
-    for name, item in iter_fields(node):
-        if type(item) in classes:
-            yield item
-        elif isinstance(item, dict):
-            for child in item.values():
-                if type(child) in classes:
-                    yield child
-        elif isinstance(item, list):
-            for child in item:
-                if type(child) in classes:
-                    yield child
-                
-
+    for name, field in iter_fields(node):
+        if isinstance(field, Fortran):
+            yield field
+        elif isinstance(field, list):
+            for item in field:
+                if isinstance(item, Fortran):
+                    yield item
 
 def walk(node):
     """
@@ -385,7 +380,7 @@ def walk_procedures(tree, include_ret_val=True):
     """
     for mod in walk_modules(tree):
         for node in walk(mod):
-            if not isinstance(node, SubProgramStatement):
+            if not isinstance(node, Procedure):
                 continue
             
             arguments = node.arguments[:]
