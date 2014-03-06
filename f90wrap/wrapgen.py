@@ -34,7 +34,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
     def visit_Module(self, node):
         self.code = []
         self.generic_visit(node)
-        f90_wrapper_file = open('%s%s.f95' % (self.prefix, node.name), 'w')
+        f90_wrapper_file = open('%s%s.f90' % (self.prefix, node.name), 'w')
         f90_wrapper_file.write(str(self))
         f90_wrapper_file.close()
 
@@ -55,7 +55,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
     type(%(typename)s), pointer :: p => NULL()
 end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write('! END write_type_lines')
-        self.write()        
+        self.write()
 
     def write_arg_decl_lines(self, node):
         self.write('! BEGIN write_arg_decl_lines ')
@@ -66,12 +66,16 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
                                                                        attr.startswith('dimension') ]
             arg_dict = {'arg_type': arg.type,
                         'type_name': arg.type.startswith('type') and arg.type[5:-1] or None,
-                        'comma': len(attributes) != 0 and ', ' or '',
-                        'arg_attribs': ', '.join(attributes),
                         'arg_name': arg.name} #self.prefix+arg.name}
+
             if arg.name in node.transfer_in or arg.name in node.transfer_out:
                 self.write('type(%(type_name)s_ptr_type) :: %(arg_name)s_ptr' % arg_dict)
                 arg_dict['arg_type'] = arg.wrapper_type
+                attributes.append('dimension(%d)' % arg.wrapper_dim)
+
+            arg_dict['arg_attribs'] = ', '.join(attributes)
+            arg_dict['comma'] = len(attributes) != 0 and ', ' or ''
+                
             self.write('%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s' % arg_dict)
             if hasattr(arg, 'f2py_line'):
                 self.write(arg.f2py_line)
@@ -293,7 +297,7 @@ def set_intent(attributes, intent):
     attributes.append(intent)
     return attributes
 
-def convert_derived_type_arguments(tree, init_lines):
+def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
     for mod,sub,arguments in walk_procedures(tree):
         sub.types = set()
         sub.transfer_in = []
@@ -314,11 +318,12 @@ def convert_derived_type_arguments(tree, init_lines):
 
             # save original Fortran intent since we'll be overwriting it
             # with intent of the opaque pointer
-            arg.attributes = ['fortran_'+attr for attr in
+            arg.attributes = arg.attributes + ['fortran_'+attr for attr in
                                arg.attributes if attr.startswith('intent')]
             
             typename = arg.type[5:-1]
-            arg.wrapper_type = 'integer(SIZEOF_FORTRAN_T)'
+            arg.wrapper_type = 'integer'
+            arg.wrapper_dim = sizeof_fortran_t
             sub.types.add(typename)
 
             if typename in init_lines:
@@ -598,7 +603,8 @@ class FunctionToSubroutineConverter(FortranVisitor):
 
 def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
                              destructors, short_names, init_lines,
-                             string_lengths, default_string_length):
+                             string_lengths, default_string_length,
+                             sizeof_fortran_t):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90WrapperGenerator's visit() method. Transformations performed are:
@@ -620,7 +626,7 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
     FunctionToSubroutineConverter().visit(tree)
     
     tree = fix_subroutine_uses_clauses(tree, types, kinds)
-    tree = convert_derived_type_arguments(tree, init_lines)
+    tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
     ArrayDimensionConverter().visit(tree)
     return tree
