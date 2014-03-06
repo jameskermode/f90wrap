@@ -123,7 +123,16 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         if hasattr(node, 'orig_node'):
             node = node.orig_node
 
-        arg_names = ['%s=%s' % (arg.name,arg.name) for arg in node.arguments
+        def dummy_arg_name(arg):
+            return arg.name
+
+        def actual_arg_name(arg):
+            if arg.name in node.transfer_in or arg.name in node.transfer_out:
+                return '%s_ptr%%p' % arg.name
+            else:
+                return arg.name
+
+        arg_names = ['%s=%s' % (dummy_arg_name(arg),actual_arg_name(arg)) for arg in node.arguments
                      if 'intent(hide)' not in arg.attributes]
         if isinstance(node, Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
