@@ -40,17 +40,17 @@ p.add_option('-v', '--verbose', action='store_true',
 opt, args = p.parse_args()
 tree = read_files(args)
 
-### TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
+# ## TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
 callbacks = []
-kinds = [] #[('system_module', ('dp',))]
-init_lines={} #{'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
+kinds = []  # [('system_module', ('dp',))]
+init_lines = {}  # {'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
               #                            'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
 
 if opt.verbose:
     logging.root.setLevel(logging.DEBUG)
 
 constructors = ('initialise_ptr', 'initialise', 'allocate')
-destructors =  ('finalise',)
+destructors = ('finalise',)
 short_names = {}
 
 string_lengths = {
@@ -64,7 +64,7 @@ string_lengths = {
 }
 default_string_length = 1024
 
-sizeof_fortran_t = 4 # FIXME should be autodetected, as is done in QUIP/utility_scripts/find_sizeof_fortran_t
+sizeof_fortran_t = 4  # FIXME should be autodetected, as is done in QUIP/utility_scripts/find_sizeof_fortran_t
 
 types = find_types(tree)
 tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
@@ -74,5 +74,5 @@ tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
                                 default_string_length,
                                 sizeof_fortran_t=sizeof_fortran_t)
 
-F90WrapperGenerator(opt.prefix).visit(tree)
+F90WrapperGenerator(opt.prefix, sizeof_fortran_t, string_lengths).visit(tree)
 
