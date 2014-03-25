@@ -49,7 +49,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         self.write()
 
     def write_type_lines(self, node):
-        self.write('! BEGIN write_type_lines')        
+        self.write('! BEGIN write_type_lines')
         for typename in node.types:
             self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
@@ -59,14 +59,14 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
 
     def write_arg_decl_lines(self, node):
         self.write('! BEGIN write_arg_decl_lines ')
-        
+
         for arg in node.arguments:
             attributes = [attr for attr in arg.attributes if attr in ('optional', 'pointer', 'intent(in)',
                                                                        'intent(out)', 'intent(inout)') or
                                                                        attr.startswith('dimension') ]
             arg_dict = {'arg_type': arg.type,
                         'type_name': arg.type.startswith('type') and arg.type[5:-1] or None,
-                        'arg_name': arg.name} #self.prefix+arg.name}
+                        'arg_name': arg.name}  # self.prefix+arg.name}
 
             if arg.name in node.transfer_in or arg.name in node.transfer_out:
                 self.write('type(%(type_name)s_ptr_type) :: %(arg_name)s_ptr' % arg_dict)
@@ -75,17 +75,17 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
 
             arg_dict['arg_attribs'] = ', '.join(attributes)
             arg_dict['comma'] = len(attributes) != 0 and ', ' or ''
-                
+
             self.write('%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s' % arg_dict)
             if hasattr(arg, 'f2py_line'):
                 self.write(arg.f2py_line)
         self.write('! END write_arg_decl_lines ')
-        self.write()        
+        self.write()
 
     def write_transfer_in_lines(self, node):
-        self.write('! BEGIN write_transfer_in_lines ')        
+        self.write('! BEGIN write_transfer_in_lines ')
         for arg in node.arguments:
-            arg_dict = {'arg_name': arg.name, #self.prefix+arg.name,
+            arg_dict = {'arg_name': arg.name,  # self.prefix+arg.name,
                         'arg_type': arg.type}
             if arg.name in node.transfer_in:
                 if 'optional' in arg.attributes:
@@ -102,25 +102,25 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
                     self.dedent()
                     self.write('end if')
         self.write('! END write_transfer_in_lines ')
-        self.write()        
+        self.write()
 
     def write_init_lines(self, node):
         self.write('! BEGIN write_init_lines ')
         for alloc in node.allocate:
-            self.write('allocate(%s_ptr%%p)' % alloc) #(self.prefix, alloc))
+            self.write('allocate(%s_ptr%%p)' % alloc)  # (self.prefix, alloc))
         for arg in node.arguments:
             if not hasattr(arg, 'init_lines'):
                 continue
-            exe_optional, exe = arg.init_lines                
+            exe_optional, exe = arg.init_lines
             D = {'OLD_ARG':arg.name,
-                 'ARG':arg.name, #self.prefix+arg.name,
-                 'PTR':arg.name+'_ptr%p'}
+                 'ARG':arg.name,  # self.prefix+arg.name,
+                 'PTR':arg.name + '_ptr%p'}
             if 'optional' in arg.attributes:
                 self.write(exe_optional % D)
             else:
                 self.write(exe % D)
         self.write('! END write_init_lines ')
-        self.write()        
+        self.write()
 
     def write_call_lines(self, node):
         self.write('! BEGIN write_call_lines ')
@@ -136,7 +136,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
             else:
                 return arg.name
 
-        arg_names = ['%s=%s' % (dummy_arg_name(arg),actual_arg_name(arg)) for arg in node.arguments
+        arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
                      if 'intent(hide)' not in arg.attributes]
         if isinstance(node, Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
@@ -157,19 +157,19 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
                 self.write('%(arg_name)s = transfer(%(arg_name)s_ptr, %(arg_name)s)' %
                            {'arg_name': arg.name})
         self.write('! END write_transfer_out_lines ')
-        self.write()        
+        self.write()
 
     def write_finalise_lines(self, node):
         self.write('! BEGIN write_finalise_lines')
         for dealloc in node.deallocate:
-            self.write('deallocate(%s_ptr%%p)' % dealloc) #(self.prefix, dealloc))
+            self.write('deallocate(%s_ptr%%p)' % dealloc)  # (self.prefix, dealloc))
         self.write('! END write_finalise_lines')
         self.write()
 
     def visit_Subroutine(self, node):
 
         self.write("subroutine %(sub_name)s(%(arg_names)s)" %
-                   {'sub_name': self.prefix+node.name,
+                   {'sub_name': self.prefix + node.name,
                     'arg_names': ', '.join([arg.name for arg in node.arguments])})
         self.indent()
         self.write()
@@ -184,10 +184,227 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_transfer_out_lines(node)
         self.write_finalise_lines(node)
         self.dedent()
-        self.write("end subroutine %(sub_name)s" % {'sub_name': self.prefix+node.name})
+        self.write("end subroutine %(sub_name)s" % {'sub_name': self.prefix + node.name})
         self.write()
         self.write()
 
+    def visit_Type(self, node):
+        for el in node.elements:  # assuming Type has elements
+            if el is scalar:
+                self.write_scalar_wrappers(node, el, sizeof_fortran_t)  # where to get sizeof_fortran_t from??
+            else:
+                self.write_array_wrapper(node, el, dims, sizeof_fortran_t)  # where to get dims from?
+
+    def write_array_wrapper(self, t, element, dims,
+                            sizeof_fortran_t):
+        """
+        Write fortran get/set/len routine for an array
+        
+        Parameters
+        ----------
+        t : type
+        element : element
+        dims : dims
+        sizeof_fortran_t : sizeof_fortran_t
+        """
+        if element.type.startswith('type') and len(dims) != 1:
+            return
+
+        self._write_array_getset_item(t, element, sizeof_fortran_t, 'get')
+        self._write_array_setset_item(t, element, sizeof_fortran_t, 'set')
+        self._write_array_len(t, element, sizeof_fortran_t)
+
+    def write_scalar_wrappers(self, t, element, sizeof_fortran_t):
+
+        self.write_scalar_wrapper(t, element, sizeof_fortran_t, "get")
+        self.write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
+
+    def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
+        eltype = _reformat_character_type(el)
+        # getset and inout just change things simply from a get to a set routine.
+        inout = "in"
+        if getset == "get":
+            inout = "out"
+
+        self.write('subroutine %s%s__array_%sitem__%s(this, i, %s)' % (self.prefix, t.name,
+                                                                       getset, el.name,
+                                                                       el.name))
+        self.indent()
+        self.write()
+        self.write_uses_lines(t)
+        self.write('implicit none')
+        self.write()
+        self.write_type_lines(t.name)  # FIXME: not sure if this is right??!!
+        self.write_type_lines(eltype)  # I'm passing strings!
+
+        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+        self.write('integer, intent(in) :: i')
+        self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
+        self.write('type(%s_ptr_type) :: the%s_ptr' % (t.name, el.name))
+        self.write()
+        self.write('this_ptr = transfer(this, this_ptr)')
+
+        if 'allocatable' in el.attributes:
+            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.indent()
+
+        self.write('if (i < 1 .or. i > size(this_ptr%%p%%%s)) then' % el.name)
+        self.indent()
+        self.write('call system_abort("array index out of range")')
+        self.dedent()
+        self.write('else')
+        self.indent()
+        if getset == "get":
+            self.write('the%s_ptr%%p => this_ptr%%p%%%s(i)' % (el.name, el.name))
+            self.write('the%s = transfer(the%s_ptr,the%s)' % (el.name, el.name, el.name))
+        else:
+            self.write('the%s_ptr = transfer(the%s,the%s_ptr)' % (el.name, el.name, el.name))
+            self.write('this_ptr%%p%%%s(i) = the%s_ptr%%p' % (el.name, el.name))
+
+        self.dedent()
+        self.write('endif')
+
+        if 'allocatable' in el.attributes:
+            self.dedent()
+            self.write('else')
+            self.indent()
+            self.write('call system_abort("derived type array not allocated")')
+            self.dedent()
+            self.write('end if')
+
+        self.dedent()
+        self.write('end subroutine %s%s__array_%sitem__%s' % (self.prefix, t.name,
+                                                              getset, el.name))
+        self.write()
+        # # what is args_spec?
+#         args_spec[el.name]['array_getitem'] = '%s%s__array_getitem__%s' % (self.prefix, t.name.lower(), el.name.lower())
+
+
+    def _write_array_len(self, t, el, sizeof_fortran_t):
+        self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
+        self.indent()
+        self.write()
+        self.write_uses_lines(t)
+        self.write('implicit none')
+        self.write()
+        self.write_type_lines(type.name)
+        self.write_type_lines(el.type.name)
+        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+        self.write('integer, intent(out) :: n')
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+        self.write()
+        self.write('this_ptr = transfer(this, this_ptr)')
+
+        if 'allocatable' in el.attributes:
+            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.indent()
+
+        self.write('n = size(this_ptr%%p%%%s)' % el.name)
+
+        if 'allocatable' in el.attributes:
+            self.dedent()
+            self.write('else')
+            self.indent()
+            self.write('n = 0')
+            self.dedent()
+            self.write('end if')
+
+        self.dedent()
+        self.write('end subroutine %s%s__array_len__%s' % (self.prefix, t.name, el.name))
+        self.write()
+
+
+    def write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
+        """
+        t : a type object from the big tree thing
+        element : an element within this type.
+        getset : either 'get' or 'set'
+        """
+        # Get a string name of the type of the element
+        eltype = _reformat_character_type(el)
+
+        # getset and inout just change things simply from a get to a set routine.
+        inout = "in"
+        if getset == "get":
+            inout = "out"
+
+        self.write('subroutine %s%s__%s__%s(this, the%s)' % (self.prefix, t.name,
+                                                             getset, el.name, el.name))
+        self.indent()
+        self.write_uses_lines(el)
+        self.write('implicit none')
+        self.write_type_lines(t)
+        # I have a feeling the following lines do about the same thing as the previous one
+        if eltype.startswith('type') and _strip_type(eltype).lower() != t.name.lower():
+            self.write('type %s_ptr_type' % _strip_type(eltype))
+            self.write('type(%s), pointer :: p' % _strip_type(eltype))
+            self.write('end type %s_ptr_type' % _strip_type(eltype))
+
+        self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+
+        if el.type.startswith('type'):
+            # For derived types elements, treat as opaque reference
+            self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
+
+            self.write('type(%s_ptr_type) :: the%s_ptr' % (eltype, el.name))
+            self.write()
+            self.write('this_ptr = transfer(this, this_ptr)')
+            if getset == "get":
+                self.write('the%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
+                self.write('the%s = transfer(the%s_ptr,the%s)' % (el.name, el.name, el.name))
+            else:
+                self.write('the%s_ptr = transfer(the%s,the%s_ptr)' % (el.name,
+                                                                  el.name,
+                                                                  el.name))
+                self.write('this_ptr%%p%%%s = the%s_ptr%%p' % (el.name, el.name))
+        else:
+            # Return/set by value
+            if 'pointer' in el.attributes:
+                el.attributes.remove('pointer')
+
+            if el.attributes != []:
+                self.write('%s, %s, intent(%s) :: the%s' % (eltype,
+                                                            ','.join(el.attributes),
+                                                            inout, el.name))
+            else:
+                self.write('%s, intent(%s) :: the%s' % (eltype, inout, el.name))
+            self.write()
+            self.write('this_ptr = transfer(this, this_ptr)')
+            if getset == "get":
+                self.write('the%s = this_ptr%%p%%%s' % (el.name, el.name))
+            else:
+                self.write('this_ptr%%p%%%s = the%s' % (el.name, el.name))
+        self.dedent()
+        self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
+                                                    el.name))
+        # args_spec[el.name]['get'] = '%s%s__get__%s' % (self.prefix, t.name.lower(), el.name.lower())
+
+
+def _reformat_character_type(element):
+    # change from '(len=*)' or '(*)' syntax to *(*) syntax
+    try:
+        lind = element.type.index('(')
+        rind = element.type.rindex(')')
+        mytype = element.type[:lind] + '*' + element.type[lind:rind + 1].replace('len=', '')
+
+        # Try to get length of string arguments
+        # FIXME: where does string_lengths come from?
+        if not mytype[11:-1] == '*' and not all([x in '0123456789' for x in mytype[11:-1]]):
+            try:
+                mytype = 'character*(%s)' % string_lengths[mytype[11:-1].lower()]
+            except KeyError:
+                mytype = 'character*(%s)' % string_lengths['default']
+
+        # Default string length for intent(out) strings
+        if mytype[11:-1] == '*' and 'intent(out)' in element.attributes:
+            mytype = 'character*(%s)' % string_lengths['default']
+
+    except ValueError:
+        pass
+
+    return mytype
 
 class UnwrappablesRemover(FortranTransformer):
 
@@ -199,11 +416,11 @@ class UnwrappablesRemover(FortranTransformer):
 
     def visit_Procedure(self, node):
         # special case: keep all constructors and destructors, although
-        # they may have pointer arguments 
+        # they may have pointer arguments
         for suff in self.constructors + self.destructors:
             if node.name.endswith(suff):
                 return node
-        
+
         args = node.arguments[:]
         if isinstance(node, Function):
             args.append(node.ret_val)
@@ -275,8 +492,8 @@ def fix_subroutine_uses_clauses(tree, types, kinds):
     """Walk over all nodes in tree, updating subroutine uses
        clauses to include the parent module and all necessary modules
        from types and kinds."""
-       
-    for mod,sub,arguments in walk_procedures(tree):
+
+    for mod, sub, arguments in walk_procedures(tree):
 
         sub.uses = set()
         sub.uses.add((mod.name, None))
@@ -298,7 +515,7 @@ def set_intent(attributes, intent):
     return attributes
 
 def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
-    for mod,sub,arguments in walk_procedures(tree):
+    for mod, sub, arguments in walk_procedures(tree):
         sub.types = set()
         sub.transfer_in = []
         sub.transfer_out = []
@@ -311,16 +528,16 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
         if 'destructor' in sub.attributes:
             logging.debug('deallocating arg "%s" in %s' % (sub.arguments[0].name, sub.name))
             sub.deallocate.append(sub.arguments[0].name)
-        
+
         for arg in arguments:
             if not arg.type.startswith('type'):
                 continue
 
             # save original Fortran intent since we'll be overwriting it
             # with intent of the opaque pointer
-            arg.attributes = arg.attributes + ['fortran_'+attr for attr in
+            arg.attributes = arg.attributes + ['fortran_' + attr for attr in
                                arg.attributes if attr.startswith('intent')]
-            
+
             typename = arg.type[5:-1]
             arg.wrapper_type = 'integer'
             arg.wrapper_dim = sizeof_fortran_t
@@ -355,7 +572,7 @@ class StringLengthConverter(FortranVisitor):
     def __init__(self, string_lengths, default_string_length):
         self.string_lengths = string_lengths
         self.default_string_length = default_string_length
-    
+
     def visit_Declaration(self, node):
         if not node.type.startswith('character'):
             return
@@ -363,14 +580,14 @@ class StringLengthConverter(FortranVisitor):
         try:
             lind = node.type.index('(')
             rind = node.type.rindex(')')
-            typ = node.type[:lind]+'*'+node.type[lind:rind+1].replace('len=','')
+            typ = node.type[:lind] + '*' + node.type[lind:rind + 1].replace('len=', '')
             string_length = typ[11:-1]
 
             # Try to get length of string arguments
             if not string_length == '*' and not all([x in '0123456789' for x in string_length]):
                 string_length = self.string_lengths.get(string_length, self.default_string_length)
 
-            # Default string length for intent(out) strings 
+            # Default string length for intent(out) strings
             if string_length == '*' and 'intent(out)' in node.attributes:
                 string_length = 'character*(%s)' % self.default_string_length
 
@@ -403,7 +620,7 @@ class ArrayDimensionConverter(FortranVisitor):
     @staticmethod
     def split_dimensions(dim):
         """Given a string like "dimension(a,b,c)" return the list of dimensions ['a','b','c']."""
-        dim = dim[10:-1] # remove "dimension(" and ")"
+        dim = dim[10:-1]  # remove "dimension(" and ")"
         br = 0
         d = 1
         ds = ['']
@@ -431,13 +648,13 @@ class ArrayDimensionConverter(FortranVisitor):
 
             new_dummy_args = []
             new_ds = []
-            for i,d in enumerate(ds):
+            for i, d in enumerate(ds):
                 if ArrayDimensionConverter.valid_dim_re.match(d):
                     if d.startswith('len'):
                         arg.f2py_line = ('!f2py %s %s, dimension(%s) :: %s' % \
-                                         (arg.type, 
-                                           ','.join([attr for attr in arg.attributes if not attr.startswith('dimension')]), 
-                                           d.replace('len','slen'), arg.name))
+                                         (arg.type,
+                                           ','.join([attr for attr in arg.attributes if not attr.startswith('dimension')]),
+                                           d.replace('len', 'slen'), arg.name))
                     continue
                 dummy_arg = Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
 
@@ -480,7 +697,7 @@ class MethodFinder(FortranTransformer):
             # some procedures remain so we need to keep the Interface around
             node.procedures = new_procs
             return node
-        
+
     def visit_Procedure(self, node, interface=None):
         if (len(node.arguments) == 0 or
              (node.arguments[0] > 0 and
@@ -493,9 +710,9 @@ class MethodFinder(FortranTransformer):
 
         # remove prefix from subroutine name to get method name
         node.method_name = node.name
-        prefices = [typ.name+'_']
+        prefices = [typ.name + '_']
         if typ.name in self.short_names:
-            prefices.append(self.short_names[typ.name]+'_')
+            prefices.append(self.short_names[typ.name] + '_')
         for prefix in prefices:
             if node.name.startswith(prefix):
                 node.method_name = node.name[len(prefix):]
@@ -504,7 +721,7 @@ class MethodFinder(FortranTransformer):
         if node.method_name in self.constructor_names:
             node.attributes.append('constructor')
         elif node.method_name in self.destructor_names:
-            node.attributes.append('destructor')                
+            node.attributes.append('destructor')
 
         if interface is None:
             # just a regular method - move into typ.procedures
@@ -528,14 +745,14 @@ class MethodFinder(FortranTransformer):
                                  [node])
                 typ.interfaces.append(intf)
                 logging.debug('added method %s to interface %s in type %s' %
-                              (node.method_name, intf.name, typ.name))                
+                              (node.method_name, intf.name, typ.name))
 
         # remove method from parent since we've added it to Type
         return None
 
 def collapse_single_interfaces(tree):
     """Collapse interfaces which contain only a single procedure."""
-    
+
     class _InterfaceCollapser(FortranTransformer):
         """Replace interfaces with one procedure by that procedure"""
         def visit_Interface(self, node):
@@ -571,7 +788,7 @@ def collapse_single_interfaces(tree):
     tree = _InterfaceCollapser().visit(tree)
     tree = _ProcedureRelocator().visit(tree)
     return tree
-        
+
 
 class FunctionToSubroutineConverter(FortranVisitor):
     """Convert all functions to subroutines, with return value as an
@@ -586,9 +803,9 @@ class FunctionToSubroutineConverter(FortranVisitor):
             if 'optional' in arg.attributes:
                 break
         arguments.insert(i, node.ret_val)
-        arguments[i].name = 'ret_'+arguments[i].name
+        arguments[i].name = 'ret_' + arguments[i].name
         arguments[i].attributes.append('intent(out)')
-        
+
         new_node = Subroutine(node.name,
                               node.filename,
                               node.doc,
@@ -596,7 +813,7 @@ class FunctionToSubroutineConverter(FortranVisitor):
                               arguments,
                               node.uses,
                               node.attributes)
-        new_node.orig_node = node # keep a reference to the original node
+        new_node.orig_node = node  # keep a reference to the original node
         return new_node
 
 
@@ -617,16 +834,21 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
        via Fortran transfer() intrinsic.
      * ...
     """
-    
+
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
     tree = collapse_single_interfaces(tree)
 
     FunctionToSubroutineConverter().visit(tree)
-    
+
     tree = fix_subroutine_uses_clauses(tree, types, kinds)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
     ArrayDimensionConverter().visit(tree)
     return tree
+
+def _strip_type(t):
+    if t.startswith('type('):
+        t = t[t.index('(') + 1:t.index(')')]
+    return t.lower()
