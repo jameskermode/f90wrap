@@ -21,15 +21,18 @@ import copy
 import re
 from f90wrap.fortran import *
 from f90wrap.codegen import CodeGenerator
+import numpy as np
 
 class F90WrapperGenerator(FortranVisitor, CodeGenerator):
 
-    def __init__(self, prefix):
-        CodeGenerator.__init__(self, indent='    ',
+    def __init__(self, prefix, sizeof_fortran_t, string_lengths):
+        CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&')
         FortranVisitor.__init__(self)
         self.prefix = prefix
+        self.sizeof_fortran_t = sizeof_fortran_t
+        self.string_lengths = string_lengths
 
     def visit_Module(self, node):
         self.code = []
@@ -190,12 +193,83 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
 
     def visit_Type(self, node):
         for el in node.elements:  # assuming Type has elements
-            if el is scalar:
-                self.write_scalar_wrappers(node, el, sizeof_fortran_t)  # where to get sizeof_fortran_t from??
-            else:
-                self.write_array_wrapper(node, el, dims, sizeof_fortran_t)  # where to get dims from?
+            # Get the number of dimensions of the element (if any)
+            dims = filter(lambda x: x.startswith('dimension'), el.attributes)
+            # Skip this if the type is not do-able
+            if 'pointer' in el.attributes and dims != []: continue
+            if el.type.lower() == 'type(c_ptr)': continue
 
-    def write_array_wrapper(self, t, element, dims,
+            if len(dims) == 0:  # proper scalar type (normal or derived)
+                self.write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
+            elif el.type.startswith('type'):  # array of derived types
+                self.write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
+            else:
+                self.write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+
+    def write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
+
+        # The following maps the element type to a numeric code
+        fortran_type_code = {
+                             'd': 6,
+                             'i': 5,
+                             'S': 10,
+                             'complex': 7
+                             }
+
+        numpy_type_map = {'real(dp)':'d',
+                          'integer':'i',
+                          'logical':'i',
+                          'character*(*)':'S',
+                          'complex(dp)':'complex',
+                          'real(qp)':'float128'}
+
+        if el.type in numpy_type_map:
+            typename = numpy_type_map[el.type]
+        else:
+            typename = el.type
+
+        self.write('subroutine %s%s__array__%s(this, nd, dtype, dshape, dloc)' % (self.prefix, t.name, el.name))
+        self.indent()
+        self.write_use_lines(t)
+        self.write('implicit none')
+        self.write_type_lines(t)
+        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+        self.write('integer, intent(out) :: nd')
+        self.write('integer, intent(out) :: dtype')
+        try:
+            rank = dims[0].count(',') + 1
+            if el.type.startswith('character'): rank += 1
+        except ValueError:
+            rank = 1
+        self.write('integer, dimension(10), intent(out) :: dshape')
+        self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
+        self.write()
+        self.write('nd = %d' % rank)
+        self.write('dtype = %s' % fortran_type_code[typename])  # where does this come from??
+        self.write('this_ptr = transfer(this, this_ptr)')
+        if 'allocatable' in el.attributes:
+            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.indent()
+        if el.type.startswith('character'):
+            first = ','.join(['1' for i in range(rank - 1)])
+            self.write('dshape(1:%d) = (/len(this_ptr%%p%%%s(%s)), shape(this_ptr%%p%%%s)/)' % (rank, el.name, first, el.name))
+        else:
+            self.write('dshape(1:%d) = shape(this_ptr%%p%%%s)' % (rank, el.name))
+        self.write('dloc = loc(this_ptr%%p%%%s)' % el.name)
+        if 'allocatable' in el.attributes:
+            self.dedent()
+            self.write('else')
+            self.indent()
+            self.write('dloc = 0')
+            self.dedent()
+            self.write('end if')
+
+        self.dedent()
+        self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.name))
+#         args_spec[el.name]['array'] = '%s%s__array__%s' % (prefix, t.name.lower(), name.lower())
+
+    def write_dt_array_wrapper(self, t, element, dims,
                             sizeof_fortran_t):
         """
         Write fortran get/set/len routine for an array
@@ -220,7 +294,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
 
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
-        eltype = _reformat_character_type(el)
+        eltype = _reformat_character_type(el, self.string_lengths)
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -322,7 +396,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         getset : either 'get' or 'set'
         """
         # Get a string name of the type of the element
-        eltype = _reformat_character_type(el)
+        eltype = _reformat_character_type(el, self.string_lengths)
 
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
@@ -382,7 +456,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         # args_spec[el.name]['get'] = '%s%s__get__%s' % (self.prefix, t.name.lower(), el.name.lower())
 
 
-def _reformat_character_type(element):
+def _reformat_character_type(element, string_lengths):
     # change from '(len=*)' or '(*)' syntax to *(*) syntax
     try:
         lind = element.type.index('(')
