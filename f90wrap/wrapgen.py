@@ -51,13 +51,13 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         self.write('! END write_uses_lines')
         self.write()
 
-    def write_type_lines(self, node):
-        self.write('! BEGIN write_type_lines')
-        for typename in node.types:
-            self.write("""type %(typename)s_ptr_type
+    def write_type_lines(self, tname):
+        """
+        Write type definition for input type name
+        """
+        self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_ptr_type""" % {'typename': typename})
-        self.write('! END write_type_lines')
+end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def write_arg_decl_lines(self, node):
@@ -179,7 +179,10 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_uses_lines(node)
         self.write("implicit none")
         self.write()
-        self.write_type_lines(node)
+        self.write('! BEGIN write_type_lines')
+        for tname in node.types:
+            self.write_type_lines(tname)
+        self.write("! END write_type_lines")
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
@@ -232,7 +235,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.indent()
         self.write_use_lines(t)
         self.write('implicit none')
-        self.write_type_lines(t)
+        self.write_type_lines(t.name)
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
         self.write('integer, intent(out) :: nd')
@@ -362,7 +365,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_uses_lines(t)
         self.write('implicit none')
         self.write()
-        self.write_type_lines(type.name)
+        self.write_type_lines(t.name)
         self.write_type_lines(el.type.name)
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('integer, intent(out) :: n')
@@ -408,12 +411,8 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.indent()
         self.write_uses_lines(el)
         self.write('implicit none')
-        self.write_type_lines(t)
-        # I have a feeling the following lines do about the same thing as the previous one
-        if eltype.startswith('type') and _strip_type(eltype).lower() != t.name.lower():
-            self.write('type %s_ptr_type' % _strip_type(eltype))
-            self.write('type(%s), pointer :: p' % _strip_type(eltype))
-            self.write('end type %s_ptr_type' % _strip_type(eltype))
+        self.write_type_lines(t.name)
+        self.write_type_lines(eltype)
 
         self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
