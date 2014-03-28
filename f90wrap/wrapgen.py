@@ -297,7 +297,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
 
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
-        eltype = _reformat_character_type(el, self.string_lengths)
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -312,7 +311,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('implicit none')
         self.write()
         self.write_type_lines(t.name)  # FIXME: not sure if this is right??!!
-        self.write_type_lines(eltype)  # I'm passing strings!
+        self.write_type_lines(el.type)  # I'm passing strings!
 
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
@@ -398,9 +397,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         element : an element within this type.
         getset : either 'get' or 'set'
         """
-        # Get a string name of the type of the element
-        eltype = _reformat_character_type(el, self.string_lengths)
-
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -412,7 +408,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_uses_lines(el)
         self.write('implicit none')
         self.write_type_lines(t.name)
-        self.write_type_lines(eltype)
+        self.write_type_lines(el.type)
 
         self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
@@ -421,7 +417,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             # For derived types elements, treat as opaque reference
             self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
 
-            self.write('type(%s_ptr_type) :: the%s_ptr' % (eltype, el.name))
+            self.write('type(%s_ptr_type) :: the%s_ptr' % (el.type, el.name))
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
@@ -438,11 +434,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 el.attributes.remove('pointer')
 
             if el.attributes != []:
-                self.write('%s, %s, intent(%s) :: the%s' % (eltype,
+                self.write('%s, %s, intent(%s) :: the%s' % (el.type,
                                                             ','.join(el.attributes),
                                                             inout, el.name))
             else:
-                self.write('%s, intent(%s) :: the%s' % (eltype, inout, el.name))
+                self.write('%s, intent(%s) :: the%s' % (el.type, inout, el.name))
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
@@ -454,30 +450,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                                                     el.name))
         # args_spec[el.name]['get'] = '%s%s__get__%s' % (self.prefix, t.name.lower(), el.name.lower())
 
-
-def _reformat_character_type(element, string_lengths):
-    # change from '(len=*)' or '(*)' syntax to *(*) syntax
-    try:
-        lind = element.type.index('(')
-        rind = element.type.rindex(')')
-        mytype = element.type[:lind] + '*' + element.type[lind:rind + 1].replace('len=', '')
-
-        # Try to get length of string arguments
-        # FIXME: where does string_lengths come from?
-        if not mytype[11:-1] == '*' and not all([x in '0123456789' for x in mytype[11:-1]]):
-            try:
-                mytype = 'character*(%s)' % string_lengths[mytype[11:-1].lower()]
-            except KeyError:
-                mytype = 'character*(%s)' % string_lengths['default']
-
-        # Default string length for intent(out) strings
-        if mytype[11:-1] == '*' and 'intent(out)' in element.attributes:
-            mytype = 'character*(%s)' % string_lengths['default']
-
-    except ValueError:
-        pass
-
-    return mytype
 
 class UnwrappablesRemover(FortranTransformer):
 
