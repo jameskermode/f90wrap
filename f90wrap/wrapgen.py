@@ -43,11 +43,12 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
 
     def write_uses_lines(self, node):
         self.write('! BEGIN write_uses_lines')
-        for (mod, only) in node.uses:
-            if only is not None:
-                self.write('use %s, only: %s' % (mod, ' '.join(only)))
-            else:
-                self.write('use %s' % mod)
+        if hasattr(node, 'uses'):
+            for (mod, only) in node.uses:
+                if only is not None:
+                    self.write('use %s, only: %s' % (mod, ' '.join(only)))
+                else:
+                    self.write('use %s' % mod)
         self.write('! END write_uses_lines')
         self.write()
 
@@ -219,11 +220,13 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                              'complex': 7
                              }
 
-        numpy_type_map = {'real(dp)':'d',
+        numpy_type_map = {'real(8)': 'd',
+                          'real(dp)':'d',
                           'integer':'i',
                           'logical':'i',
                           'character*(*)':'S',
                           'complex(dp)':'complex',
+                          'real(16)':'float128',
                           'real(qp)':'float128'}
 
         if el.type in numpy_type_map:
@@ -233,7 +236,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         self.write('subroutine %s%s__array__%s(this, nd, dtype, dshape, dloc)' % (self.prefix, t.name, el.name))
         self.indent()
-        self.write_use_lines(t)
+        self.write_uses_lines(t)
         self.write('implicit none')
         self.write_type_lines(t.name)
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
@@ -270,7 +273,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         self.dedent()
         self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.name))
-#         args_spec[el.name]['array'] = '%s%s__array__%s' % (prefix, t.name.lower(), name.lower())
+        self.write()
 
     def write_dt_array_wrapper(self, t, element, dims,
                             sizeof_fortran_t):
@@ -353,9 +356,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('end subroutine %s%s__array_%sitem__%s' % (self.prefix, t.name,
                                                               getset, el.name))
         self.write()
-        # # what is args_spec?
-#         args_spec[el.name]['array_getitem'] = '%s%s__array_getitem__%s' % (self.prefix, t.name.lower(), el.name.lower())
-
+        
 
     def _write_array_len(self, t, el, sizeof_fortran_t):
         self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
