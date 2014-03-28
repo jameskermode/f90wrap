@@ -405,7 +405,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('subroutine %s%s__%s__%s(this, the%s)' % (self.prefix, t.name,
                                                              getset, el.name, el.name))
         self.indent()
-        self.write_uses_lines(el)
+        self.write_uses_lines(t)
         self.write('implicit none')
         self.write_type_lines(t.name)
         self.write_type_lines(el.type)
@@ -589,10 +589,10 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             sub.types.add(typename)
 
             if typename in init_lines:
-                 use, (exe, exe_optional) = init_lines[typename]
-                 if use is not None:
-                     sub.uses.add((use, None))
-                 arg.init_lines = (exe_optional, exe)
+                use, (exe, exe_optional) = init_lines[typename]
+                if use is not None:
+                    sub.uses.add((use, None))
+                arg.init_lines = (exe_optional, exe)
 
             if 'intent(out)' in arg.attributes:
                 arg.attributes = set_intent(arg.attributes, 'intent(out)')
