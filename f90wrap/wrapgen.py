@@ -51,13 +51,13 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         self.write('! END write_uses_lines')
         self.write()
 
-    def write_type_lines(self, node):
-        self.write('! BEGIN write_type_lines')
-        for typename in node.types:
-            self.write("""type %(typename)s_ptr_type
+    def write_type_lines(self, tname):
+        """
+        Write type definition for input type name
+        """
+        self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_ptr_type""" % {'typename': typename})
-        self.write('! END write_type_lines')
+end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def write_arg_decl_lines(self, node):
@@ -179,7 +179,10 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_uses_lines(node)
         self.write("implicit none")
         self.write()
-        self.write_type_lines(node)
+        self.write('! BEGIN write_type_lines')
+        for tname in node.types:
+            self.write_type_lines(tname)
+        self.write("! END write_type_lines")
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
@@ -232,7 +235,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.indent()
         self.write_use_lines(t)
         self.write('implicit none')
-        self.write_type_lines(t)
+        self.write_type_lines(t.name)
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
         self.write('integer, intent(out) :: nd')
@@ -294,7 +297,6 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
 
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
-        eltype = _reformat_character_type(el, self.string_lengths)
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -309,7 +311,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write('implicit none')
         self.write()
         self.write_type_lines(t.name)  # FIXME: not sure if this is right??!!
-        self.write_type_lines(eltype)  # I'm passing strings!
+        self.write_type_lines(el.type)  # I'm passing strings!
 
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
@@ -362,7 +364,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_uses_lines(t)
         self.write('implicit none')
         self.write()
-        self.write_type_lines(type.name)
+        self.write_type_lines(t.name)
         self.write_type_lines(el.type.name)
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('integer, intent(out) :: n')
@@ -395,9 +397,6 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         element : an element within this type.
         getset : either 'get' or 'set'
         """
-        # Get a string name of the type of the element
-        eltype = _reformat_character_type(el, self.string_lengths)
-
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -406,14 +405,10 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write('subroutine %s%s__%s__%s(this, the%s)' % (self.prefix, t.name,
                                                              getset, el.name, el.name))
         self.indent()
-        self.write_uses_lines(el)
+        self.write_uses_lines(t)
         self.write('implicit none')
-        self.write_type_lines(t)
-        # I have a feeling the following lines do about the same thing as the previous one
-        if eltype.startswith('type') and _strip_type(eltype).lower() != t.name.lower():
-            self.write('type %s_ptr_type' % _strip_type(eltype))
-            self.write('type(%s), pointer :: p' % _strip_type(eltype))
-            self.write('end type %s_ptr_type' % _strip_type(eltype))
+        self.write_type_lines(t.name)
+        self.write_type_lines(el.type)
 
         self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
@@ -422,7 +417,7 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
             # For derived types elements, treat as opaque reference
             self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
 
-            self.write('type(%s_ptr_type) :: the%s_ptr' % (eltype, el.name))
+            self.write('type(%s_ptr_type) :: the%s_ptr' % (el.type, el.name))
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
@@ -439,11 +434,11 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
                 el.attributes.remove('pointer')
 
             if el.attributes != []:
-                self.write('%s, %s, intent(%s) :: the%s' % (eltype,
+                self.write('%s, %s, intent(%s) :: the%s' % (el.type,
                                                             ','.join(el.attributes),
                                                             inout, el.name))
             else:
-                self.write('%s, intent(%s) :: the%s' % (eltype, inout, el.name))
+                self.write('%s, intent(%s) :: the%s' % (el.type, inout, el.name))
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
@@ -455,30 +450,6 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
                                                     el.name))
         # args_spec[el.name]['get'] = '%s%s__get__%s' % (self.prefix, t.name.lower(), el.name.lower())
 
-
-def _reformat_character_type(element, string_lengths):
-    # change from '(len=*)' or '(*)' syntax to *(*) syntax
-    try:
-        lind = element.type.index('(')
-        rind = element.type.rindex(')')
-        mytype = element.type[:lind] + '*' + element.type[lind:rind + 1].replace('len=', '')
-
-        # Try to get length of string arguments
-        # FIXME: where does string_lengths come from?
-        if not mytype[11:-1] == '*' and not all([x in '0123456789' for x in mytype[11:-1]]):
-            try:
-                mytype = 'character*(%s)' % string_lengths[mytype[11:-1].lower()]
-            except KeyError:
-                mytype = 'character*(%s)' % string_lengths['default']
-
-        # Default string length for intent(out) strings
-        if mytype[11:-1] == '*' and 'intent(out)' in element.attributes:
-            mytype = 'character*(%s)' % string_lengths['default']
-
-    except ValueError:
-        pass
-
-    return mytype
 
 class UnwrappablesRemover(FortranTransformer):
 
@@ -618,10 +589,10 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             sub.types.add(typename)
 
             if typename in init_lines:
-                 use, (exe, exe_optional) = init_lines[typename]
-                 if use is not None:
-                     sub.uses.add((use, None))
-                 arg.init_lines = (exe_optional, exe)
+                use, (exe, exe_optional) = init_lines[typename]
+                if use is not None:
+                    sub.uses.add((use, None))
+                arg.init_lines = (exe_optional, exe)
 
             if 'intent(out)' in arg.attributes:
                 arg.attributes = set_intent(arg.attributes, 'intent(out)')
