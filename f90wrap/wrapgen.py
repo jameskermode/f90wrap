@@ -449,7 +449,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.dedent()
         self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
                                                     el.name))
-        # args_spec[el.name]['get'] = '%s%s__get__%s' % (self.prefix, t.name.lower(), el.name.lower())
 
 
 class UnwrappablesRemover(FortranTransformer):
