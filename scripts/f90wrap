@@ -20,7 +20,7 @@
 
 import optparse
 from f90wrap.parser import read_files
-from f90wrap.fortran import find_types
+from f90wrap.fortran import find_types, walk_modules
 from f90wrap.wrapgen import transform_to_f90_wrapper
 import logging
 
@@ -70,12 +70,21 @@ default_string_length = 1024
 sizeof_fortran_t = 4  # FIXME should be autodetected, as is done in QUIP/utility_scripts/find_sizeof_fortran_t
 
 types = find_types(tree)
+
+# We only want to wrap modules that the user provides as only/skip parameters
+kept_modules = []
+if args.only:
+    kept_modules = [m for m in walk_modules(tree) if m in args.only]
+if args.skip:
+    kept_modules = [m for m in walk_modules(tree) if m not in args.skip]
+
 tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
                                 constructors, destructors,
                                 short_names, init_lines,
                                 string_lengths,
                                 default_string_length,
-                                sizeof_fortran_t=sizeof_fortran_t)
+                                sizeof_fortran_t=sizeof_fortran_t,
+                                kept_modules=kept_modules)
 
 F90WrapperGenerator(opt.prefix).visit(tree)
 

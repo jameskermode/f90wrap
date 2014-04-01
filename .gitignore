@@ -13,3 +13,6 @@ examples/mockderivetype/libsrc.a
 examples/mockderivetype/pysrc.so
 examples/mockderivetype/use_a_type.mod
 .pydevproject
+examples/mockderivetype/f90wrap_define_a_type.f90
+examples/mockderivetype/f90wrap_leveltwomod.f90
+examples/mockderivetype/f90wrap_use_a_type.f90
