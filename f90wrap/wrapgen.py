@@ -193,7 +193,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.dedent()
         self.write("end subroutine %(sub_name)s" % {'sub_name': self.prefix + node.name})
         self.write()
-        self.write()
 
     def visit_Type(self, node):
         for el in node.elements:  # assuming Type has elements
@@ -833,7 +832,6 @@ def collapse_single_interfaces(tree):
     tree = _InterfaceCollapser().visit(tree)
     tree = _ProcedureRelocator().visit(tree)
     return tree
-
 
 class FunctionToSubroutineConverter(FortranVisitor):
     """Convert all functions to subroutines, with return value as an
