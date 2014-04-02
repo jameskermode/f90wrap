@@ -514,6 +514,7 @@ def find_types(tree):
             if isinstance(node, Type):
                 logging.debug('type %s defined in module %s' % (node.name, mod.name))
                 node.mod_name = mod.name  # save module name in Type instance
+                node.uses = set([(mod.name, None)])
                 types['type(%s)' % node.name] = types[node.name] = node
 
     return types
