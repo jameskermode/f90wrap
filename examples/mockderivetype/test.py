@@ -1,29 +1,18 @@
-import pysrc
+from pysrcw import *
 
-# import the wrapped module
-print 'dir(pysrc)'
-print dir(pysrc)
+a = Atype() # calls initialise()
 
-# allocate some instances of derived type variables
-a_handle = pysrc.f90wrap_atype_initialise()
-l2_handle = pysrc.f90wrap_leveltwo_initialise(3.0)
+a.rl = 3.0 # calls set()
+print 'a.rl =', a.rl # calls get()
 
-# call a function inside leveltwomod
-pysrc.f90wrap_leveltwo_print(l2_handle)
+a.vec[:] = 0. # calls get() then sets array data in place
+print 'a.vec =', a.vec # calls get()
+a.vec = 1. # calls set()
+print 'a.vec =', a.vec # calls get()
 
-print pysrc.f90wrap_leveltwo__get__rl(l2_handle)
-pysrc.f90wrap_leveltwo__set__rl(l2_handle, 2.)
-pysrc.f90wrap_leveltwo__get__rl(l2_handle)
+a.dtype.rl = 1.0 # calls set()
+a.dtype.print_() # calls print()
 
-# get an array pointer
-import f90wrap.arraydata
-from f90wrap.sizeof_fortran_t import sizeof_fortran_t
-vec = f90wrap.arraydata.get_array(sizeof_fortran_t(),
-                                  a_handle,
-                                  pysrc.f90wrap_atype__array__vec)
-vec[:] = 0.
-print vec
-
-# clear up and deallocate
-pysrc.f90wrap_atype_finalise(a_handle)
-pysrc.f90wrap_leveltwo_finalise(l2_handle)
+l2 = Leveltwo(4.0) # calls initialise()
+a.dtype = l2 # calls set()
+a.dtype.print_() # calls print()
