@@ -1,9 +1,10 @@
 .DS_Store
 build
 *~
-examples/mockderivetype/*.fpp
-examples/mockderivetype/*.o
-examples/mockderivetype/*.mod
-examples/mockderivetype/libsrc.a
-examples/mockderivetype/f90wrap*.f90
+*.fpp
+*.o
+*.mod
+*.a
+*.so
+f90wrap*.f90
 .pydevproject
