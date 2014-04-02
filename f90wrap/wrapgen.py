@@ -21,15 +21,18 @@ import copy
 import re
 from f90wrap.fortran import *
 from f90wrap.codegen import CodeGenerator
+import numpy as np
 
 class F90WrapperGenerator(FortranVisitor, CodeGenerator):
 
-    def __init__(self, prefix):
-        CodeGenerator.__init__(self, indent='    ',
+    def __init__(self, prefix, sizeof_fortran_t, string_lengths):
+        CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&')
         FortranVisitor.__init__(self)
         self.prefix = prefix
+        self.sizeof_fortran_t = sizeof_fortran_t
+        self.string_lengths = string_lengths
 
     def visit_Module(self, node):
         self.code = []
@@ -40,21 +43,22 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
 
     def write_uses_lines(self, node):
         self.write('! BEGIN write_uses_lines')
-        for (mod, only) in node.uses:
-            if only is not None:
-                self.write('use %s, only: %s' % (mod, ' '.join(only)))
-            else:
-                self.write('use %s' % mod)
+        if hasattr(node, 'uses'):
+            for (mod, only) in node.uses:
+                if only is not None:
+                    self.write('use %s, only: %s' % (mod, ' '.join(only)))
+                else:
+                    self.write('use %s' % mod)
         self.write('! END write_uses_lines')
         self.write()
 
-    def write_type_lines(self, node):
-        self.write('! BEGIN write_type_lines')
-        for typename in node.types:
-            self.write("""type %(typename)s_ptr_type
+    def write_type_lines(self, tname):
+        """
+        Write type definition for input type name
+        """
+        self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_ptr_type""" % {'typename': typename})
-        self.write('! END write_type_lines')
+end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def write_arg_decl_lines(self, node):
@@ -176,7 +180,10 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.write_uses_lines(node)
         self.write("implicit none")
         self.write()
-        self.write_type_lines(node)
+        self.write('! BEGIN write_type_lines')
+        for tname in node.types:
+            self.write_type_lines(tname)
+        self.write("! END write_type_lines")
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
@@ -186,7 +193,261 @@ end type %(typename)s_ptr_type""" % {'typename': typename})
         self.dedent()
         self.write("end subroutine %(sub_name)s" % {'sub_name': self.prefix + node.name})
         self.write()
+
+    def visit_Type(self, node):
+        for el in node.elements:  # assuming Type has elements
+            # Get the number of dimensions of the element (if any)
+            dims = filter(lambda x: x.startswith('dimension'), el.attributes)
+            # Skip this if the type is not do-able
+            if 'pointer' in el.attributes and dims != []: continue
+            if el.type.lower() == 'type(c_ptr)': continue
+
+            if len(dims) == 0:  # proper scalar type (normal or derived)
+                self.write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
+            elif el.type.startswith('type'):  # array of derived types
+                self.write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
+            else:
+                self.write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+
+    def write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
+
+        # The following maps the element type to a numeric code
+        fortran_type_code = {
+                             'd': 6,
+                             'i': 5,
+                             'S': 10,
+                             'complex': 7
+                             }
+
+        numpy_type_map = {'real(8)': 'd',
+                          'real(dp)':'d',
+                          'integer':'i',
+                          'logical':'i',
+                          'character*(*)':'S',
+                          'complex(dp)':'complex',
+                          'real(16)':'float128',
+                          'real(qp)':'float128'}
+
+        if el.type in numpy_type_map:
+            typename = numpy_type_map[el.type]
+        else:
+            typename = el.type
+
+        self.write('subroutine %s%s__array__%s(this, nd, dtype, dshape, dloc)' % (self.prefix, t.name, el.name))
+        self.indent()
+        self.write_uses_lines(t)
+        self.write('implicit none')
+        self.write_type_lines(t.name)
+        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+        self.write('integer, intent(out) :: nd')
+        self.write('integer, intent(out) :: dtype')
+        try:
+            rank = dims[0].count(',') + 1
+            if el.type.startswith('character'): rank += 1
+        except ValueError:
+            rank = 1
+        self.write('integer, dimension(10), intent(out) :: dshape')
+        self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
         self.write()
+        self.write('nd = %d' % rank)
+        self.write('dtype = %s' % fortran_type_code[typename])  # where does this come from??
+        self.write('this_ptr = transfer(this, this_ptr)')
+        if 'allocatable' in el.attributes:
+            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.indent()
+        if el.type.startswith('character'):
+            first = ','.join(['1' for i in range(rank - 1)])
+            self.write('dshape(1:%d) = (/len(this_ptr%%p%%%s(%s)), shape(this_ptr%%p%%%s)/)' % (rank, el.name, first, el.name))
+        else:
+            self.write('dshape(1:%d) = shape(this_ptr%%p%%%s)' % (rank, el.name))
+        self.write('dloc = loc(this_ptr%%p%%%s)' % el.name)
+        if 'allocatable' in el.attributes:
+            self.dedent()
+            self.write('else')
+            self.indent()
+            self.write('dloc = 0')
+            self.dedent()
+            self.write('end if')
+
+        self.dedent()
+        self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.name))
+        self.write()
+
+    def write_dt_array_wrapper(self, t, element, dims,
+                            sizeof_fortran_t):
+        """
+        Write fortran get/set/len routine for an array
+        
+        Parameters
+        ----------
+        t : type
+        element : element
+        dims : dims
+        sizeof_fortran_t : sizeof_fortran_t
+        """
+        if element.type.startswith('type') and len(dims) != 1:
+            return
+
+        self._write_array_getset_item(t, element, sizeof_fortran_t, 'get')
+        self._write_array_setset_item(t, element, sizeof_fortran_t, 'set')
+        self._write_array_len(t, element, sizeof_fortran_t)
+
+    def write_scalar_wrappers(self, t, element, sizeof_fortran_t):
+
+        self.write_scalar_wrapper(t, element, sizeof_fortran_t, "get")
+        self.write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
+
+    def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
+        # getset and inout just change things simply from a get to a set routine.
+        inout = "in"
+        if getset == "get":
+            inout = "out"
+
+        self.write('subroutine %s%s__array_%sitem__%s(this, i, %s)' % (self.prefix, t.name,
+                                                                       getset, el.name,
+                                                                       el.name))
+        self.indent()
+        self.write()
+        self.write_uses_lines(t)
+        self.write('implicit none')
+        self.write()
+        self.write_type_lines(t.name)  # FIXME: not sure if this is right??!!
+        self.write_type_lines(el.type)  # I'm passing strings!
+
+        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+        self.write('integer, intent(in) :: i')
+        self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
+        self.write('type(%s_ptr_type) :: the%s_ptr' % (t.name, el.name))
+        self.write()
+        self.write('this_ptr = transfer(this, this_ptr)')
+
+        if 'allocatable' in el.attributes:
+            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.indent()
+
+        self.write('if (i < 1 .or. i > size(this_ptr%%p%%%s)) then' % el.name)
+        self.indent()
+        self.write('call system_abort("array index out of range")')
+        self.dedent()
+        self.write('else')
+        self.indent()
+        if getset == "get":
+            self.write('the%s_ptr%%p => this_ptr%%p%%%s(i)' % (el.name, el.name))
+            self.write('the%s = transfer(the%s_ptr,the%s)' % (el.name, el.name, el.name))
+        else:
+            self.write('the%s_ptr = transfer(the%s,the%s_ptr)' % (el.name, el.name, el.name))
+            self.write('this_ptr%%p%%%s(i) = the%s_ptr%%p' % (el.name, el.name))
+
+        self.dedent()
+        self.write('endif')
+
+        if 'allocatable' in el.attributes:
+            self.dedent()
+            self.write('else')
+            self.indent()
+            self.write('call system_abort("derived type array not allocated")')
+            self.dedent()
+            self.write('end if')
+
+        self.dedent()
+        self.write('end subroutine %s%s__array_%sitem__%s' % (self.prefix, t.name,
+                                                              getset, el.name))
+        self.write()
+        
+
+    def _write_array_len(self, t, el, sizeof_fortran_t):
+        self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
+        self.indent()
+        self.write()
+        self.write_uses_lines(t)
+        self.write('implicit none')
+        self.write()
+        self.write_type_lines(t.name)
+        self.write_type_lines(el.type.name)
+        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+        self.write('integer, intent(out) :: n')
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+        self.write()
+        self.write('this_ptr = transfer(this, this_ptr)')
+
+        if 'allocatable' in el.attributes:
+            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.indent()
+
+        self.write('n = size(this_ptr%%p%%%s)' % el.name)
+
+        if 'allocatable' in el.attributes:
+            self.dedent()
+            self.write('else')
+            self.indent()
+            self.write('n = 0')
+            self.dedent()
+            self.write('end if')
+
+        self.dedent()
+        self.write('end subroutine %s%s__array_len__%s' % (self.prefix, t.name, el.name))
+        self.write()
+
+
+    def write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
+        """
+        t : a type object from the big tree thing
+        element : an element within this type.
+        getset : either 'get' or 'set'
+        """
+        # getset and inout just change things simply from a get to a set routine.
+        inout = "in"
+        if getset == "get":
+            inout = "out"
+
+        self.write('subroutine %s%s__%s__%s(this, the%s)' % (self.prefix, t.name,
+                                                             getset, el.name, el.name))
+        self.indent()
+        self.write_uses_lines(t)
+        self.write('implicit none')
+        self.write_type_lines(t.name)
+        self.write_type_lines(el.type)
+
+        self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
+        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+
+        if el.type.startswith('type'):
+            # For derived types elements, treat as opaque reference
+            self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
+
+            self.write('type(%s_ptr_type) :: the%s_ptr' % (el.type, el.name))
+            self.write()
+            self.write('this_ptr = transfer(this, this_ptr)')
+            if getset == "get":
+                self.write('the%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
+                self.write('the%s = transfer(the%s_ptr,the%s)' % (el.name, el.name, el.name))
+            else:
+                self.write('the%s_ptr = transfer(the%s,the%s_ptr)' % (el.name,
+                                                                  el.name,
+                                                                  el.name))
+                self.write('this_ptr%%p%%%s = the%s_ptr%%p' % (el.name, el.name))
+        else:
+            # Return/set by value
+            if 'pointer' in el.attributes:
+                el.attributes.remove('pointer')
+
+            if el.attributes != []:
+                self.write('%s, %s, intent(%s) :: the%s' % (el.type,
+                                                            ','.join(el.attributes),
+                                                            inout, el.name))
+            else:
+                self.write('%s, intent(%s) :: the%s' % (el.type, inout, el.name))
+            self.write()
+            self.write('this_ptr = transfer(this, this_ptr)')
+            if getset == "get":
+                self.write('the%s = this_ptr%%p%%%s' % (el.name, el.name))
+            else:
+                self.write('this_ptr%%p%%%s = the%s' % (el.name, el.name))
+        self.dedent()
+        self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
+                                                    el.name))
 
 
 class UnwrappablesRemover(FortranTransformer):
@@ -327,10 +588,10 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             sub.types.add(typename)
 
             if typename in init_lines:
-                 use, (exe, exe_optional) = init_lines[typename]
-                 if use is not None:
-                     sub.uses.add((use, None))
-                 arg.init_lines = (exe_optional, exe)
+                use, (exe, exe_optional) = init_lines[typename]
+                if use is not None:
+                    sub.uses.add((use, None))
+                arg.init_lines = (exe_optional, exe)
 
             if 'intent(out)' in arg.attributes:
                 arg.attributes = set_intent(arg.attributes, 'intent(out)')
@@ -629,3 +890,8 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
     ArrayDimensionConverter().visit(tree)
     return tree
+
+def _strip_type(t):
+    if t.startswith('type('):
+        t = t[t.index('(') + 1:t.index(')')]
+    return t.lower()

@@ -127,13 +127,13 @@ class Module(Fortran):
         self.elements = elements
         if procedures is None:
             procedures = []
-        self.procedures=procedures
+        self.procedures = procedures
         if interfaces is None:
             interfaces = []
-        self.interfaces=interfaces
+        self.interfaces = interfaces
         if uses is None:
             uses = []
-        self.uses=uses
+        self.uses = uses
         self.default_access = default_access
         if public_symbols is None:
             public_symbols = []
@@ -382,7 +382,7 @@ def walk_procedures(tree, include_ret_val=True):
         for node in walk(mod):
             if not isinstance(node, Procedure):
                 continue
-            
+
             arguments = node.arguments[:]
             if include_ret_val and isinstance(node, Function):
                 arguments.append(node.ret_val)
@@ -425,7 +425,7 @@ class FortranVisitor(object):
             if isinstance(value, list):
                 for item in value:
                     if isinstance(item, Fortran):
-                         self.visit(item)
+                        self.visit(item)
             elif isinstance(value, Fortran):
                 self.visit(value)
 
@@ -472,7 +472,7 @@ class FortranTreeDumper(FortranVisitor):
     def __init__(self):
         self.depth = 0
     def generic_visit(self, node):
-        print '  '*self.depth + str(node)
+        print '  ' * self.depth + str(node)
         self.depth += 1
         FortranVisitor.generic_visit(self, node)
         self.depth -= 1
@@ -487,7 +487,7 @@ def find_source(node):
         return
     lines = open(node.filename, 'r').readlines()
     if isinstance(node.lineno, slice):
-        lineno = slice(node.lineno.start-1,node.lineno.stop-1)
+        lineno = slice(node.lineno.start - 1, node.lineno.stop - 1)
     else:
         lineno = node.lineno - 1
     return lines[lineno]
@@ -515,7 +515,7 @@ def find_types(tree):
                 logging.debug('type %s defined in module %s' % (node.name, mod.name))
                 node.mod_name = mod.name  # save module name in Type instance
                 types['type(%s)' % node.name] = types[node.name] = node
-            
+
     return types
 
 
@@ -551,7 +551,7 @@ class LowerCaseConverter(FortranTransformer):
         node.name = node.name.lower()
         node.default_access = node.default_access.lower()
         node.private_symbols = [p.lower() for p in node.private_symbols]
-        node.public_symbols  = [p.lower() for p in node.public_symbols ]
+        node.public_symbols = [p.lower() for p in node.public_symbols ]
         node.uses = [u.lower() for u in node.uses]
         return self.generic_visit(node)
 
@@ -604,12 +604,12 @@ class AccessUpdater(FortranTransformer):
 
                 # symbol should be marked as public if it's not already
                 if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol '+ node.name)
+                    logging.debug('marking public symbol ' + node.name)
                     self.mod.public_symbols.append(node.name)
             else:
                 # symbol should be marked as private if it's not already
                 if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol '+ node.name)
+                    logging.debug('marking private symbol ' + node.name)
                     self.mod.private_symbols.append(node.name)
 
         elif self.mod.default_access == 'private':
@@ -618,19 +618,19 @@ class AccessUpdater(FortranTransformer):
 
                 # symbol should be marked as private if it's not already
                 if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol '+ node.name)
+                    logging.debug('marking private symbol ' + node.name)
                     self.mod.private_symbols.append(node.name)
             else:
                 # symbol should be marked as public if it's not already
                 if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol '+ node.name)
+                    logging.debug('marking public symbol ' + node.name)
                     self.mod.public_symbols.append(node.name)
 
         else:
             raise ValueError('bad default access %s for module %s' %
                                (self.mod.default_access, self.mod.name))
 
-        return node # no need to recurse further
+        return node  # no need to recurse further
 
 
 class PrivateSymbolsRemover(FortranTransformer):
@@ -645,14 +645,14 @@ class PrivateSymbolsRemover(FortranTransformer):
         # keep track of the current module
         self.mod = mod
         self.generic_visit(mod)
-        self.mod = None    
+        self.mod = None
 
     def visit(self, node):
         if self.mod is None:
             return self.generic_visit(node)
 
         if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol '+node.name)
+            logging.debug('removing private symbol ' + node.name)
             return None
         else:
             return node
