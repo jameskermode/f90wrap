@@ -3,7 +3,7 @@
 # HF X
 # HF X   f90wrap: F90 to Python interface generator with derived type support
 # HF X
-# HF X   Copyright James Kermode 2011
+# HF X   Copyright James Kermode 2014
 # HF X
 # HF X   These portions of the source code are released under the GNU General
 # HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
@@ -33,8 +33,14 @@ except ImportError:
     sys.exit(1)
 
 from numpy.distutils.core import setup, Extension
+from numpy.distutils.system_info import get_info
 
 fortran_t = Extension('f90wrap.sizeof_fortran_t', ['f90wrap/sizeoffortran.f90'])
+
+f2py_info = get_info('f2py')
+arraydata_ext = Extension(name='f90wrap.arraydata', 
+                          sources=['f90wrap/arraydatamodule.c'] + f2py_info['sources'],
+                          include_dirs=f2py_info['include_dirs'])
 
 setup(name='f90wrap',
       packages=['f90wrap'],
@@ -44,4 +50,4 @@ setup(name='f90wrap',
       author='James Kermode',
       author_email='james.kermode@gmail.com',
       url='http://www.jrkermode.co.uk/f90wrap',
-      ext_modules=[fortran_t])
+      ext_modules=[fortran_t, arraydata_ext])
