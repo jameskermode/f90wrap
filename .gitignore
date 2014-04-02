@@ -7,4 +7,5 @@ build
 *.a
 *.so
 f90wrap*.f90
+*.pyc
 .pydevproject
