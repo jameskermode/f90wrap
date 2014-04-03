@@ -23,6 +23,25 @@ from f90wrap.fortran import *
 from f90wrap.codegen import CodeGenerator
 import numpy as np
 
+# numeric codes for Fortran types.
+# Those with suffix _A are 1D arrays, _A2 2D are arrays
+T_NONE        =  0
+T_INTEGER     =  1
+T_REAL        =  2
+T_COMPLEX     =  3
+T_LOGICAL     =  4
+
+T_INTEGER_A   =  5
+T_REAL_A      =  6
+T_COMPLEX_A   =  7
+T_LOGICAL_A   =  8
+T_CHAR        =  9
+
+T_CHAR_A      =  10
+T_DATA        =  11
+T_INTEGER_A2  =  12
+T_REAL_A2     =  13
+
 class F90WrapperGenerator(FortranVisitor, CodeGenerator):
 
     def __init__(self, prefix, sizeof_fortran_t, string_lengths):
@@ -56,6 +75,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         """
         Write type definition for input type name
         """
+        tname = _strip_type(tname)
         self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
 end type %(typename)s_ptr_type""" % {'typename': tname})
@@ -127,6 +147,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def write_call_lines(self, node):
+        if 'skip_call' in node.attributes:
+            return
+        
         self.write('! BEGIN write_call_lines ')
         if hasattr(node, 'orig_node'):
             node = node.orig_node
@@ -171,6 +194,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def visit_Subroutine(self, node):
+        print 'Visiting subroutine %s' % node.name
 
         self.write("subroutine %(sub_name)s(%(arg_names)s)" %
                    {'sub_name': self.prefix + node.name,
@@ -193,8 +217,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.dedent()
         self.write("end subroutine %(sub_name)s" % {'sub_name': self.prefix + node.name})
         self.write()
+        return self.generic_visit(node)
 
     def visit_Type(self, node):
+        print 'Visiting type %s' % node.name
+        
         for el in node.elements:  # assuming Type has elements
             # Get the number of dimensions of the element (if any)
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
@@ -209,17 +236,19 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 self.write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
 
+        return self.generic_visit(node)
+
     def write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
 
         # The following maps the element type to a numeric code
         fortran_type_code = {
-                             'd': 6,
-                             'i': 5,
-                             'S': 10,
-                             'complex': 7
+                             'd': T_REAL_A,
+                             'i': T_INTEGER_A,
+                             'S': T_CHAR_A,
+                             'complex': T_COMPLEX_A
                              }
 
-        numpy_type_map = {'real(8)': 'd',
+        numpy_type_map = {'real(8)': 'd', # FIXME user-provided kinds should be included here
                           'real(dp)':'d',
                           'integer':'i',
                           'logical':'i',
@@ -251,7 +280,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
         self.write()
         self.write('nd = %d' % rank)
-        self.write('dtype = %s' % fortran_type_code[typename])  # where does this come from??
+        self.write('dtype = %s' % fortran_type_code[typename]) 
         self.write('this_ptr = transfer(this, this_ptr)')
         if 'allocatable' in el.attributes:
             self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
@@ -318,8 +347,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
         self.write('integer, intent(in) :: i')
-        self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
-        self.write('type(%s_ptr_type) :: the%s_ptr' % (t.name, el.name))
+        self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
+        self.write('type(%s_ptr_type) :: %s_ptr' % (t.name, el.name))
         self.write()
         self.write('this_ptr = transfer(this, this_ptr)')
 
@@ -334,11 +363,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('else')
         self.indent()
         if getset == "get":
-            self.write('the%s_ptr%%p => this_ptr%%p%%%s(i)' % (el.name, el.name))
-            self.write('the%s = transfer(the%s_ptr,the%s)' % (el.name, el.name, el.name))
+            self.write('%s_ptr%%p => this_ptr%%p%%%s(i)' % (el.name, el.name))
+            self.write('%s = transfer(%s_ptr,%s)' % (el.name, el.name, el.name))
         else:
-            self.write('the%s_ptr = transfer(the%s,the%s_ptr)' % (el.name, el.name, el.name))
-            self.write('this_ptr%%p%%%s(i) = the%s_ptr%%p' % (el.name, el.name))
+            self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name, el.name))
+            self.write('this_ptr%%p%%%s(i) = %s_ptr%%p' % (el.name, el.name))
 
         self.dedent()
         self.write('endif')
@@ -402,52 +431,54 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if getset == "get":
             inout = "out"
 
-        self.write('subroutine %s%s__%s__%s(this, the%s)' % (self.prefix, t.name,
+        self.write('subroutine %s%s__%s__%s(this, %s)' % (self.prefix, t.name,
                                                              getset, el.name, el.name))
         self.indent()
         self.write_uses_lines(t)
         self.write('implicit none')
         self.write_type_lines(t.name)
-        self.write_type_lines(el.type)
+        if el.type.startswith('type'):
+            self.write_type_lines(el.type)
 
         self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)
 
         if el.type.startswith('type'):
             # For derived types elements, treat as opaque reference
-            self.write('integer, intent(%s) :: the%s(%d)' % (inout, el.name, sizeof_fortran_t))
+            self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
 
-            self.write('type(%s_ptr_type) :: the%s_ptr' % (el.type, el.name))
+            self.write('type(%s_ptr_type) :: %s_ptr' % (_strip_type(el.type), el.name))
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
-                self.write('the%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
-                self.write('the%s = transfer(the%s_ptr,the%s)' % (el.name, el.name, el.name))
+                self.write('%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
+                self.write('%s = transfer(%s_ptr,%s)' % (el.name, el.name, el.name))
             else:
-                self.write('the%s_ptr = transfer(the%s,the%s_ptr)' % (el.name,
-                                                                  el.name,
-                                                                  el.name))
-                self.write('this_ptr%%p%%%s = the%s_ptr%%p' % (el.name, el.name))
+                self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name,
+                                                                      el.name,
+                                                                      el.name))
+                self.write('this_ptr%%p%%%s = %s_ptr%%p' % (el.name, el.name))
         else:
             # Return/set by value
             if 'pointer' in el.attributes:
                 el.attributes.remove('pointer')
 
             if el.attributes != []:
-                self.write('%s, %s, intent(%s) :: the%s' % (el.type,
-                                                            ','.join(el.attributes),
-                                                            inout, el.name))
+                self.write('%s, %s, intent(%s) :: %s' % (el.type,
+                                                         ','.join(el.attributes),
+                                                         inout, el.name))
             else:
-                self.write('%s, intent(%s) :: the%s' % (el.type, inout, el.name))
+                self.write('%s, intent(%s) :: %s' % (el.type, inout, el.name))
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
-                self.write('the%s = this_ptr%%p%%%s' % (el.name, el.name))
+                self.write('%s = this_ptr%%p%%%s' % (el.name, el.name))
             else:
-                self.write('this_ptr%%p%%%s = the%s' % (el.name, el.name))
+                self.write('this_ptr%%p%%%s = %s' % (el.name, el.name))
         self.dedent()
         self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
                                                     el.name))
+        self.write()
 
 
 class UnwrappablesRemover(FortranTransformer):
@@ -582,7 +613,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             arg.attributes = arg.attributes + ['fortran_' + attr for attr in
                                arg.attributes if attr.startswith('intent')]
 
-            typename = arg.type[5:-1]
+            typename = _strip_type(arg.type)
             arg.wrapper_type = 'integer'
             arg.wrapper_dim = sizeof_fortran_t
             sub.types.add(typename)
@@ -798,7 +829,7 @@ def collapse_single_interfaces(tree):
     """Collapse interfaces which contain only a single procedure."""
 
     class _InterfaceCollapser(FortranTransformer):
-        """Replace interfaces with one procedure by that procedure"""
+        """Replace interfaces with only one procedure by that procedure"""
         def visit_Interface(self, node):
             if len(node.procedures) == 1:
                 proc = node.procedures[0]
@@ -832,6 +863,58 @@ def collapse_single_interfaces(tree):
     tree = _InterfaceCollapser().visit(tree)
     tree = _ProcedureRelocator().visit(tree)
     return tree
+
+def add_missing_constructors(tree):
+    for node in walk(tree):
+        if not isinstance(node, Type):
+            continue
+        for child in iter_child_nodes(node):
+            if isinstance(child, Procedure):
+                if 'constructor' in child.attributes:
+                    print 'found constructor', child.name
+                    break
+        else:
+            print 'adding missing constructor for %s' % node.name
+            node.procedures.append(Subroutine('%s_initialise' % node.name,
+                                              node.filename,
+                                              'Automatically generated constructor for %s' % node.name,
+                                              node.lineno,
+                                              [Argument(name='this',
+                                                        filename=node.filename,
+                                                        doc='Object to be constructed',
+                                                        lineno=node.lineno,
+                                                        attributes=['intent(out)'],
+                                                        type='type(%s)' % node.name)],
+                                              node.uses,
+                                              ['constructor', 'skip_call']))
+    return tree
+                
+
+def add_missing_destructors(tree):
+    for node in walk(tree):
+        if not isinstance(node, Type):
+            continue
+        for child in iter_child_nodes(node):
+            if isinstance(child, Procedure):
+                if 'destructor' in child.attributes:
+                    print 'found destructor', child.name
+                    break
+        else:
+            print 'adding missing destructor for %s' % node.name
+            node.procedures.append(Subroutine('%s_finalise' % node.name,
+                                              node.filename,
+                                              'Automatically generated destructor for %s' % node.name,
+                                              node.lineno,
+                                              [Argument(name='this',
+                                                        filename=node.filename,
+                                                        doc='Object to be destructed',
+                                                        lineno=node.lineno,
+                                                        attributes=['intent(inout)'],
+                                                        type='type(%s)' % node.name)],
+                                              node.uses,
+                                              ['destructor', 'skip_call']))
+    return tree
+
 
 class FunctionToSubroutineConverter(FortranVisitor):
     """Convert all functions to subroutines, with return value as an
@@ -871,6 +954,7 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
 
      * Removal of private symbols
      * Removal of unwrappable routines and optional arguments
+     * Addition of missing constructor and destructor wrappers
      * Conversion of all functions to subroutines
      * Update of subroutine uses clauses
      * Conversion of derived type arguments to opaque integer arrays
@@ -882,9 +966,9 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
     tree = collapse_single_interfaces(tree)
-
+    tree = add_missing_constructors(tree)
+    tree = add_missing_destructors(tree)
     FunctionToSubroutineConverter().visit(tree)
-
     tree = fix_subroutine_uses_clauses(tree, types, kinds)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
