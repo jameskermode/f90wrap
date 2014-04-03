@@ -605,26 +605,32 @@ class OnlyAndSkip(FortranTransformer):
     which are not necessary to write wrappers for (given user-supplied
     values for only and skip). 
     
-    Currently the only and skip parameters take MODULE names only. 
+    Currently it takes a list of subroutines and a list of types to write
+    wrappers for. If empty, it does all of them. 
     """
-    def __init__(self, kept_modules):
-        self.kept_modules = kept_modules
+    def __init__(self, kept_subs, kept_types):
+        self.kept_subs = kept_subs
+        self.kept_types = kept_types
 
-    def visit_Module(self, node):
-        if len(self.kept_modules) > 0:
-            if node.name not in self.kept_modules:
+    def visit_Procedure(self, node):
+        if len(self.kept_subs) > 0:
+            if node not in self.kept_subs:
                 return None
 
+    def visit_Type(self, node):
+        if len(self.kept_types) > 0:
+            if node not in self.kept_types:
+                return None
 
 def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
                              destructors, short_names, init_lines,
                              string_lengths, default_string_length,
-                             sizeof_fortran_t, kept_modules):
+                             sizeof_fortran_t, kept_subs, kept_types):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90WrapperGenerator's visit() method. Transformations performed are:
 
-     * Removal of modules not explicitly provided by the user to wrap
+     * Removal of procedures and types not provided by the user
      * Removal of private symbols
      * Removal of unwrappable routines and optional arguments
      * Conversion of all functions to subroutines
@@ -633,7 +639,7 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
        via Fortran transfer() intrinsic.
      * ...
     """
-    tree = OnlyAndSkip(kept_modules).visit(tree)
+    tree = OnlyAndSkip(kept_subs, kept_types).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
