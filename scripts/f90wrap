@@ -37,6 +37,8 @@ p.add_option('-i', '--init', action='append',
              help="""Special initialisation lines used when constructing a particular type.""")
 p.add_option('-v', '--verbose', action='store_true',
              help="""Enable verbose mode, with debug-level logging output.""")
+p.add_option('-m', '--mod-name', default='pysrc',
+             help="""Name of f2py extension module""")
 
 opt, args = p.parse_args()
 tree = read_files(args)
@@ -69,12 +71,17 @@ sizeof_fortran_t = sizeof_fortran_t()
 print "SIZEOF_FORTRAN_T: ", sizeof_fortran_t
 
 types = find_types(tree)
+
+tree = transform_to_py_wrapper(tree, types, kinds, callbacks,
+                               constructors, destructors, short_names,
+                               init_lines)
+PythonWrapperGenerator(opt.prefix, opt.mod_name).visit(tree)
+
 tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
                                 constructors, destructors,
                                 short_names, init_lines,
                                 string_lengths,
                                 default_string_length,
                                 sizeof_fortran_t=sizeof_fortran_t)
-
 F90WrapperGenerator(opt.prefix, sizeof_fortran_t, string_lengths).visit(tree)
 
