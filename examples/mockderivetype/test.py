@@ -1,4 +1,6 @@
-from pysrcw import *
+from define_a_type import *
+from leveltwomod import *
+from use_a_type import *
 
 a = Atype() # calls initialise()
 

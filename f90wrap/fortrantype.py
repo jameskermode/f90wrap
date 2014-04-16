@@ -1,0 +1,3 @@
+class FortranDerivedType(object):
+    pass
+
