@@ -24,7 +24,7 @@ from f90wrap.codegen import CodeGenerator
 import numpy as np
 
 # numeric codes for Fortran types.
-# Those with suffix _A are 1D arrays, _A2 2D are arrays
+# Those with suffix _A are 1D arrays, _A2 are 2D arrays
 T_NONE        =  0
 T_INTEGER     =  1
 T_REAL        =  2
@@ -222,13 +222,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def visit_Type(self, node):
         print 'Visiting type %s' % node.name
         
-        for el in node.elements:  # assuming Type has elements
-            # Get the number of dimensions of the element (if any)
+        for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
-            # Skip this if the type is not do-able
-            if 'pointer' in el.attributes and dims != []: continue
-            if el.type.lower() == 'type(c_ptr)': continue
-
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self.write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
             elif el.type.startswith('type'):  # array of derived types
@@ -497,22 +492,6 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
                        ('f90wrap.fortrantype', 'fortrantype')]
         self.imports = imports
 
-    def _fmt_arg(self, node, arg, replace_types=True, include_values=False):
-        arg_name = arg.name
-        if arg.name == 'this':
-            arg_name = 'self'
-        if replace_types and arg.type.startswith('type'):
-            arg_name = '%s._handle' % arg_name
-        arg_str = arg_name
-        if include_values and arg.value != '':
-            arg_str += '=%r' % arg.value
-        return arg_str
-
-    def _skip_arg(self, node, arg):
-        if 'intent(out)' in arg.attributes:
-            return True
-        return False
-
     def visit_Module(self, node):
         self.code = []
         for (mod, alias) in self.imports:
@@ -535,14 +514,11 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
                               type='integer',
                               value=None)
         
-        f90_arguments = [arg for arg in node.arguments if not self._skip_arg(node, arg)]
-        py_arguments = node.arguments  + [handle_arg]
-
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
                    mod_name=self.mod_name,
-                   py_arg_names=', '.join([self._fmt_arg(node, arg, False, True) for arg in py_arguments]),
-                   f90_arg_names=', '.join([self._fmt_arg(node, arg) for arg in f90_arguments]))
+                   py_arg_names=', '.join([arg.name for arg in node.arguments]),
+                   f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments])
 
         self.write("""@functools.wraps(%(mod_name)s.%(prefix)s%(func_name)s, assigned=['__doc__'])
 def __init__(%(py_arg_names)s):""" % dct)
@@ -561,8 +537,8 @@ def __init__(%(py_arg_names)s):""" % dct)
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
                    mod_name=self.mod_name,
-                   arg_names=', '.join([self._fmt_arg(node, arg, False, False) for arg in node.arguments if not
-                                        self._skip_arg(node, arg)]))
+                   arg_names=', '.join([arg.name for arg in node.arguments]),
+                   f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments]))
         self.write("""@functools.wraps(%(mod_name)s.%(prefix)s%(func_name)s, assigned=['__doc__'])
 def __del__(%(arg_names)s):""" % dct)
         self.indent()
@@ -582,7 +558,8 @@ def __del__(%(arg_names)s):""" % dct)
             dct = dict(func_name=node.name,
                        prefix=self.prefix,
                        mod_name=self.mod_name,
-                       arg_names=', '.join([self._fmt_arg(node, arg) for arg in node.arguments]))
+                       arg_names=', '.join([arg.name for arg in node.arguments]))
+                       
             self.write("""@functools.wraps(%(mod_name)s.%(prefix)s%(func_name)s, assigned=['__doc__'])
 def %(func_name)s(%(arg_names)s):""" % dct)
             self.indent()
@@ -600,11 +577,7 @@ def %(func_name)s(%(arg_names)s):""" % dct)
         self.generic_visit(node)
 
         for el in node.elements:
-            # Get the number of dimensions of the element (if any)
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
-            # Skip this if the type is not do-able
-            if 'pointer' in el.attributes and dims != []: continue
-            if el.type.lower() == 'type(c_ptr)': continue
 
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
@@ -755,8 +728,18 @@ class UnwrappablesRemover(FortranTransformer):
             logging.debug('removing type %s' % node.name)
             return None
         else:
+            elements = []
+            for element in node.elements:
+                # Get the number of dimensions of the element (if any)
+                dims = filter(lambda x: x.startswith('dimension'), el.attributes)
+                # Skip this if the type is not do-able
+                if 'pointer' in el.attributes and dims != []:
+                    continue
+                if el.type.lower() == 'type(c_ptr)':
+                    continue
+                elements.append(el)
+            node.elements = elements
             return node
-
     
 
 def fix_subroutine_uses_clauses(tree, types, kinds):
@@ -1138,7 +1121,51 @@ class FunctionToSubroutineConverter(FortranVisitor):
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
 
+class IntentOutToReturnValues(FortranVisitor):
+    """
+    Convert all Subroutine and Function intent(out) arguments to return values
+    """
 
+    def visit_Procedure(self, node):
+        ret_val = []
+        ret_val_doc = None
+        if isinstance(node, Function) and node.ret_val is not None:
+            ret_val.append(node.ret_val)
+            if node.ret_val_doc is not None:
+                ret_val_doc = node.ret_val_doc
+        
+        arguments = []
+        for arg in node.arguments:
+            if 'intent(out)' in arg.attributes:
+                ret_val.append(arg)
+            else:
+                arguments.append(arg)
+        if ret_val == []:
+            new_node = Node # no changes needed
+        else:
+            new_node = Function(node.name,
+                                node.filename,
+                                node.doc,
+                                node.lineno,
+                                arguments,
+                                node.uses,
+                                node.attributes,
+                                ret_val,
+                                ret_val_doc)
+        new_node.orig_node = node
+        return new_node
+
+class RenameArguments(FortranVisitor):
+    def __init__(self, name_map=None):
+        if name_map is None:
+            name_map = {'this': 'self'}
+        self.name_map = name_map
+
+    def visit_Argument(self, node):
+        node.orig_name = node.name
+        node.name = self.name_map.get(node.name, node.name)
+        if node.type.startswith('type('):
+            node.name = node.name+'._handle'
 
 def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
                              destructors, short_names, init_lines,
@@ -1158,6 +1185,13 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
      * ...
     """
 
+    tree = remove_private_symbols(tree)
+    tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
+    tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
+    tree = collapse_single_interfaces(tree)
+    tree = add_missing_constructors(tree)
+    tree = add_missing_destructors(tree)
+    # until here it's the same as Python wrapper - move to generic routine?
     FunctionToSubroutineConverter().visit(tree)
     tree = fix_subroutine_uses_clauses(tree, types, kinds)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
@@ -1174,6 +1208,9 @@ def transform_to_py_wrapper(tree, types, kinds, callbacks, constructors,
     tree = collapse_single_interfaces(tree)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
+    # until here it's the same as Fortran wrapper
+    tree = IntentOutToReturnValues.visit(tree)
+    tree = RenameArguments.visit(tree)
     return tree
 
 
