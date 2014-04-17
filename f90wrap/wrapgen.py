@@ -1167,31 +1167,34 @@ class RenameArguments(FortranVisitor):
         if node.type.startswith('type('):
             node.name = node.name+'._handle'
 
-def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
-                             destructors, short_names, init_lines,
-                             string_lengths, default_string_length,
-                             sizeof_fortran_t):
+def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
+                                 destructors, short_names, init_lines):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
-    a F90WrapperGenerator's visit() method. Transformations performed are:
+    a F90 and Python wrapper generators. Transformations performed are:
 
      * Removal of private symbols
      * Removal of unwrappable routines and optional arguments
      * Addition of missing constructor and destructor wrappers
      * Conversion of all functions to subroutines
      * Update of subroutine uses clauses
-     * Conversion of derived type arguments to opaque integer arrays
-       via Fortran transfer() intrinsic.
-     * ...
     """
-
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
-    # until here it's the same as Python wrapper - move to generic routine?
+
+def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
+                             destructors, short_names, init_lines,
+                             string_lengths, default_string_length,
+                             sizeof_fortran_t):
+    """
+    Additional Fortran-specific transformations:
+     * Conversion of derived type arguments to opaque integer arrays
+       via Fortran transfer() intrinsic.
+    """
     FunctionToSubroutineConverter().visit(tree)
     tree = fix_subroutine_uses_clauses(tree, types, kinds)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
@@ -1199,18 +1202,14 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
     ArrayDimensionConverter().visit(tree)
     return tree
 
-def transform_to_py_wrapper(tree, types, kinds, callbacks, constructors,
-                            destructors, short_names, init_lines):
-
-    tree = remove_private_symbols(tree)
-    tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
-    tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
-    tree = collapse_single_interfaces(tree)
-    tree = add_missing_constructors(tree)
-    tree = add_missing_destructors(tree)
-    # until here it's the same as Fortran wrapper
+def transform_to_py_wrapper(tree, name_map=None):
+    """
+    Additional Python-specific transformations:
+      * Convert intent(out) arguments to additional return values
+      * Rename arguments (e.g. this -> self)
+    """
     tree = IntentOutToReturnValues.visit(tree)
-    tree = RenameArguments.visit(tree)
+    tree = RenameArguments.visit(tree, name_map)
     return tree
 
 
