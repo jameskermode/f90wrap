@@ -56,9 +56,10 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
     def visit_Module(self, node):
         self.code = []
         self.generic_visit(node)
-        f90_wrapper_file = open('%s%s.f90' % (self.prefix, node.name), 'w')
-        f90_wrapper_file.write(str(self))
-        f90_wrapper_file.close()
+        if len(self.code) > 0:
+            f90_wrapper_file = open('%s%s.f90' % (self.prefix, node.name), 'w')
+            f90_wrapper_file.write(str(self))
+            f90_wrapper_file.close()
 
     def write_uses_lines(self, node):
         self.write('! BEGIN write_uses_lines')
@@ -194,7 +195,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def visit_Subroutine(self, node):
-        print 'Visiting subroutine %s' % node.name
+        print 'Visiting subroutine %s' % node.name, node.__dict__
 
         self.write("subroutine %(sub_name)s(%(arg_names)s)" %
                    {'sub_name': self.prefix + node.name,
@@ -250,10 +251,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         numpy_type_map = {'real(8)': 'd',  # FIXME user-provided kinds should be included here
                           'real(dp)':'d',
+                          'real(dl)':'d',
                           'integer':'i',
                           'logical':'i',
                           'character*(*)':'S',
                           'complex(dp)':'complex',
+                          'complex(dl)':'complex',
                           'real(16)':'float128',
                           'real(qp)':'float128'}
 
@@ -319,7 +322,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             return
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, 'get')
-        self._write_array_setset_item(t, element, sizeof_fortran_t, 'set')
+        self._write_array_getset_item(t, element, sizeof_fortran_t, 'set')
         self._write_array_len(t, element, sizeof_fortran_t)
 
     def write_scalar_wrappers(self, t, element, sizeof_fortran_t):
@@ -394,7 +397,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('implicit none')
         self.write()
         self.write_type_lines(t.name)
-        self.write_type_lines(el.type.name)
+        self.write_type_lines(el.name)
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('integer, intent(out) :: n')
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)

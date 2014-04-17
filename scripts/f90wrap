@@ -30,6 +30,7 @@ from f90wrap import __version__
 from f90wrap.parser import read_files
 from f90wrap.fortran import find_types, walk_procedures
 from f90wrap.wrapgen import transform_to_f90_wrapper, F90WrapperGenerator, find_referenced_types
+from f90wrap.sizeof_fortran_t import sizeof_fortran_t
 import logging
 
 class CLIError(Exception):
@@ -131,7 +132,7 @@ USAGE
         }
         default_string_length = 1024
 
-        sizeof_fortran_t = 4  # FIXME should be autodetected, as is done in QUIP/utility_scripts/find_sizeof_fortran_t
+        fsize = sizeof_fortran_t()
 
         types = find_types(tree)
 
@@ -157,11 +158,11 @@ USAGE
                                         short_names, init_lines,
                                         string_lengths,
                                         default_string_length,
-                                        sizeof_fortran_t=sizeof_fortran_t,
+                                        sizeof_fortran_t=fsize,
                                         only_subs=kept_subs,
                                         only_types=kept_types)
 
-        F90WrapperGenerator(args.prefix, sizeof_fortran_t, string_lengths).visit(tree)
+        F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(tree)
         return 0
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
