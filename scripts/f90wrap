@@ -21,8 +21,11 @@
 import optparse
 from f90wrap.parser import read_files
 from f90wrap.sizeof_fortran_t import sizeof_fortran_t
-from f90wrap.fortran import *
-from f90wrap.wrapgen import *
+from f90wrap.transform import (transform_to_generic_wrapper,
+                               transform_to_py_wrapper,
+                               transform_to_f90_wrapper)
+from f90wrap.f90wrapgen import FortranWrapperGenerator
+from f90wrap.pywrapgen import PythonWrapperGenerator
 
 p = optparse.OptionParser(usage='%prog [options] <input file>...')
 
@@ -70,14 +73,20 @@ default_string_length = 1024
 sizeof_fortran_t = sizeof_fortran_t()
 print "SIZEOF_FORTRAN_T: ", sizeof_fortran_t
 
+argument_name_map = {
+    'this': 'self'
+    }
+
 types = find_types(tree)
+
+tree = transform_to_generic_wrapper(tree, types, kinds, callbacks,
+                                    constructors, destructors, short_names,
+                                    init_lines)
 
 py_tree = copy.deepcopy(tree)
 f90_tree = copy.deepcopy(tree)
 
-py_tree = transform_to_py_wrapper(py_tree, types, kinds, callbacks,
-                                  constructors, destructors, short_names,
-                                  init_lines)
+py_tree = transform_to_py_wrapper(py_tree, argument_name_map)
 
 f90_tree = transform_to_f90_wrapper(f90_tree, types, kinds, callbacks,
                                 constructors, destructors,

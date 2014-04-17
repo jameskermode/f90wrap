@@ -21,25 +21,6 @@ import re
 from f90wrap.fortran import *
 import numpy as np
 
-# numeric codes for Fortran types.
-# Those with suffix _A are 1D arrays, _A2 are 2D arrays
-T_NONE        =  0
-T_INTEGER     =  1
-T_REAL        =  2
-T_COMPLEX     =  3
-T_LOGICAL     =  4
-
-T_INTEGER_A   =  5
-T_REAL_A      =  6
-T_COMPLEX_A   =  7
-T_LOGICAL_A   =  8
-T_CHAR        =  9
-
-T_CHAR_A      =  10
-T_DATA        =  11
-T_INTEGER_A2  =  12
-T_REAL_A2     =  13
-
 class UnwrappablesRemover(FortranTransformer):
 
     def __init__(self, callbacks, types, constructors, destructors):
