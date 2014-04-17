@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+"""
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 # HF X
 # HF X   f90wrap: F90 to Python interface generator with derived type support
@@ -17,105 +17,162 @@
 # HF X   http://www.jrkermode.co.uk/f90wrap
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+"""
 
-import optparse
+import sys
+import os
+import traceback
+
+from argparse import ArgumentParser
+from argparse import RawDescriptionHelpFormatter
+
+from f90wrap import __version__
 from f90wrap.parser import read_files
-from f90wrap.fortran import find_types, walk_modules, walk_procedures
-from f90wrap.wrapgen import transform_to_f90_wrapper
+from f90wrap.fortran import find_types, walk_procedures
+from f90wrap.wrapgen import transform_to_f90_wrapper, F90WrapperGenerator, find_referenced_types
 import logging
 
-p = optparse.OptionParser(usage='%prog [options] <input file>...')
+class CLIError(Exception):
+    '''Generic exception to raise and log different fatal errors.'''
+    def __init__(self, msg):
+        super(CLIError).__init__(type(self))
+        self.msg = "E: %s" % msg
+    def __str__(self):
+        return self.msg
+    def __unicode__(self):
+        return self.msg
 
-p.add_option('-p', '--prefix', action='store',
-             help="""Prefix to prepend to arguments and subroutines.""",
-             default='f90wrap_')
-p.add_option('-c', '--callback', action='append',
-             help="""Callback routines.""")
-p.add_option('-k', '--kind', action='append',
-             help="""Fortran kind declarations to use in each wrapper.""")
-p.add_option('-i', '--init', action='append',
-             help="""Special initialisation lines used when constructing a particular type.""")
-p.add_option('-v', '--verbose', action='store_true',
-             help="""Enable verbose mode, with debug-level logging output.""")
-p.add_option("--only", nargs="*", help="MODULE NAMES to include in wrapper")
-p.add_option("--skip", nargs="*", help="MODULE NAMES to exclude from wrapper")
+def main(argv=None):
+    '''Parse and wrap Fortran90 code, including derived types.'''
 
-opt, args = p.parse_args()
-tree = read_files(args)
+    if argv is None:
+        argv = sys.argv
+    else:
+        sys.argv.extend(argv)
 
-# ## TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
-callbacks = []
-kinds = []  # [('system_module', ('dp',))]
-init_lines = {}  # {'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
-              #                            'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
+    program_name = os.path.basename(sys.argv[0])
+    program_version = "v%s" % __version__
+    program_version_message = '%%(prog)s %s' % program_version
+    program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
+    program_license = '''%s
 
-if opt.verbose:
-    logging.root.setLevel(logging.DEBUG)
+   Copyright James Kermode 2011
 
-constructors = ('initialise_ptr', 'initialise', 'allocate')
-destructors = ('finalise',)
-short_names = {}
+   These portions of the source code are released under the GNU General
+   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
 
-string_lengths = {
-    'key_len':256,
-    'value_len':1024,
-    'value_length':1023,
-    'field_length':1023,
-    'string_length':1023,
-    'table_string_length':10,
-    'dict_char_a_len': 10
-}
-default_string_length = 1024
+   If you would like to license the source code under different terms,
+   please contact James Kermode, james.kermode@gmail.com
 
-sizeof_fortran_t = 4  # FIXME should be autodetected, as is done in QUIP/utility_scripts/find_sizeof_fortran_t
+   When using this software, please cite the following reference:
 
-types = find_types(tree)
+   http://www.jrkermode.co.uk/f90wrap
 
-# We want to wrap only subroutines provided by the user (from any module),
-# and only types IN MODULES WITH SUBROUTINES PROVIDED BY USER (OR THOSE REF'D BY THEM).
-kept_subs = []
-kept_mods = set()
-if args.only:
-    for mod, sub, args in walk_procedures(tree):
-        if sub.name in args.only:
-            kept_subs.extend([sub.name])
-            kept_mods.add(mod)
-elif args.skip:
-    for mod, sub, args in walk_procedures(tree):
-        if sub.name not in args.only:
-            kept_subs.extend([sub.name])
-            kept_mods.add(mod)
+USAGE
+''' % program_shortdesc
 
-# Get used types now
-kept_types = set()
-for mod in kept_mods:
-    for t in mod.types:
-        kept_types.add(t)
+    try:
+        # Setup argument parser
+        parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
+        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
+        parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
-# kept_types is now all types defined directly in kept_mods. But we also
-# need those referenced by them.
-new_set = kept_types
-while new_set != set():
-    for t in new_set:
-        for el in t.elements:
-            if el.type.startswith('type'):  # a referenced type, need to find def
-                for mod2 in walk_modules(tree):
-                    for mt in mod2.types:
-                        if mt.name in el.type:
-                            new_set.add(mt)
-    # take out all the original types from new_set
-    new_set.difference_update(kept_types)
-    # update the kept_types with new ones
-    kept_types.update(new_set)
 
-tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
-                                constructors, destructors,
-                                short_names, init_lines,
-                                string_lengths,
-                                default_string_length,
-                                sizeof_fortran_t=sizeof_fortran_t,
-                                only_subs=kept_subs,
-                                only_types=kept_types)
 
-F90WrapperGenerator(opt.prefix).visit(tree)
+        parser.add_argument("files", nargs="+", help="The files to include in the wrap")
+        parser.add_argument('-p', '--prefix',
+                            help="""Prefix to prepend to arguments and subroutines.""",
+                            default='f90wrap_')
+        parser.add_argument('-c', '--callback', nargs="*",
+                            help="""Callback routines.""")
+        parser.add_argument('-k', '--kind', nargs="*",
+                            help="""Fortran kind declarations to use in each wrapper.""")
+        parser.add_argument('-i', '--init', nargs='*',
+                            help="""Special initialisation lines used when constructing a particular type.""")
 
+        parser.add_argument("--only", nargs="*", help="Subroutines to include in wrapper")
+        parser.add_argument("--skip", nargs="*", help="Subroutines to exclude from wrapper")
+
+        args = parser.parse_args()
+
+        #=======================================================================
+        # Begin actual wrapping
+        #=======================================================================
+        tree = read_files(args.files)
+
+        # ## TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
+        if not args.callback:
+            callbacks = []
+        else:
+            callbacks = args.callback
+        if not args.kind:
+            kinds = []
+        else:
+            kinds = args.kind  # [('system_module', ('dp',))]
+
+        init_lines = {}  # {'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
+                         #                            'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
+
+        if args.verbose:
+            logging.root.setLevel(logging.DEBUG)
+
+        constructors = ('initialise_ptr', 'initialise', 'allocate')
+        destructors = ('finalise',)
+        short_names = {}
+
+        string_lengths = {
+            'key_len':256,
+            'value_len':1024,
+            'value_length':1023,
+            'field_length':1023,
+            'string_length':1023,
+            'table_string_length':10,
+            'dict_char_a_len': 10
+        }
+        default_string_length = 1024
+
+        sizeof_fortran_t = 4  # FIXME should be autodetected, as is done in QUIP/utility_scripts/find_sizeof_fortran_t
+
+        types = find_types(tree)
+
+        # Find all modules and subroutines the user wishes to keep
+        kept_subs = []
+        kept_mods = set()
+        if args.only:
+            for mod, sub, arg in walk_procedures(tree):
+                if sub.name in args.only:
+                    kept_subs.extend([sub])
+                    kept_mods.add(mod)
+        elif args.skip:
+            for mod, sub, arg in walk_procedures(tree):
+                if sub.name not in args.skip:
+                    kept_subs.extend([sub])
+                    kept_mods.add(mod)
+
+        # Find (recursively) all types the user wishes to keep.
+        kept_types = find_referenced_types(kept_mods, tree)
+
+        tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
+                                        constructors, destructors,
+                                        short_names, init_lines,
+                                        string_lengths,
+                                        default_string_length,
+                                        sizeof_fortran_t=sizeof_fortran_t,
+                                        only_subs=kept_subs,
+                                        only_types=kept_types)
+
+        F90WrapperGenerator(args.prefix, sizeof_fortran_t, string_lengths).visit(tree)
+        return 0
+    except KeyboardInterrupt:
+        ### handle keyboard interrupt ###
+        return 0
+    except Exception, e:
+        traceback.print_exc()
+        indent = len(program_name) * " "
+        sys.stderr.write(program_name + ": " + repr(e) + "\n")
+        sys.stderr.write(indent + "  for help use --help\n")
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

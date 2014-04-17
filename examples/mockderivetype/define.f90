@@ -8,21 +8,10 @@ module define_a_type
         type(leveltwo) :: dtype
     end type atype
 
+    type unused_type
+        real(8) :: rl
+    end type unused_type
 contains
-
-  subroutine atype_initialise(this)
-    type(atype), intent(out) :: this
-
-    write (*,*) 'initialising atype'
-    
-  end subroutine atype_initialise
-
-  subroutine atype_finalise(this)
-    type(atype), intent(inout) :: this
-
-    write (*,*) 'finalising atype'
-
-  end subroutine atype_finalise
 
 end module
 
