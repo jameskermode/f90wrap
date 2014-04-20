@@ -19,12 +19,15 @@
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 import optparse
+import copy
+
 from f90wrap.parser import read_files
 from f90wrap.sizeof_fortran_t import sizeof_fortran_t
 from f90wrap.transform import (transform_to_generic_wrapper,
                                transform_to_py_wrapper,
                                transform_to_f90_wrapper)
-from f90wrap.f90wrapgen import FortranWrapperGenerator
+from f90wrap.fortran import find_types
+from f90wrap.f90wrapgen import F90WrapperGenerator
 from f90wrap.pywrapgen import PythonWrapperGenerator
 
 p = optparse.OptionParser(usage='%prog [options] <input file>...')
@@ -95,6 +98,6 @@ f90_tree = transform_to_f90_wrapper(f90_tree, types, kinds, callbacks,
                                 default_string_length,
                                 sizeof_fortran_t=sizeof_fortran_t)
 
-PythonWrapperGenerator(opt.prefix, opt.mod_name).visit(py_tree)
+PythonWrapperGenerator(opt.prefix, opt.mod_name, types).visit(py_tree)
 F90WrapperGenerator(opt.prefix, sizeof_fortran_t, string_lengths).visit(f90_tree)
 

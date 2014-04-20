@@ -519,7 +519,6 @@ def find_types(tree):
 
     return types
 
-
 def fix_argument_attributes(node):
     """
     Walk over all procedures in the tree starting at `node` and
@@ -579,95 +578,7 @@ class LowerCaseConverter(FortranTransformer):
         node.attributes = [a.lower() for a in node.attributes]
         return self.generic_visit(node)
 
-
-class AccessUpdater(FortranTransformer):
-    """Visit module contents and update public_symbols and
-       private_symbols lists to be consistent with (i) default module
-       access; (ii) public and private statements at module level;
-       (iii) public and private attibutes."""
-
-    def __init__(self):
-        self.mod = None
-
-    def visit_Module(self, mod):
-        # keep track of the current module
-        self.mod = mod
-        self.generic_visit(mod)
-        self.mod = None
-
-    def visit(self, node):
-        if self.mod is None:
-            return self.generic_visit(node)
-
-        if self.mod.default_access == 'public':
-            if ('private' not in getattr(node, 'attributes', {}) and
-                   node.name not in self.mod.private_symbols):
-
-                # symbol should be marked as public if it's not already
-                if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
-                    self.mod.public_symbols.append(node.name)
-            else:
-                # symbol should be marked as private if it's not already
-                if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
-                    self.mod.private_symbols.append(node.name)
-
-        elif self.mod.default_access == 'private':
-            if ('public' not in getattr(node, 'attributes', {}) and
-                   node.name not in self.mod.public_symbols):
-
-                # symbol should be marked as private if it's not already
-                if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
-                    self.mod.private_symbols.append(node.name)
-            else:
-                # symbol should be marked as public if it's not already
-                if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
-                    self.mod.public_symbols.append(node.name)
-
-        else:
-            raise ValueError('bad default access %s for module %s' %
-                               (self.mod.default_access, self.mod.name))
-
-        return node  # no need to recurse further
-
-
-class PrivateSymbolsRemover(FortranTransformer):
-    """
-    Transform a tree by removing private symbols.
-    """
-
-    def __init__(self):
-        self.mod = None
-
-    def visit_Module(self, mod):
-        # keep track of the current module
-        self.mod = mod
-        self.generic_visit(mod)
-        self.mod = None
-
-    def visit(self, node):
-        if self.mod is None:
-            return self.generic_visit(node)
-
-        if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol ' + node.name)
-            return None
-        else:
-            return node
-
-def remove_private_symbols(node):
-    """
-    Walk the tree starting at *node*, removing all private symbols.
-
-    This funciton first applies the AccessUpdater transformer to
-    ensure module *public_symbols* and *private_symbols* are up to
-    date with *default_access* and individual `public` and `private`
-    attributes.
-    """
-
-    node = AccessUpdater().visit(node)
-    node = PrivateSymbolsRemover().visit(node)
-    return node
+def strip_type(t):
+    if t.startswith('type('):
+        t = t[t.index('(') + 1:t.index(')')]
+    return t.lower()

@@ -19,19 +19,22 @@
 import logging
 import copy
 import re
-from f90wrap.fortran import *
+from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function,
+                             Declaration, Element, Argument, Type, Interface,
+                             FortranVisitor, FortranTransformer, strip_type)
 from f90wrap.codegen import CodeGenerator
 import numpy as np
 
 class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
 
-    def __init__(self, prefix, mod_name, imports=None):
+    def __init__(self, prefix, mod_name, types, imports=None):
         CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\')
         FortranVisitor.__init__(self)
         self.prefix = prefix
         self.mod_name = mod_name
+        self.types = types
         if imports is None:
             imports = [(mod_name, None),
                        ('functools', None),
@@ -57,20 +60,25 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
                               filename=node.filename,
                               doc='Opaque reference to existing derived type instance',
                               lineno=node.lineno,
-                              attributes=['intent(in)'],
-                              type='integer',
-                              value=None)
+                              attributes=['intent(in)', 'optional'],
+                              type='integer')
+
+        # special case for constructors: return value is 'self' argument,
+        # plus we add an extra optional argument
+        args = node.ret_val + node.arguments + [handle_arg]
         
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
                    mod_name=self.mod_name,
-                   py_arg_names=', '.join([arg.name for arg in node.arguments]),
-                   f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments])
+                   py_arg_names=', '.join(['%s%s' % (arg.name,
+                                                     'optional' in arg.attributes and '=None' or '')
+                                                     for arg in args ]),
+                   f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.value) for arg in node.arguments]))
 
         self.write("""@functools.wraps(%(mod_name)s.%(prefix)s%(func_name)s, assigned=['__doc__'])
 def __init__(%(py_arg_names)s):""" % dct)
         self.indent()
-        self.write('fortrantype.FortranDerivedType.__init__(self)')
+        self.write('fortrantype.FortranDerivedType.__init__(self, handle)')
         self.write('self._alloc = handle is None')
         self.write('if self._alloc:')
         self.indent()
@@ -80,18 +88,30 @@ def __init__(%(py_arg_names)s):""" % dct)
         self.dedent()
         self.write()
 
+        # FIXME alternative constructor to deal with sub-obj allocation when mandatory args are missing
+        self.write("""@classmethod
+def from_handle(cls, handle):""")
+        self.indent()
+        self.write('self = cls()')
+        self.write('self._handle = handle')
+        self.write('return self')
+        self.dedent()
+        self.write()        
+
     def write_destructor(self, node):
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
                    mod_name=self.mod_name,
-                   arg_names=', '.join([arg.name for arg in node.arguments]),
-                   f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments]))
+                   py_arg_names=', '.join(['%s%s' % (arg.name,
+                                                     'optional' in arg.attributes and '=None' or '')
+                                                     for arg in node.arguments]),
+                   f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.value) for arg in node.arguments]))
         self.write("""@functools.wraps(%(mod_name)s.%(prefix)s%(func_name)s, assigned=['__doc__'])
-def __del__(%(arg_names)s):""" % dct)
+def __del__(%(py_arg_names)s):""" % dct)
         self.indent()
         self.write('if self._alloc:')
         self.indent()
-        self.write('%(mod_name)s.%(prefix)s%(func_name)s(%(arg_names)s)' % dct)
+        self.write('%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct)
         self.dedent()
         self.dedent()
         self.write()
@@ -105,12 +125,15 @@ def __del__(%(arg_names)s):""" % dct)
             dct = dict(func_name=node.name,
                        prefix=self.prefix,
                        mod_name=self.mod_name,
-                       arg_names=', '.join([arg.name for arg in node.arguments]))
+                       py_arg_names=', '.join(['%s%s' % (arg.name,
+                                                     arg.value is None and '=None' or '')
+                                                     for arg in node.arguments ]),
+                       f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments]))
                        
             self.write("""@functools.wraps(%(mod_name)s.%(prefix)s%(func_name)s, assigned=['__doc__'])
-def %(func_name)s(%(arg_names)s):""" % dct)
+def %(func_name)s(%(py_arg_names)s):""" % dct)
             self.indent()
-            call_line = '%(mod_name)s.%(prefix)s%(func_name)s(%(arg_names)s)' % dct
+            call_line = '%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
             if isinstance(node, Function):
                 call_line = 'return %s' % call_line
             self.write(call_line)
@@ -118,6 +141,13 @@ def %(func_name)s(%(arg_names)s):""" % dct)
             self.write()
 
     def visit_Type(self, node):
+        for el in node.elements:
+            if el.type.startswith('type'):
+                mod_name = self.types[el.type].mod_name
+                cls_name = strip_type(el.type).title()
+                self.write('from %s import %s' % (mod_name, cls_name))
+        self.write()
+
         cls_name = node.name.title()
         self.write('class %s(fortrantype.FortranDerivedType):' % cls_name)
         self.indent()
@@ -152,9 +182,10 @@ def %(el_name)s(self, %(el_name)s):
         self.write()
 
     def write_dt_wrappers(self, node, el):
+        cls_name = strip_type(el.type).title()
         dct = dict(el_name=el.name, mod_name=self.mod_name,
                    prefix=self.prefix, type_name=node.name,
-                   cls_name=node.name.title())
+                   cls_name=cls_name)
         self.write("""@property
 def %(el_name)s(self):
     %(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(self._handle)
@@ -169,6 +200,7 @@ def %(el_name)s(self):
 def %(el_name)s(self, %(el_name)s):
     %(el_name)s = %(el_name)s._handle
     %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(self._handle, %(el_name)s)
+
 """ % dct)
 
     def write_sc_array_wrapper(self, node, el, dims):
@@ -188,8 +220,8 @@ def %(el_name)s(self):
 @%(el_name)s.setter
 def %(el_name)s(self, %(el_name)s):
     self.%(el_name)s[...] = %(el_name)s
-
-""" % dct)     
+""" % dct)
+        self.write()
 
     def write_dt_array_wrapper(self, node, el, dims):
         pass

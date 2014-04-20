@@ -19,7 +19,8 @@
 import logging
 import copy
 import re
-from f90wrap.fortran import *
+from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function, Prototype,
+                             Declaration, Element, Argument, Type, Interface, FortranVisitor, strip_type)
 from f90wrap.codegen import CodeGenerator
 import numpy as np
 
@@ -75,7 +76,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         """
         Write type definition for input type name
         """
-        tname = _strip_type(tname)
+        tname = strip_type(tname)
         self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
 end type %(typename)s_ptr_type""" % {'typename': tname})
@@ -442,7 +443,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             # For derived types elements, treat as opaque reference
             self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
 
-            self.write('type(%s_ptr_type) :: %s_ptr' % (_strip_type(el.type), el.name))
+            self.write('type(%s_ptr_type) :: %s_ptr' % (strip_type(el.type), el.name))
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":

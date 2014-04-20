@@ -1,3 +1,7 @@
 class FortranDerivedType(object):
-    pass
+    def __init__(self):
+        self._handle = None
+        self._arrays = {}
+        self._objs = {}
+        
 
