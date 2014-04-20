@@ -671,3 +671,4 @@ def remove_private_symbols(node):
     node = AccessUpdater().visit(node)
     node = PrivateSymbolsRemover().visit(node)
     return node
+

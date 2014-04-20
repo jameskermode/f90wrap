@@ -25,22 +25,22 @@ import numpy as np
 
 # numeric codes for Fortran types.
 # Those with suffix _A are 1D arrays, _A2 2D are arrays
-T_NONE        =  0
-T_INTEGER     =  1
-T_REAL        =  2
-T_COMPLEX     =  3
-T_LOGICAL     =  4
+T_NONE = 0
+T_INTEGER = 1
+T_REAL = 2
+T_COMPLEX = 3
+T_LOGICAL = 4
 
-T_INTEGER_A   =  5
-T_REAL_A      =  6
-T_COMPLEX_A   =  7
-T_LOGICAL_A   =  8
-T_CHAR        =  9
+T_INTEGER_A = 5
+T_REAL_A = 6
+T_COMPLEX_A = 7
+T_LOGICAL_A = 8
+T_CHAR = 9
 
-T_CHAR_A      =  10
-T_DATA        =  11
-T_INTEGER_A2  =  12
-T_REAL_A2     =  13
+T_CHAR_A = 10
+T_DATA = 11
+T_INTEGER_A2 = 12
+T_REAL_A2 = 13
 
 class F90WrapperGenerator(FortranVisitor, CodeGenerator):
 
@@ -149,7 +149,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def write_call_lines(self, node):
         if 'skip_call' in node.attributes:
             return
-        
+
         self.write('! BEGIN write_call_lines ')
         if hasattr(node, 'orig_node'):
             node = node.orig_node
@@ -221,7 +221,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
     def visit_Type(self, node):
         print 'Visiting type %s' % node.name
-        
+
         for el in node.elements:  # assuming Type has elements
             # Get the number of dimensions of the element (if any)
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
@@ -248,7 +248,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                              'complex': T_COMPLEX_A
                              }
 
-        numpy_type_map = {'real(8)': 'd', # FIXME user-provided kinds should be included here
+        numpy_type_map = {'real(8)': 'd',  # FIXME user-provided kinds should be included here
                           'real(dp)':'d',
                           'integer':'i',
                           'logical':'i',
@@ -280,7 +280,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
         self.write()
         self.write('nd = %d' % rank)
-        self.write('dtype = %s' % fortran_type_code[typename]) 
+        self.write('dtype = %s' % fortran_type_code[typename])
         self.write('this_ptr = transfer(this, this_ptr)')
         if 'allocatable' in el.attributes:
             self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
@@ -384,7 +384,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('end subroutine %s%s__array_%sitem__%s' % (self.prefix, t.name,
                                                               getset, el.name))
         self.write()
-        
+
 
     def _write_array_len(self, t, el, sizeof_fortran_t):
         self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
@@ -519,7 +519,7 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
             if alias is None:
                 self.write('import %s' % mod)
             else:
-                self.write('import %s as %s' % (mod, alias)) 
+                self.write('import %s as %s' % (mod, alias))
         self.write()
         self.generic_visit(node)
         py_wrapper_file = open('%s.py' % node.name.lower(), 'w')
@@ -534,9 +534,9 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
                               attributes=['intent(in)'],
                               type='integer',
                               value=None)
-        
+
         f90_arguments = [arg for arg in node.arguments if not self._skip_arg(node, arg)]
-        py_arguments = node.arguments  + [handle_arg]
+        py_arguments = node.arguments + [handle_arg]
 
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
@@ -608,9 +608,9 @@ def %(func_name)s(%(arg_names)s):""" % dct)
 
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    self.write_dt_wrappers(node, el) 
+                    self.write_dt_wrappers(node, el)
                 else:
-                    self.write_scalar_wrappers(node, el) 
+                    self.write_scalar_wrappers(node, el)
             elif el.type.startswith('type'):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims)
             else:
@@ -669,7 +669,7 @@ def %(el_name)s(self):
 def %(el_name)s(self, %(el_name)s):
     self.%(el_name)s[...] = %(el_name)s
 
-""" % dct)     
+""" % dct)
 
     def write_dt_array_wrapper(self, node, el, dims):
         pass
@@ -757,7 +757,7 @@ class UnwrappablesRemover(FortranTransformer):
         else:
             return node
 
-    
+
 
 def fix_subroutine_uses_clauses(tree, types, kinds):
     """Walk over all nodes in tree, updating subroutine uses
@@ -1084,7 +1084,7 @@ def add_missing_constructors(tree):
                                               node.uses,
                                               ['constructor', 'skip_call']))
     return tree
-                
+
 
 def add_missing_destructors(tree):
     for node in walk(tree):
@@ -1138,16 +1138,41 @@ class FunctionToSubroutineConverter(FortranVisitor):
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
 
+class OnlyAndSkip(FortranTransformer):
+    """
+    This class does the job of removing nodes from the tree 
+    which are not necessary to write wrappers for (given user-supplied
+    values for only and skip). 
+    
+    Currently it takes a list of subroutines and a list of types to write
+    wrappers for. If empty, it does all of them. 
+    """
+    def __init__(self, kept_subs, kept_types):
+        self.kept_subs = kept_subs
+        self.kept_types = kept_types
 
+    def visit_Procedure(self, node):
+        if len(self.kept_subs) > 0:
+            if node not in self.kept_subs:
+                return None
+        return node
+
+    def visit_Type(self, node):
+        if len(self.kept_types) > 0:
+            if node not in self.kept_types:
+                return None
+        return node
 
 def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
-                             destructors, short_names, init_lines,
-                             string_lengths, default_string_length,
-                             sizeof_fortran_t):
+                              destructors, short_names, init_lines,
+                              string_lengths, default_string_length,
+                              sizeof_fortran_t, only_subs, only_types):
+
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90WrapperGenerator's visit() method. Transformations performed are:
-
+ 
+     * Removal of procedures and types not provided by the user
      * Removal of private symbols
      * Removal of unwrappable routines and optional arguments
      * Addition of missing constructor and destructor wrappers
@@ -1157,13 +1182,20 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
        via Fortran transfer() intrinsic.
      * ...
     """
+    tree = OnlyAndSkip(only_subs, only_types).visit(tree)
+    tree = remove_private_symbols(tree)
+    tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
+    tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
+    tree = collapse_single_interfaces(tree)
 
     FunctionToSubroutineConverter().visit(tree)
+
     tree = fix_subroutine_uses_clauses(tree, types, kinds)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
     ArrayDimensionConverter().visit(tree)
     return tree
+
 
 def transform_to_py_wrapper(tree, types, kinds, callbacks, constructors,
                             destructors, short_names, init_lines):
@@ -1181,3 +1213,53 @@ def _strip_type(t):
     if t.startswith('type('):
         t = t[t.index('(') + 1:t.index(')')]
     return t.lower()
+
+
+def find_referenced_types(mods, tree):
+    """
+    Given a set of modules in a parse tree, find any types either defined in
+    or referenced by the module, recursively.
+    
+    Parameters
+    ----------
+    mods : initial modules to search, must be included in the tree.
+    
+    tree : the full fortran parse tree from which the mods have been taken.
+    
+    Returns
+    -------
+    kept_types : set of Type() objects which are referenced or defined in the 
+                 modules given, or recursively referenced by those types. 
+    """
+
+    # Get used types now
+    kept_types = set()
+    for mod in mods:
+        for t in mod.types:
+            kept_types.add(t)
+
+        for el in mod.elements:
+            if el.type.startswith('type'):
+                for mod2 in walk_modules(tree):
+                    for mt in mod2.types:
+                        if mt.name in el.type:
+                            kept_types.add(mt)
+
+    # kept_types is now all types defined/referenced directly in kept_mods. But we also
+    # need those referenced by them.
+    new_set = copy.copy(kept_types)
+    while new_set != set():
+        temp_set = list(new_set)
+        for t in temp_set:
+            for el in t.elements:
+                if el.type.startswith('type'):  # a referenced type, need to find def
+                    for mod2 in walk_modules(tree):
+                        for mt in mod2.types:
+                            if mt.name in el.type:
+                                new_set.add(mt)
+        # take out all the original types from new_set
+        new_set -= kept_types
+        # update the kept_types with new ones
+        kept_types |= new_set
+
+    return kept_types

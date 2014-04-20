@@ -1,16 +1,14 @@
-!! This file simulates the fortran wrapper file I have written for
-!! CAMB. It contains a single module with several module-level vars
-!! with one of them a derived type, which is defined in the base library.
+!! This file contains a single module with several module-level vars
+!! with one of them a derived type, which is defined in the 'base library'.
 
 module use_a_type
     use define_a_type ! This is the module which defines the type 'atype'
     type(atype) :: P  ! A variable with this type.
     real(8),allocatable :: vector(:) !It also contains allocatable arrays
 
-    ! For simplicity, Ive given P a variable of each type found in the
-    ! corresponding type from CAMB that I'm mocking up. That is, a logical,
-    ! real, integer, real array (not allocatable!), and a derived type from
-    ! a different module.
+    ! For simplicity, P has a variable of each of several base types.
+    ! That is, a logical, real, integer, real array (not allocatable!), and a
+    ! derived type from a different module.
 
     !I make a mock subroutine that uses all these bits in some way to make
     !sure they all work.
@@ -49,5 +47,14 @@ module use_a_type
         end do
 
     end subroutine do_stuff
+
+    subroutine not_used(x,y)
+        real(8), intent(in) :: x
+        real(8), intent(out) :: y
+        type(unused_type) :: T
+
+        y = P%rl * x
+        y = T%rl * y
+    end subroutine
 
 end module

@@ -18,7 +18,7 @@
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 import sys
-
+from f90wrap import __version__
 major, minor = sys.version_info[0:2]
 if (major, minor) < (2, 4):
     sys.stderr.write('Python 2.4 or later is needed to use this package\n')
@@ -38,14 +38,14 @@ from numpy.distutils.system_info import get_info
 fortran_t = Extension('f90wrap.sizeof_fortran_t', ['f90wrap/sizeoffortran.f90'])
 
 f2py_info = get_info('f2py')
-arraydata_ext = Extension(name='f90wrap.arraydata', 
+arraydata_ext = Extension(name='f90wrap.arraydata',
                           sources=['f90wrap/arraydatamodule.c'] + f2py_info['sources'],
                           include_dirs=f2py_info['include_dirs'])
 
 setup(name='f90wrap',
       packages=['f90wrap'],
       scripts=['scripts/f90doc', 'scripts/f90wrap'],
-      version='0.0',
+      version=__version__,
       description='Fortran to Python interface generator with derived type support',
       author='James Kermode',
       author_email='james.kermode@gmail.com',
