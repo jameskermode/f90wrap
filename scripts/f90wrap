@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+"""
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 # HF X
 # HF X   f90wrap: F90 to Python interface generator with derived type support
@@ -17,11 +17,20 @@
 # HF X   http://www.jrkermode.co.uk/f90wrap
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+"""
 
-import optparse
+import sys
+import os
+import traceback
 import copy
 
+from argparse import ArgumentParser
+from argparse import RawDescriptionHelpFormatter
+
+from f90wrap import __version__
+
 from f90wrap.parser import read_files
+from f90wrap.fortran import find_types, walk_procedures
 from f90wrap.sizeof_fortran_t import sizeof_fortran_t
 from f90wrap.transform import (transform_to_generic_wrapper,
                                transform_to_py_wrapper,
@@ -100,4 +109,149 @@ f90_tree = transform_to_f90_wrapper(f90_tree, types, kinds, callbacks,
 
 PythonWrapperGenerator(opt.prefix, opt.mod_name, types).visit(py_tree)
 F90WrapperGenerator(opt.prefix, sizeof_fortran_t, string_lengths).visit(f90_tree)
+=======
+import logging
 
+class CLIError(Exception):
+    '''Generic exception to raise and log different fatal errors.'''
+    def __init__(self, msg):
+        super(CLIError).__init__(type(self))
+        self.msg = "E: %s" % msg
+    def __str__(self):
+        return self.msg
+    def __unicode__(self):
+        return self.msg
+
+def main(argv=None):
+    '''Parse and wrap Fortran90 code, including derived types.'''
+
+    if argv is None:
+        argv = sys.argv
+    else:
+        sys.argv.extend(argv)
+
+    program_name = os.path.basename(sys.argv[0])
+    program_version = "v%s" % __version__
+    program_version_message = '%%(prog)s %s' % program_version
+    program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
+    program_license = '''%s
+
+   Copyright James Kermode 2011
+
+   These portions of the source code are released under the GNU General
+   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
+
+   If you would like to license the source code under different terms,
+   please contact James Kermode, james.kermode@gmail.com
+
+   When using this software, please cite the following reference:
+
+   http://www.jrkermode.co.uk/f90wrap
+
+USAGE
+''' % program_shortdesc
+
+    try:
+        # Setup argument parser
+        parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
+        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
+        parser.add_argument('-V', '--version', action='version', version=program_version_message)
+
+
+
+        parser.add_argument("files", nargs="+", help="The files to include in the wrap")
+        parser.add_argument('-p', '--prefix',
+                            help="""Prefix to prepend to arguments and subroutines.""",
+                            default='f90wrap_')
+        parser.add_argument('-c', '--callback', nargs="*",
+                            help="""Callback routines.""")
+        parser.add_argument('-k', '--kind', nargs="*",
+                            help="""Fortran kind declarations to use in each wrapper.""")
+        parser.add_argument('-i', '--init', nargs='*',
+                            help="""Special initialisation lines used when constructing a particular type.""")
+
+        parser.add_argument("--only", nargs="*", help="Subroutines to include in wrapper")
+        parser.add_argument("--skip", nargs="*", help="Subroutines to exclude from wrapper")
+
+        args = parser.parse_args()
+
+        #=======================================================================
+        # Begin actual wrapping
+        #=======================================================================
+        tree = read_files(args.files)
+
+        # ## TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
+        if not args.callback:
+            callbacks = []
+        else:
+            callbacks = args.callback
+        if not args.kind:
+            kinds = []
+        else:
+            kinds = args.kind  # [('system_module', ('dp',))]
+
+        init_lines = {}  # {'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
+                         #                            'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
+
+        if args.verbose:
+            logging.root.setLevel(logging.DEBUG)
+
+        constructors = ('initialise_ptr', 'initialise', 'allocate')
+        destructors = ('finalise',)
+        short_names = {}
+
+        string_lengths = {
+            'key_len':256,
+            'value_len':1024,
+            'value_length':1023,
+            'field_length':1023,
+            'string_length':1023,
+            'table_string_length':10,
+            'dict_char_a_len': 10
+        }
+        default_string_length = 1024
+
+        fsize = sizeof_fortran_t()
+
+        types = find_types(tree)
+
+        # Find all modules and subroutines the user wishes to keep
+        kept_subs = []
+        kept_mods = set()
+        if args.only:
+            for mod, sub, arg in walk_procedures(tree):
+                if sub.name in args.only:
+                    kept_subs.extend([sub])
+                    kept_mods.add(mod)
+        elif args.skip:
+            for mod, sub, arg in walk_procedures(tree):
+                if sub.name not in args.skip:
+                    kept_subs.extend([sub])
+                    kept_mods.add(mod)
+
+        # Find (recursively) all types the user wishes to keep.
+        kept_types = find_referenced_types(kept_mods, tree)
+
+        tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
+                                        constructors, destructors,
+                                        short_names, init_lines,
+                                        string_lengths,
+                                        default_string_length,
+                                        sizeof_fortran_t=fsize,
+                                        only_subs=kept_subs,
+                                        only_types=kept_types)
+
+        F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(tree)
+        return 0
+    except KeyboardInterrupt:
+        ### handle keyboard interrupt ###
+        return 0
+    except Exception, e:
+        traceback.print_exc()
+        indent = len(program_name) * " "
+        sys.stderr.write(program_name + ": " + repr(e) + "\n")
+        sys.stderr.write(indent + "  for help use --help\n")
+        return 2
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -645,18 +645,48 @@ class RenameArguments(FortranVisitor):
             node.value = node.name
         return node
 
+
+class OnlyAndSkip(FortranTransformer):
+    """
+    This class does the job of removing nodes from the tree 
+    which are not necessary to write wrappers for (given user-supplied
+    values for only and skip). 
+    
+    Currently it takes a list of subroutines and a list of types to write
+    wrappers for. If empty, it does all of them. 
+    """
+    def __init__(self, kept_subs, kept_types):
+        self.kept_subs = kept_subs
+        self.kept_types = kept_types
+
+    def visit_Procedure(self, node):
+        if len(self.kept_subs) > 0:
+            if node not in self.kept_subs:
+                return None
+        return node
+
+    def visit_Type(self, node):
+        if len(self.kept_types) > 0:
+            if node not in self.kept_types:
+                return None
+        return node
+
+
 def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
-                                 destructors, short_names, init_lines):
+                                 destructors, short_names, init_lines,
+                                 only_subs, only_types):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
 
+     * Removal of procedures and types not provided by the user
      * Removal of private symbols
      * Removal of unwrappable routines and optional arguments
      * Addition of missing constructor and destructor wrappers
      * Conversion of all functions to subroutines
      * Update of subroutine uses clauses
     """
+    tree = OnlyAndSkip(only_subs, only_types).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)

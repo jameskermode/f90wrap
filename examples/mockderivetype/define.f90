@@ -8,6 +8,9 @@ module define_a_type
         type(leveltwo) :: dtype
     end type atype
 
+    type unused_type
+        real(8) :: rl
+    end type unused_type
 contains
 
 end module
