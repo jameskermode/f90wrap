@@ -36,7 +36,7 @@ from f90wrap.sizeof_fortran_t import sizeof_fortran_t
 from f90wrap.transform import (transform_to_generic_wrapper,
                                transform_to_py_wrapper,
                                transform_to_f90_wrapper,
-                               find_referenced_types)
+                               find_referenced_modules)
 from f90wrap.fortran import find_types
 from f90wrap.f90wrapgen import F90WrapperGenerator
 from f90wrap.pywrapgen import PythonWrapperGenerator
@@ -164,8 +164,9 @@ USAGE
                     kept_subs.extend([sub])
                     kept_mods.add(mod)
 
-        # Find (recursively) all types the user wishes to keep.
-        kept_types = find_referenced_types(kept_mods, tree)
+        print "KM: ", kept_mods
+        # Find (recursively) all used modules
+        kept_mods = find_referenced_modules(kept_mods, tree)
 
         tree = transform_to_generic_wrapper(tree, types, kinds, callbacks,
                                             constructors, destructors, short_names,
@@ -181,10 +182,10 @@ USAGE
                                         short_names, init_lines,
                                         string_lengths,
                                         default_string_length,
-                                        sizeof_fortran_t=sizeof_fortran_t)
+                                        sizeof_fortran_t=fsize)
 
         PythonWrapperGenerator(args.prefix, args.mod_name, types).visit(py_tree)
-        F90WrapperGenerator(args.prefix, sizeof_fortran_t, string_lengths).visit(f90_tree)
+        F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(f90_tree)
         return 0
     
     except KeyboardInterrupt:

@@ -656,12 +656,12 @@ class OnlyAndSkip(FortranTransformer):
     which are not necessary to write wrappers for (given user-supplied
     values for only and skip). 
     
-    Currently it takes a list of subroutines and a list of types to write
+    Currently it takes a list of subroutines and a list of modules to write
     wrappers for. If empty, it does all of them. 
     """
-    def __init__(self, kept_subs, kept_types):
+    def __init__(self, kept_subs, kept_mods):
         self.kept_subs = kept_subs
-        self.kept_types = kept_types
+        self.kept_mods = kept_mods
 
     def visit_Procedure(self, node):
         if len(self.kept_subs) > 0:
@@ -669,28 +669,28 @@ class OnlyAndSkip(FortranTransformer):
                 return None
         return node
 
-    def visit_Type(self, node):
-        if len(self.kept_types) > 0:
-            if node not in self.kept_types:
+    def visit_Module(self, node):
+        if len(self.kept_mods) > 0:
+            if node not in self.kept_mods:
                 return None
         return node
 
 
 def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
                                  destructors, short_names, init_lines,
-                                 only_subs, only_types):
+                                 only_subs, only_mods):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
 
-     * Removal of procedures and types not provided by the user
+     * Removal of procedures and modules not provided by the user
      * Removal of private symbols
      * Removal of unwrappable routines and optional arguments
      * Addition of missing constructor and destructor wrappers
      * Conversion of all functions to subroutines
      * Update of subroutine uses clauses
     """
-    tree = OnlyAndSkip(only_subs, only_types).visit(tree)
+    tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
@@ -726,6 +726,36 @@ def transform_to_py_wrapper(tree, argument_name_map=None):
     RenameArguments(argument_name_map).visit(tree)
     return tree
 
+def find_referenced_modules(mods, tree):
+    """
+    Given a set of modules in a parse tree, find any modules (recursively) 
+    used by these.
+    
+    Parameters
+    ----------
+    mods : set 
+        initial modules to search, must be included in the tree.
+    
+    tree : `fortran.Root()` object.
+        the full fortran parse tree from which the mods have been taken.
+    
+    Returns
+    -------
+    all_mods : set
+        Module() objects which are recursively used by the given modules. 
+    """
+    new_mods = copy.copy(mods)
+    while new_mods != set():
+        temp = list(new_mods)
+        for m in temp:
+            for m2 in m.uses:
+                for m3 in walk_modules(tree):
+                    if m3.name == m2:
+                        new_mods.add(m3)
+        new_mods -= mods
+        mods |= new_mods
+
+    return mods
 
 def find_referenced_types(mods, tree):
     """
@@ -734,9 +764,12 @@ def find_referenced_types(mods, tree):
     
     Parameters
     ----------
-    mods : initial modules to search, must be included in the tree.
+    mods : set 
+        initial modules to search, must be included in the tree.
     
     tree : the full fortran parse tree from which the mods have been taken.
+    tree : `fortran.Root` object.
+        the full fortran parse tree from which the mods have been taken.
     
     Returns
     -------
