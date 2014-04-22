@@ -29,7 +29,7 @@ from argparse import RawDescriptionHelpFormatter
 from f90wrap import __version__
 from f90wrap.parser import read_files
 from f90wrap.fortran import find_types, walk_procedures
-from f90wrap.wrapgen import transform_to_f90_wrapper, F90WrapperGenerator, find_referenced_types
+from f90wrap import wrapgen as wg
 from f90wrap.sizeof_fortran_t import sizeof_fortran_t
 import logging
 
@@ -150,19 +150,20 @@ USAGE
                     kept_subs.extend([sub])
                     kept_mods.add(mod)
 
-        # Find (recursively) all types the user wishes to keep.
-        kept_types = find_referenced_types(kept_mods, tree)
+        print "KM: ", kept_mods
+        # Find (recursively) all used modules
+        kept_mods = wg.find_referenced_modules(kept_mods, tree)
 
-        tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
+        tree = wg.transform_to_f90_wrapper(tree, types, kinds, callbacks,
                                         constructors, destructors,
                                         short_names, init_lines,
                                         string_lengths,
                                         default_string_length,
                                         sizeof_fortran_t=fsize,
                                         only_subs=kept_subs,
-                                        only_types=kept_types)
+                                        only_mods=kept_mods)
 
-        F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(tree)
+        wg.F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(tree)
         return 0
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
