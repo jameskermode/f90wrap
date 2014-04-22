@@ -16,13 +16,17 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+import copy
 import logging
 import re
+
+import numpy as np
+
 from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function,
                              Declaration, Element, Argument, Type, Interface,
-                             FortranVisitor, FortranTransformer, walk, walk_procedures,
+                             FortranVisitor, FortranTransformer,
+                             walk, walk_procedures, walk_modules,
                              iter_child_nodes, strip_type)
-import numpy as np
 
 
 class AccessUpdater(FortranTransformer):
@@ -723,3 +727,51 @@ def transform_to_py_wrapper(tree, argument_name_map=None):
     return tree
 
 
+def find_referenced_types(mods, tree):
+    """
+    Given a set of modules in a parse tree, find any types either defined in
+    or referenced by the module, recursively.
+    
+    Parameters
+    ----------
+    mods : initial modules to search, must be included in the tree.
+    
+    tree : the full fortran parse tree from which the mods have been taken.
+    
+    Returns
+    -------
+    kept_types : set of Type() objects which are referenced or defined in the 
+                 modules given, or recursively referenced by those types. 
+    """
+
+    # Get used types now
+    kept_types = set()
+    for mod in mods:
+        for t in mod.types:
+            kept_types.add(t)
+
+        for el in mod.elements:
+            if el.type.startswith('type'):
+                for mod2 in walk_modules(tree):
+                    for mt in mod2.types:
+                        if mt.name in el.type:
+                            kept_types.add(mt)
+
+    # kept_types is now all types defined/referenced directly in kept_mods. But we also
+    # need those referenced by them.
+    new_set = copy.copy(kept_types)
+    while new_set != set():
+        temp_set = list(new_set)
+        for t in temp_set:
+            for el in t.elements:
+                if el.type.startswith('type'):  # a referenced type, need to find def
+                    for mod2 in walk_modules(tree):
+                        for mt in mod2.types:
+                            if mt.name in el.type:
+                                new_set.add(mt)
+        # take out all the original types from new_set
+        new_set -= kept_types
+        # update the kept_types with new ones
+        kept_types |= new_set
+
+    return kept_types

@@ -4,7 +4,7 @@
 # HF X
 # HF X   f90wrap: F90 to Python interface generator with derived type support
 # HF X
-# HF X   Copyright James Kermode 2011
+# HF X   Copyright James Kermode 2011-2014
 # HF X
 # HF X   These portions of the source code are released under the GNU General
 # HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
@@ -23,6 +23,7 @@ import sys
 import os
 import traceback
 import copy
+import logging
 
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
@@ -34,83 +35,11 @@ from f90wrap.fortran import find_types, walk_procedures
 from f90wrap.sizeof_fortran_t import sizeof_fortran_t
 from f90wrap.transform import (transform_to_generic_wrapper,
                                transform_to_py_wrapper,
-                               transform_to_f90_wrapper)
+                               transform_to_f90_wrapper,
+                               find_referenced_types)
 from f90wrap.fortran import find_types
 from f90wrap.f90wrapgen import F90WrapperGenerator
 from f90wrap.pywrapgen import PythonWrapperGenerator
-
-p = optparse.OptionParser(usage='%prog [options] <input file>...')
-
-p.add_option('-p', '--prefix', action='store',
-             help="""Prefix to prepend to arguments and subroutines.""",
-             default='f90wrap_')
-p.add_option('-c', '--callback', action='append',
-             help="""Callback routines.""")
-p.add_option('-k', '--kind', action='append',
-             help="""Fortran kind declarations to use in each wrapper.""")
-p.add_option('-i', '--init', action='append',
-             help="""Special initialisation lines used when constructing a particular type.""")
-p.add_option('-v', '--verbose', action='store_true',
-             help="""Enable verbose mode, with debug-level logging output.""")
-p.add_option('-m', '--mod-name', default='pysrc',
-             help="""Name of f2py extension module""")
-
-opt, args = p.parse_args()
-tree = read_files(args)
-
-# FIXME -- parse opt.callback, opt.kind, opt.init to populate these lists
-callbacks = []
-kinds = []  # [('system_module', ('dp',))]
-init_lines = {}  # {'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
-              #                            'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
-
-if opt.verbose:
-    logging.root.setLevel(logging.DEBUG)
-
-constructors = ('initialise_ptr', 'initialise', 'allocate')
-destructors = ('finalise',)
-short_names = {}
-
-string_lengths = { # FIXME should be extracted from the parse tree automatically
-    'key_len':256,
-    'value_len':1024,
-    'value_length':1023,
-    'field_length':1023,
-    'string_length':1023,
-    'table_string_length':10,
-    'dict_char_a_len': 10
-}
-default_string_length = 1024
-
-sizeof_fortran_t = sizeof_fortran_t()
-print "SIZEOF_FORTRAN_T: ", sizeof_fortran_t
-
-argument_name_map = {
-    'this': 'self'
-    }
-
-types = find_types(tree)
-
-tree = transform_to_generic_wrapper(tree, types, kinds, callbacks,
-                                    constructors, destructors, short_names,
-                                    init_lines)
-
-py_tree = copy.deepcopy(tree)
-f90_tree = copy.deepcopy(tree)
-
-py_tree = transform_to_py_wrapper(py_tree, argument_name_map)
-
-f90_tree = transform_to_f90_wrapper(f90_tree, types, kinds, callbacks,
-                                constructors, destructors,
-                                short_names, init_lines,
-                                string_lengths,
-                                default_string_length,
-                                sizeof_fortran_t=sizeof_fortran_t)
-
-PythonWrapperGenerator(opt.prefix, opt.mod_name, types).visit(py_tree)
-F90WrapperGenerator(opt.prefix, sizeof_fortran_t, string_lengths).visit(f90_tree)
-=======
-import logging
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -136,7 +65,7 @@ def main(argv=None):
     program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     program_license = '''%s
 
-   Copyright James Kermode 2011
+   Copyright James Kermode 2011-2014
 
    These portions of the source code are released under the GNU General
    Public License, version 2, http://www.gnu.org/copyleft/gpl.html
@@ -169,6 +98,8 @@ USAGE
                             help="""Fortran kind declarations to use in each wrapper.""")
         parser.add_argument('-i', '--init', nargs='*',
                             help="""Special initialisation lines used when constructing a particular type.""")
+        parser.add_argument('-m', '--mod-name', 
+                            help="Name of output extension module (without .so extension).")
 
         parser.add_argument("--only", nargs="*", help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", help="Subroutines to exclude from wrapper")
@@ -211,6 +142,10 @@ USAGE
         }
         default_string_length = 1024
 
+        argument_name_map = {
+            'this': 'self'
+        }
+
         fsize = sizeof_fortran_t()
 
         types = find_types(tree)
@@ -232,20 +167,30 @@ USAGE
         # Find (recursively) all types the user wishes to keep.
         kept_types = find_referenced_types(kept_mods, tree)
 
-        tree = transform_to_f90_wrapper(tree, types, kinds, callbacks,
+        tree = transform_to_generic_wrapper(tree, types, kinds, callbacks,
+                                            constructors, destructors, short_names,
+                                            init_lines, kept_subs, kept_mods)
+
+        py_tree = copy.deepcopy(tree)
+        f90_tree = copy.deepcopy(tree)
+
+        py_tree = transform_to_py_wrapper(py_tree, argument_name_map)
+
+        f90_tree = transform_to_f90_wrapper(f90_tree, types, kinds, callbacks,
                                         constructors, destructors,
                                         short_names, init_lines,
                                         string_lengths,
                                         default_string_length,
-                                        sizeof_fortran_t=fsize,
-                                        only_subs=kept_subs,
-                                        only_types=kept_types)
+                                        sizeof_fortran_t=sizeof_fortran_t)
 
-        F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(tree)
+        PythonWrapperGenerator(args.prefix, args.mod_name, types).visit(py_tree)
+        F90WrapperGenerator(args.prefix, sizeof_fortran_t, string_lengths).visit(f90_tree)
         return 0
+    
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
         return 0
+    
     except Exception, e:
         traceback.print_exc()
         indent = len(program_name) * " "
