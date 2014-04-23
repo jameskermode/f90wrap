@@ -4,7 +4,7 @@
 # HF X
 # HF X   f90wrap: F90 to Python interface generator with derived type support
 # HF X
-# HF X   Copyright James Kermode 2011
+# HF X   Copyright James Kermode 2011-2014
 # HF X
 # HF X   These portions of the source code are released under the GNU General
 # HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
@@ -22,16 +22,24 @@
 import sys
 import os
 import traceback
+import copy
+import logging
 
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 from f90wrap import __version__
+
 from f90wrap.parser import read_files
 from f90wrap.fortran import find_types, walk_procedures
-from f90wrap import wrapgen as wg
 from f90wrap.sizeof_fortran_t import sizeof_fortran_t
-import logging
+from f90wrap.transform import (transform_to_generic_wrapper,
+                               transform_to_py_wrapper,
+                               transform_to_f90_wrapper,
+                               find_referenced_modules)
+from f90wrap.fortran import find_types
+from f90wrap.f90wrapgen import F90WrapperGenerator
+from f90wrap.pywrapgen import PythonWrapperGenerator
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -57,7 +65,7 @@ def main(argv=None):
     program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     program_license = '''%s
 
-   Copyright James Kermode 2011
+   Copyright James Kermode 2011-2014
 
    These portions of the source code are released under the GNU General
    Public License, version 2, http://www.gnu.org/copyleft/gpl.html
@@ -90,6 +98,8 @@ USAGE
                             help="""Fortran kind declarations to use in each wrapper.""")
         parser.add_argument('-i', '--init', nargs='*',
                             help="""Special initialisation lines used when constructing a particular type.""")
+        parser.add_argument('-m', '--mod-name', 
+                            help="Name of output extension module (without .so extension).")
 
         parser.add_argument("--only", nargs="*", help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", help="Subroutines to exclude from wrapper")
@@ -132,6 +142,10 @@ USAGE
         }
         default_string_length = 1024
 
+        argument_name_map = {
+            'this': 'self'
+        }
+
         fsize = sizeof_fortran_t()
 
         types = find_types(tree)
@@ -151,29 +165,38 @@ USAGE
                     kept_mods.add(mod)
 
         # Find (recursively) all used modules
-        kept_mods = wg.find_referenced_modules(kept_mods, tree)
+        kept_mods = find_referenced_modules(kept_mods, tree)
 
-        tree = wg.transform_to_f90_wrapper(tree, types, kinds, callbacks,
+        tree = transform_to_generic_wrapper(tree, types, kinds, callbacks,
+                                            constructors, destructors, short_names,
+                                            init_lines, kept_subs, kept_mods)
+
+        py_tree = copy.deepcopy(tree)
+        f90_tree = copy.deepcopy(tree)
+
+        py_tree = transform_to_py_wrapper(py_tree, argument_name_map)
+
+        f90_tree = transform_to_f90_wrapper(f90_tree, types, kinds, callbacks,
                                         constructors, destructors,
                                         short_names, init_lines,
                                         string_lengths,
                                         default_string_length,
-                                        sizeof_fortran_t=fsize,
-                                        only_subs=kept_subs,
-                                        only_mods=kept_mods)
+                                        sizeof_fortran_t=fsize)
 
-        wg.F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(tree)
+        PythonWrapperGenerator(args.prefix, args.mod_name, types).visit(py_tree)
+        F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(f90_tree)
         return 0
+    
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
         return 0
+    
     except Exception, e:
         traceback.print_exc()
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help\n")
         return 2
-
 
 if __name__ == "__main__":
     sys.exit(main())

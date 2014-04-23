@@ -30,7 +30,7 @@ libsrc.a: ${LIBSRC_OBJECTS}
 	libtool -static -o $@ $?
 
 pysrc.so: libsrc.a ${LIBSRC_FPP_FILES}
-	f90wrap ${LIBSRC_FPP_FILES} --only do_stuff
+	f90wrap -m pysrc ${LIBSRC_FPP_FILES} --only do_stuff
 	f2py -c -m pysrc -L. -lsrc f90wrap*.f90
 
 

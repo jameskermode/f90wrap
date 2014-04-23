@@ -519,7 +519,6 @@ def find_types(tree):
 
     return types
 
-
 def fix_argument_attributes(node):
     """
     Walk over all procedures in the tree starting at `node` and
@@ -579,6 +578,10 @@ class LowerCaseConverter(FortranTransformer):
         node.attributes = [a.lower() for a in node.attributes]
         return self.generic_visit(node)
 
+def strip_type(t):
+    if t.startswith('type('):
+        t = t[t.index('(') + 1:t.index(')')]
+    return t.lower()
 
 class AccessUpdater(FortranTransformer):
     """Visit module contents and update public_symbols and
