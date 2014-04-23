@@ -9,3 +9,6 @@ build
 f90wrap*.f90
 *.pyc
 .pydevproject
+examples/mockderivetype/define_a_type.py
+examples/mockderivetype/leveltwomod.py
+examples/mockderivetype/use_a_type.py

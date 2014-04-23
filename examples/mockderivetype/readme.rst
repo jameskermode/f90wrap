@@ -10,7 +10,7 @@ The tests that it contains include:
  * the defined type itself references another defined type defined in another
    separate, used module.
  * the defined type also contain a logical, integer, real and vector.
- * tests that subroutines not explicitly provided are not wrapped. NOTE: not working!
+ * tests that subroutines not explicitly provided are not wrapped.
  * tests that top-level subroutines are wrapped properly if provided. NOTE: not working
  * tests that module-level variables in used modules are accessible
  * running "python test.py" after making the example tests the pythonic wrapper.

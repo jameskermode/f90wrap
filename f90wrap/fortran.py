@@ -368,7 +368,7 @@ def walk_modules(node):
         if isinstance(child, Module):
             yield child
 
-def walk_procedures(tree, include_ret_val=True):
+def walk_procedures(tree, include_ret_val=True, skip_if_outside_module=True):
     """
     Walk over all nodes in tree and yield tuples
     (module, procedure, arguments).
@@ -378,14 +378,31 @@ def walk_procedures(tree, include_ret_val=True):
     `skip_if_outside_module` is True, top-level subroutines and
     functions are not included.
     """
-    for mod in walk_modules(tree):
-        for node in walk(mod):
+    if skip_if_outside_module:
+        for mod in walk_modules(tree):
+            for node in walk(mod):
+                if not isinstance(node, Procedure):
+                    continue
+
+                arguments = node.arguments[:]
+                if include_ret_val and isinstance(node, Function):
+                    arguments.append(node.ret_val)
+
+                yield (mod, node, arguments)
+    else:
+        for node in walk(tree):
             if not isinstance(node, Procedure):
                 continue
 
             arguments = node.arguments[:]
             if include_ret_val and isinstance(node, Function):
                 arguments.append(node.ret_val)
+
+            for mod in walk_modules(tree):
+                if node in mod.procedures:
+                    continue
+            if node not in mod.procedures:
+                mod = None
 
             yield (mod, node, arguments)
 

@@ -151,7 +151,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def write_call_lines(self, node):
         if 'skip_call' in node.attributes:
             return
-        
+
         self.write('! BEGIN write_call_lines ')
         if hasattr(node, 'orig_node'):
             node = node.orig_node
@@ -196,8 +196,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def visit_Subroutine(self, node):
-        print 'Visiting subroutine %s' % node.name, node.__dict__
-
         self.write("subroutine %(sub_name)s(%(arg_names)s)" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': ', '.join([arg.name for arg in node.arguments])})
@@ -223,7 +221,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
     def visit_Type(self, node):
         print 'Visiting type %s' % node.name
-        
+
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
@@ -245,7 +243,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                              'complex': T_COMPLEX_A
                              }
 
-        numpy_type_map = {'real(8)': 'd', # FIXME user-provided kinds should be included here
+        numpy_type_map = {'real(8)': 'd',  # FIXME user-provided kinds should be included here
                           'real(dp)':'d',
                           'real(dl)':'d',
                           'integer':'i',
@@ -278,7 +276,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
         self.write()
         self.write('nd = %d' % rank)
-        self.write('dtype = %s' % fortran_type_code[typename]) 
+        self.write('dtype = %s' % fortran_type_code[typename])
         self.write('this_ptr = transfer(this, this_ptr)')
         if 'allocatable' in el.attributes:
             self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
@@ -382,7 +380,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('end subroutine %s%s__array_%sitem__%s' % (self.prefix, t.name,
                                                               getset, el.name))
         self.write()
-        
+
 
     def _write_array_len(self, t, el, sizeof_fortran_t):
         self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
