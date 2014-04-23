@@ -150,7 +150,6 @@ USAGE
                     kept_subs.extend([sub])
                     kept_mods.add(mod)
 
-        print "KM: ", kept_mods
         # Find (recursively) all used modules
         kept_mods = wg.find_referenced_modules(kept_mods, tree)
 

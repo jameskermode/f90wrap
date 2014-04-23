@@ -46,6 +46,8 @@ module use_a_type
             P%vec(i) = P%dtype%rl*i
         end do
 
+        call use_set_vars()
+
     end subroutine do_stuff
 
     subroutine not_used(x,y)
