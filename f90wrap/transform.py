@@ -197,6 +197,9 @@ class UnwrappablesRemover(FortranTransformer):
         return node
 
     def visit_Type(self, node):
+        """
+        Remove unwrappeble elements inside derived types
+        """
         if node.name not in self.types:
             logging.debug('removing type %s' % node.name)
             return None
@@ -213,6 +216,29 @@ class UnwrappablesRemover(FortranTransformer):
                 elements.append(element)
             node.elements = elements
             return node
+
+
+    def visit_Module(self, node):
+        """
+        Remove unwrappable elements inside modules.
+
+        As above, but also includes derived type elements from modules
+        that do not have the "target" attribute
+        """
+        elements = []
+        for element in node.elements:
+            # Get the number of dimensions of the element (if any)
+            dims = filter(lambda x: x.startswith('dimension'), element.attributes)
+            # Skip this if the type is not do-able
+            if 'pointer' in element.attributes and dims != []:
+                continue
+            if element.type.lower() == 'type(c_ptr)':
+                continue
+            if element.type.startswith('type(') and 'target' not in element.attributes:
+                continue
+            elements.append(element)
+        node.elements = elements
+        return node
 
 
 def fix_subroutine_uses_clauses(tree, types, kinds):
