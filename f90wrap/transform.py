@@ -213,7 +213,7 @@ class UnwrappablesRemover(FortranTransformer):
                 elements.append(element)
             node.elements = elements
             return node
-    
+
 
 def fix_subroutine_uses_clauses(tree, types, kinds):
     """Walk over all nodes in tree, updating subroutine uses
@@ -540,7 +540,7 @@ def add_missing_constructors(tree):
                                               node.uses,
                                               ['constructor', 'skip_call']))
     return tree
-                
+
 
 def add_missing_destructors(tree):
     for node in walk(tree):
@@ -603,14 +603,14 @@ class IntentOutToReturnValues(FortranTransformer):
         if 'constructor' in node.attributes:
             node.arguments[0].attributes = set_intent(node.arguments[0].attributes,
                                                       'intent(out)')
-        
+
         ret_val = []
         ret_val_doc = None
         if isinstance(node, Function) and node.ret_val is not None:
             ret_val.append(node.ret_val)
             if node.ret_val_doc is not None:
                 ret_val_doc = node.ret_val_doc
-        
+
         arguments = []
         for arg in node.arguments:
             if 'intent(out)' in arg.attributes:
@@ -619,7 +619,7 @@ class IntentOutToReturnValues(FortranTransformer):
                 arguments.append(arg)
         if ret_val == []:
             print 'IntentOutToReturnValues: no change to', node.name
-            new_node = node # no changes needed
+            new_node = node  # no changes needed
         else:
             print 'IntentOutToReturnValues: converted', node.name
             new_node = Function(node.name,
@@ -644,7 +644,7 @@ class RenameArguments(FortranVisitor):
         node.orig_name = node.name
         node.name = self.name_map.get(node.name, node.name)
         if node.type.startswith('type('):
-            node.value = node.name+'._handle'
+            node.value = node.name + '._handle'
         else:
             node.value = node.name
         return node
@@ -664,16 +664,17 @@ class OnlyAndSkip(FortranTransformer):
         self.kept_mods = kept_mods
 
     def visit_Procedure(self, node):
+
         if len(self.kept_subs) > 0:
             if node not in self.kept_subs:
                 return None
-        return node
+        return self.generic_visit(node)
 
     def visit_Module(self, node):
         if len(self.kept_mods) > 0:
             if node not in self.kept_mods:
                 return None
-        return node
+        return self.generic_visit(node)
 
 
 def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
