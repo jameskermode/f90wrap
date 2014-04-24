@@ -61,8 +61,8 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
             else:
                 return 'line %d' % lineno
         
-        doc = node.doc[:] # start with incoming docstring from Fortran source
-        doc.append(str(node))
+        doc = [str(node), ''] + node.doc[:] # incoming docstring from Fortran source
+        doc.append('')
         doc.append('Defined at %s %s' % (node.filename, _format_line_no(node.lineno)))
 
         return '\n'.join(['"""'] + doc + ['"""'])
