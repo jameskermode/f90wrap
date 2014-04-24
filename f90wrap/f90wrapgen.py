@@ -208,7 +208,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         return self.generic_visit(node)
 
     def visit_Type(self, node):
-        print 'Visiting type %s' % node.name
+        logging.info('Visiting type %s' % node.name)
 
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)

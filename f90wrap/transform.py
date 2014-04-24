@@ -549,10 +549,10 @@ def add_missing_constructors(tree):
         for child in iter_child_nodes(node):
             if isinstance(child, Procedure):
                 if 'constructor' in child.attributes:
-                    print 'found constructor', child.name
+                    logging.info('found constructor %s' % child.name)
                     break
         else:
-            print 'adding missing constructor for %s' % node.name
+            logging.info('adding missing constructor for %s' % node.name)
             node.procedures.append(Subroutine('%s_initialise' % node.name,
                                               node.filename,
                                               'Automatically generated constructor for %s' % node.name,
@@ -575,10 +575,10 @@ def add_missing_destructors(tree):
         for child in iter_child_nodes(node):
             if isinstance(child, Procedure):
                 if 'destructor' in child.attributes:
-                    print 'found destructor', child.name
+                    logging.info('found destructor %s' % child.name)
                     break
         else:
-            print 'adding missing destructor for %s' % node.name
+            logging.info('adding missing destructor for %s' % node.name)
             node.procedures.append(Subroutine('%s_finalise' % node.name,
                                               node.filename,
                                               'Automatically generated destructor for %s' % node.name,
@@ -644,10 +644,8 @@ class IntentOutToReturnValues(FortranTransformer):
             else:
                 arguments.append(arg)
         if ret_val == []:
-            print 'IntentOutToReturnValues: no change to', node.name
             new_node = node  # no changes needed
         else:
-            print 'IntentOutToReturnValues: converted', node.name
             new_node = Function(node.name,
                                 node.filename,
                                 node.doc,
@@ -749,7 +747,6 @@ def transform_to_py_wrapper(tree, argument_name_map=None):
       * Rename arguments (e.g. this -> self)
     """
     IntentOutToReturnValues().visit(tree)
-    print 'about to rename args with tree', tree
     RenameArguments(argument_name_map).visit(tree)
     return tree
 
