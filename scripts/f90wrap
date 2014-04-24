@@ -152,13 +152,13 @@ USAGE
         kept_subs = []
         kept_mods = set()
         if args.only:
-            for mod, sub, arg in walk_procedures(tree, skip_if_outside_module=False):
+            for mod, sub, arg in walk_procedures(tree):
                 if sub.name in args.only:
                     kept_subs.extend([sub])
                     if mod is not None:
                         kept_mods.add(mod)
         elif args.skip:
-            for mod, sub, arg in walk_procedures(tree, skip_if_outside_module=False):
+            for mod, sub, arg in walk_procedures(tree):
                 if sub.name not in args.skip:
                     kept_subs.extend([sub])
                     if mod is not None:
