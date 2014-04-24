@@ -69,6 +69,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         """
         Wrap modules. Each Fortran module generates one wrapper source file.
         """
+        logging.info('F90WrapperGenerator visiting module %s' % node.name)
         self.code = []
         self.generic_visit(node)
 
@@ -179,7 +180,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 return arg.name
 
-        if node.mod is not None:
+        if node.mod_name is not None:
             # use keyword arguments if subroutine is in a module and we have an explicit interface
             arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
                         if 'intent(hide)' not in arg.attributes]
@@ -207,6 +208,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('deallocate(%s_ptr%%p)' % dealloc)  # (self.prefix, dealloc))
 
     def visit_Subroutine(self, node):
+        logging.info('F90WrapperGenerator visiting subroutine %s' % node.name)        
         self.write("subroutine %(sub_name)s(%(arg_names)s)" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': ', '.join([arg.name for arg in node.arguments])})
@@ -228,7 +230,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         return self.generic_visit(node)
 
     def visit_Type(self, node):
-        logging.info('Visiting type %s' % node.name)
+        logging.info('F90WrapperGenerator visiting type %s' % node.name)
 
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
@@ -362,8 +364,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_uses_lines(t)
         self.write('implicit none')
         self.write()
-        self.write_type_lines(t.name)  # FIXME: not sure if this is right??!!
-        self.write_type_lines(el.type.name)  # I'm passing strings!
+        self.write_type_lines(t.name)
+        self.write_type_lines(el.type.name)
 
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)

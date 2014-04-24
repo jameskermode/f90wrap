@@ -167,7 +167,8 @@ class Procedure(Fortran):
     _fields = ['arguments']
 
     def __init__(self, name='', filename='', doc=None, lineno=0,
-                 arguments=None, uses=None, attributes=None):
+                 arguments=None, uses=None, attributes=None,
+                 mod_name=None, type_name=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         if arguments is None: arguments = []
         self.arguments = arguments
@@ -175,6 +176,8 @@ class Procedure(Fortran):
         self.uses = uses
         if attributes is None: attributes = []
         self.attributes = attributes
+        self.mod_name = mod_name
+        self.type_name = type_name
 
     def __eq__(self, other):
         if other is None: return False
@@ -182,7 +185,9 @@ class Procedure(Fortran):
                 self.arguments == other.arguments and
                 self.doc == other.doc and
                 self.uses == other.uses and
-                self.attributes == other.attributes)
+                self.attributes == other.attributes and
+                self.mod_name == other.mod_name and
+                self.type_name == other.type_name)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -204,9 +209,10 @@ class Function(Procedure):
 
     def __init__(self, name='', filename='', doc=None, lineno=0,
                  arguments=None, uses=None, attributes=None,
-                 ret_val=None, ret_val_doc=None):
+                 ret_val=None, ret_val_doc=None, mod_name=None, type_name=None):
         Procedure.__init__(self, name, filename, doc,
-                           lineno, arguments, uses, attributes)
+                           lineno, arguments, uses, attributes,
+                           mod_name, type_name)
         if ret_val is None:
             ret_val = Argument()
         self.ret_val = ret_val
@@ -220,7 +226,9 @@ class Function(Procedure):
                 self.uses == other.uses and
                 self.ret_val == other.ret_val and
                 self.ret_val_doc == other.ret_val_doc and
-                self.attributes == other.attributes)
+                self.attributes == other.attributes and
+                self.mod_name == other.mod_name and
+                self.type_name == other.type_name)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -374,37 +382,23 @@ def walk_procedures(tree, include_ret_val=True, skip_if_outside_module=False):
     (module, procedure, arguments).
 
     If `include_ret_val` is true then Function return values are
-    inserted after last non-optional argument. If
-    `skip_if_outside_module` is True, top-level subroutines and
-    functions are not included.
+    inserted after last non-optional argument.
     """
-    if skip_if_outside_module:
+    for node in walk(tree):
+        if not isinstance(node, Procedure):
+            continue
+
+        arguments = node.arguments[:]
+        if include_ret_val and isinstance(node, Function):
+            arguments.append(node.ret_val)
+
         for mod in walk_modules(tree):
-            for node in walk(mod):
-                if not isinstance(node, Procedure):
-                    continue
-
-                arguments = node.arguments[:]
-                if include_ret_val and isinstance(node, Function):
-                    arguments.append(node.ret_val)
-
-                yield (mod, node, arguments)
-    else:
-        for node in walk(tree):
-            if not isinstance(node, Procedure):
+            if node in mod.procedures:
                 continue
+        if node not in mod.procedures:
+            mod = None
 
-            arguments = node.arguments[:]
-            if include_ret_val and isinstance(node, Function):
-                arguments.append(node.ret_val)
-
-            for mod in walk_modules(tree):
-                if node in mod.procedures:
-                    continue
-            if node not in mod.procedures:
-                mod = None
-
-            yield (mod, node, arguments)
+        yield (mod, node, arguments)
 
 def find(tree, pattern):
     for node in walk(tree):

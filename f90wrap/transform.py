@@ -248,11 +248,13 @@ def fix_subroutine_uses_clauses(tree, types, kinds):
 
     for mod, sub, arguments in walk_procedures(tree):
 
+        logging.info('fix_subroutine_uses_clauses %s' % sub.name)
+
         sub.uses = set()
-        sub.mod = None
+        sub.mod_name = None
         if mod is not None:
             sub.uses.add((mod.name, None))
-            sub.mod = mod.name
+            sub.mod_name = mod.name
 
         for arg in arguments:
             if arg.type.startswith('type') and arg.type in types:
@@ -463,7 +465,8 @@ class MethodFinder(FortranTransformer):
 
         node.attributes.append('method')
         typ = self.types[node.arguments[0].type]
-
+        node.type_name = typ.name
+        
         # remove prefix from subroutine name to get method name
         node.method_name = node.name
         prefices = [typ.name + '_']
@@ -556,18 +559,21 @@ def add_missing_constructors(tree):
                     break
         else:
             logging.info('adding missing constructor for %s' % node.name)
-            node.procedures.append(Subroutine('%s_initialise' % node.name,
-                                              node.filename,
-                                              'Automatically generated constructor for %s' % node.name,
-                                              node.lineno,
-                                              [Argument(name='this',
-                                                        filename=node.filename,
-                                                        doc='Object to be constructed',
-                                                        lineno=node.lineno,
-                                                        attributes=['intent(out)'],
-                                                        type='type(%s)' % node.name)],
-                                              node.uses,
-                                              ['constructor', 'skip_call']))
+            new_node = Subroutine('%s_initialise' % node.name,
+                                 node.filename,
+                                 ['Automatically generated constructor for %s' % node.name],
+                                 node.lineno,
+                                 [Argument(name='this',
+                                           filename=node.filename,
+                                           doc='Object to be constructed',
+                                           lineno=node.lineno,
+                                           attributes=['intent(out)'],
+                                           type='type(%s)' % node.name)],
+                                 node.uses,
+                                 ['constructor', 'skip_call'],
+                                 mod_name=node.mod_name,
+                                 type_name=node.name)
+            node.procedures.append(new_node)
     return tree
 
 
@@ -582,18 +588,21 @@ def add_missing_destructors(tree):
                     break
         else:
             logging.info('adding missing destructor for %s' % node.name)
-            node.procedures.append(Subroutine('%s_finalise' % node.name,
-                                              node.filename,
-                                              'Automatically generated destructor for %s' % node.name,
-                                              node.lineno,
-                                              [Argument(name='this',
-                                                        filename=node.filename,
-                                                        doc='Object to be destructed',
-                                                        lineno=node.lineno,
-                                                        attributes=['intent(inout)'],
-                                                        type='type(%s)' % node.name)],
-                                              node.uses,
-                                              ['destructor', 'skip_call']))
+            new_node = Subroutine('%s_finalise' % node.name,
+                                 node.filename,
+                                 ['Automatically generated destructor for %s' % node.name],
+                                 node.lineno,
+                                 [Argument(name='this',
+                                           filename=node.filename,
+                                           doc='Object to be destructed',
+                                           lineno=node.lineno,
+                                           attributes=['intent(inout)'],
+                                           type='type(%s)' % node.name)],
+                                 node.uses,
+                                 ['destructor', 'skip_call'],
+                                 mod_name=node.mod_name,
+                                 type_name=node.name)
+            node.procedures.append(new_node)
     return tree
 
 
@@ -657,8 +666,10 @@ class IntentOutToReturnValues(FortranTransformer):
                                 node.uses,
                                 node.attributes,
                                 ret_val,
-                                ret_val_doc)
-        new_node.orig_node = node
+                                ret_val_doc,
+                                mod_name=node.mod_name,
+                                type_name=node.type_name)
+            new_node.orig_node = node
         return new_node
 
 class RenameArguments(FortranVisitor):
@@ -725,6 +736,7 @@ def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
     tree = collapse_single_interfaces(tree)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
+    tree = fix_subroutine_uses_clauses(tree, types, kinds)    
     return tree
 
 def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
@@ -737,7 +749,6 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
        via Fortran transfer() intrinsic.
     """
     FunctionToSubroutineConverter().visit(tree)
-    tree = fix_subroutine_uses_clauses(tree, types, kinds)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
     ArrayDimensionConverter().visit(tree)
