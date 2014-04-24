@@ -86,8 +86,6 @@ USAGE
         parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
-
-
         parser.add_argument("files", nargs="+", help="The files to include in the wrap")
         parser.add_argument('-p', '--prefix',
                             help="""Prefix to prepend to arguments and subroutines.""",
@@ -100,7 +98,7 @@ USAGE
                             help="""Special initialisation lines used when constructing a particular type.""")
         parser.add_argument('-m', '--mod-name',
                             help="Name of output extension module (without .so extension).")
-
+        
         parser.add_argument("--only", nargs="*", help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", help="Subroutines to exclude from wrapper")
 
@@ -201,7 +199,10 @@ USAGE
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help\n")
-        return 2
+        if args.verbose:
+            raise
+        else:
+            return 2
 
 if __name__ == "__main__":
     sys.exit(main())

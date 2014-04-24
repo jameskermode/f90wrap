@@ -1,6 +1,7 @@
 import define_a_type as dt
 import leveltwomod as l2
 import use_a_type as ut
+import toplevel as tl
 
 a = dt.Atype() # calls initialise()
 
@@ -25,3 +26,7 @@ ut.fmod.p.integ = 10
 result = ut.do_stuff(8)
 print 'result =', result
 print 'ut.fmod.vector', ut.fmod.vector
+
+input = 3.0
+output = tl.top_level(input)
+print 'top_level(%.1f) = %.1f' % (input, output)

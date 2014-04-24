@@ -368,7 +368,7 @@ def walk_modules(node):
         if isinstance(child, Module):
             yield child
 
-def walk_procedures(tree, include_ret_val=True, skip_if_outside_module=True):
+def walk_procedures(tree, include_ret_val=True, skip_if_outside_module=False):
     """
     Walk over all nodes in tree and yield tuples
     (module, procedure, arguments).

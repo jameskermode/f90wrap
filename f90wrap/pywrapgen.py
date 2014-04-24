@@ -43,8 +43,7 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
                        ('f90wrap.fortrantype', 'fortrantype')]
         self.imports = imports
 
-    def visit_Module(self, node):
-        self.code = []
+    def write_imports(self):
         for (mod, alias) in self.imports:
             if alias is None:
                 self.write('import %s' % mod)
@@ -54,13 +53,31 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
         self.write('_sizeof_fortran_t = sizeof_fortran_t.sizeof_fortran_t()')
         self.write()
 
+    def visit_Root(self, node):
+        """
+        Wrap subroutines and functions that are outside of any Fortran modules
+        """
+        self.code = []
+        self.generic_visit(node)
+        if len(self.code) > 0:
+            code = self.code[:]
+            self.code = []
+            self.write_imports()
+            self.code.extend(code)
+            py_wrapper_file = open('toplevel.py', 'w')
+            py_wrapper_file.write(str(self))
+            py_wrapper_file.close()
+
+    def visit_Module(self, node):
+        self.code = []
+        self.write_imports()
         for el in node.elements:
             if el.type.startswith('type'):
                 mod_name = self.types[el.type].mod_name
                 cls_name = strip_type(el.type).title()
                 if mod_name != node.name:
                     self.write('from %s import %s' % (mod_name, cls_name))
-        self.write()        
+        self.write()
 
         cls_name = node.name.title()
         self.write('class %s(fortrantype.FortranModule):' % cls_name)
@@ -82,11 +99,13 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
         self.write()
         self.write('fmod = %s()' % node.name.title())
         self.write()
-        
+
         self.generic_visit(node)
-        py_wrapper_file = open('%s.py' % node.name.lower(), 'w')
-        py_wrapper_file.write(str(self))
-        py_wrapper_file.close()
+        if len(self.code) > 0:
+            py_wrapper_file = open('%s.py' % node.name.lower(), 'w')
+            py_wrapper_file.write(str(self))
+            py_wrapper_file.close()
+        self.code = []        
             
 
     def write_constructor(self, node):

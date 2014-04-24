@@ -33,8 +33,8 @@ end module
 
 ! Example of a top-level subroutine. This is used in the above module, but
 ! at the moment cannot be explicitly wrapped. We may want it to be though.
-subroutine top_level(in,out)
-    real(8), intent(in) :: in
+subroutine top_level(input,out)
+    real(8), intent(in) :: input ! FIXME renamed arg 'in' -> 'input' to prevent clash with Python reserved word
     real(8), intent(out) :: out
     out = 85.d0*in
 end subroutine top_level

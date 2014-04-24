@@ -249,7 +249,10 @@ def fix_subroutine_uses_clauses(tree, types, kinds):
     for mod, sub, arguments in walk_procedures(tree):
 
         sub.uses = set()
-        sub.uses.add((mod.name, None))
+        sub.mod = None
+        if mod is not None:
+            sub.uses.add((mod.name, None))
+            sub.mod = mod.name
 
         for arg in arguments:
             if arg.type.startswith('type') and arg.type in types:

@@ -54,7 +54,21 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         self.sizeof_fortran_t = sizeof_fortran_t
         self.string_lengths = string_lengths
 
+    def visit_Root(self, node):
+        """
+        Wrap subroutines and functions that are outside of Fortran modules
+        """
+        self.code = []
+        self.generic_visit(node)
+        if len(self.code) > 0:
+            f90_wrapper_file = open('%s%s.f90' % (self.prefix, 'toplevel'), 'w')
+            f90_wrapper_file.write(str(self))
+            f90_wrapper_file.close()
+
     def visit_Module(self, node):
+        """
+        Wrap modules. Each Fortran module generates one wrapper source file.
+        """
         self.code = []
         self.generic_visit(node)
 
@@ -71,6 +85,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
             f90_wrapper_file = open('%s%s.f90' % (self.prefix, node.name), 'w')
             f90_wrapper_file.write(str(self))
             f90_wrapper_file.close()
+        self.code = []
 
     def write_uses_lines(self, node):
         if hasattr(node, 'uses'):
@@ -164,8 +179,13 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 return arg.name
 
-        arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
-                     if 'intent(hide)' not in arg.attributes]
+        if node.mod is not None:
+            # use keyword arguments if subroutine is in a module and we have an explicit interface
+            arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
+                        if 'intent(hide)' not in arg.attributes]
+        else:
+            arg_names = [actual_arg_name(arg) for arg in node.arguments if 'intent(hide)' not in arg.attributes]
+            
         if isinstance(node, Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
                        {'ret_val': node.ret_val.name,

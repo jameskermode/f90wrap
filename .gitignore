@@ -12,3 +12,4 @@ f90wrap*.f90
 examples/mockderivetype/define_a_type.py
 examples/mockderivetype/leveltwomod.py
 examples/mockderivetype/use_a_type.py
+examples/mockderivetype/toplevel.py
