@@ -1,11 +1,11 @@
-!! This file contains a single module with several module-level vars
-!! with one of them a derived type, which is defined in the 'base library'.
+!% This file contains a single module with several module-level vars
+!% with one of them a derived type, which is defined in the 'base library'.
 
 module use_a_type
-    use define_a_type ! This is the module which defines the type 'atype'
-    type(atype), target :: P  ! A variable with this type. NB: target attribute needed to allow access from Python
-    type(atype), allocatable :: P_array(:) ! An array of derived types (not yet wrapped, but will be soon)
-    real(8),allocatable :: vector(:) !It also contains allocatable arrays
+    use define_a_type !% This is the module which defines the type 'atype'
+    type(atype), target :: P  !% A variable with this type. NB: target attribute needed to allow access from Python
+    type(atype), allocatable :: P_array(:) !% An array of derived types (not yet wrapped, but will be soon)
+    real(8),allocatable :: vector(:) !% It also contains allocatable arrays
 
     ! For simplicity, P has a variable of each of several base types.
     ! That is, a logical, real, integer, real array (not allocatable!), and a
@@ -15,6 +15,7 @@ module use_a_type
     !sure they all work.
     contains
 
+    !% Here's a routine that does something
     subroutine do_stuff(factor,out)
         real(8), intent(in) :: factor
         real(8), intent(out):: out

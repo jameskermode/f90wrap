@@ -83,8 +83,6 @@ USAGE
         parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
-
-
         parser.add_argument("files", nargs="+", help="The files to include in the wrap")
         parser.add_argument('-p', '--prefix',
                             help="""Prefix to prepend to arguments and subroutines.""",
@@ -151,13 +149,13 @@ USAGE
         kept_subs = []
         kept_mods = set()
         if args.only:
-            for mod, sub, arg in fortran.walk_procedures(tree, skip_if_outside_module=False):
+            for mod, sub, arg in fortran.walk_procedures(tree):
                 if sub.name in args.only:
                     kept_subs.extend([sub])
                     if mod is not None:
                         kept_mods.add(mod)
         elif args.skip:
-            for mod, sub, arg in fortran.walk_procedures(tree, skip_if_outside_module=False):
+            for mod, sub, arg in fortran.walk_procedures(tree):
                 if sub.name not in args.skip:
                     kept_subs.extend([sub])
                     if mod is not None:
@@ -198,7 +196,10 @@ USAGE
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help\n")
-        return 2
+        if args.verbose:
+            raise
+        else:
+            return 2
 
 if __name__ == "__main__":
     sys.exit(main())

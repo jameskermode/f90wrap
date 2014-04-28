@@ -50,7 +50,22 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.sizeof_fortran_t = sizeof_fortran_t
         self.string_lengths = string_lengths
 
+    def visit_Root(self, node):
+        """
+        Wrap subroutines and functions that are outside of Fortran modules
+        """
+        self.code = []
+        self.generic_visit(node)
+        if len(self.code) > 0:
+            f90_wrapper_file = open('%s%s.f90' % (self.prefix, 'toplevel'), 'w')
+            f90_wrapper_file.write(str(self))
+            f90_wrapper_file.close()
+
     def visit_Module(self, node):
+        """
+        Wrap modules. Each Fortran module generates one wrapper source file.
+        """
+        logging.info('F90WrapperGenerator visiting module %s' % node.name)
         self.code = []
         self.generic_visit(node)
 
@@ -67,6 +82,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             f90_wrapper_file = open('%s%s.f90' % (self.prefix, node.name), 'w')
             f90_wrapper_file.write(str(self))
             f90_wrapper_file.close()
+        self.code = []
 
     def write_uses_lines(self, node):
         if hasattr(node, 'uses'):
@@ -160,8 +176,13 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 return arg.name
 
-        arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
-                     if 'intent(hide)' not in arg.attributes]
+        if node.mod_name is not None:
+            # use keyword arguments if subroutine is in a module and we have an explicit interface
+            arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
+                        if 'intent(hide)' not in arg.attributes]
+        else:
+            arg_names = [actual_arg_name(arg) for arg in node.arguments if 'intent(hide)' not in arg.attributes]
+
         if isinstance(node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
                        {'ret_val': node.ret_val.name,
@@ -183,6 +204,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('deallocate(%s_ptr%%p)' % dealloc)  # (self.prefix, dealloc))
 
     def visit_Subroutine(self, node):
+        logging.info('F90WrapperGenerator visiting subroutine %s' % node.name)
         self.write("subroutine %(sub_name)s(%(arg_names)s)" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': ', '.join([arg.name for arg in node.arguments])})
@@ -204,7 +226,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         return self.generic_visit(node)
 
     def visit_Type(self, node):
-        print 'Visiting type %s' % node.name
+        logging.info('F90WrapperGenerator visiting type %s' % node.name)
 
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
@@ -338,8 +360,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_uses_lines(t)
         self.write('implicit none')
         self.write()
-        self.write_type_lines(t.name)  # FIXME: not sure if this is right??!!
-        self.write_type_lines(el.type.name)  # I'm passing strings!
+        self.write_type_lines(t.name)
+        self.write_type_lines(el.type.name)
 
         self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
         self.write('type(%s_ptr_type) :: this_ptr' % t.name)

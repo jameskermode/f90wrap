@@ -242,8 +242,13 @@ def fix_subroutine_uses_clauses(tree, types, kinds):
 
     for mod, sub, arguments in ft.walk_procedures(tree):
 
+        logging.info('fix_subroutine_uses_clauses %s' % sub.name)
+
         sub.uses = set()
-        sub.uses.add((mod.name, None))
+        sub.mod_name = None
+        if mod is not None:
+            sub.uses.add((mod.name, None))
+            sub.mod_name = mod.name
 
         for arg in arguments:
             if arg.type.startswith('type') and arg.type in types:
@@ -454,6 +459,7 @@ class MethodFinder(ft.FortranTransformer):
 
         node.attributes.append('method')
         typ = self.types[node.arguments[0].type]
+        node.type_name = typ.name
 
         # remove prefix from subroutine name to get method name
         node.method_name = node.name
@@ -543,22 +549,26 @@ def add_missing_constructors(tree):
         for child in ft.iter_child_nodes(node):
             if isinstance(child, ft.Procedure):
                 if 'constructor' in child.attributes:
-                    print 'found constructor', child.name
+                    logging.info('found constructor %s' % child.name)
                     break
         else:
-            print 'adding missing constructor for %s' % node.name
-            node.procedures.append(ft.Subroutine('%s_initialise' % node.name,
-                                              node.filename,
-                                              'Automatically generated constructor for %s' % node.name,
-                                              node.lineno,
-                                              [ft.Argument(name='this',
-                                                        filename=node.filename,
-                                                        doc='Object to be constructed',
-                                                        lineno=node.lineno,
-                                                        attributes=['intent(out)'],
-                                                        type='type(%s)' % node.name)],
-                                              node.uses,
-                                              ['constructor', 'skip_call']))
+
+            logging.info('adding missing constructor for %s' % node.name)
+            new_node = ft.Subroutine('%s_initialise' % node.name,
+                                 node.filename,
+                                 ['Automatically generated constructor for %s' % node.name],
+                                 node.lineno,
+                                 [ft.Argument(name='this',
+                                           filename=node.filename,
+                                           doc='Object to be constructed',
+                                           lineno=node.lineno,
+                                           attributes=['intent(out)'],
+                                           type='type(%s)' % node.name)],
+                                 node.uses,
+                                 ['constructor', 'skip_call'],
+                                 mod_name=node.mod_name,
+                                 type_name=node.name)
+            node.procedures.append(new_node)
     return tree
 
 
@@ -569,22 +579,26 @@ def add_missing_destructors(tree):
         for child in ft.iter_child_nodes(node):
             if isinstance(child, ft.Procedure):
                 if 'destructor' in child.attributes:
-                    print 'found destructor', child.name
+                    logging.info('found destructor %s' % child.name)
                     break
         else:
-            print 'adding missing destructor for %s' % node.name
-            node.procedures.append(ft.Subroutine('%s_finalise' % node.name,
-                                              node.filename,
-                                              'Automatically generated destructor for %s' % node.name,
-                                              node.lineno,
-                                              [ft.Argument(name='this',
-                                                        filename=node.filename,
-                                                        doc='Object to be destructed',
-                                                        lineno=node.lineno,
-                                                        attributes=['intent(inout)'],
-                                                        type='type(%s)' % node.name)],
-                                              node.uses,
-                                              ['destructor', 'skip_call']))
+
+            logging.info('adding missing destructor for %s' % node.name)
+            new_node = ft.Subroutine('%s_finalise' % node.name,
+                                 node.filename,
+                                 ['Automatically generated destructor for %s' % node.name],
+                                 node.lineno,
+                                 [ft.Argument(name='this',
+                                           filename=node.filename,
+                                           doc='Object to be destructed',
+                                           lineno=node.lineno,
+                                           attributes=['intent(inout)'],
+                                           type='type(%s)' % node.name)],
+                                 node.uses,
+                                 ['destructor', 'skip_call'],
+                                 mod_name=node.mod_name,
+                                 type_name=node.name)
+            node.procedures.append(new_node)
     return tree
 
 
@@ -638,10 +652,9 @@ class IntentOutToReturnValues(ft.FortranTransformer):
             else:
                 arguments.append(arg)
         if ret_val == []:
-            print 'IntentOutToReturnValues: no change to', node.name
             new_node = node  # no changes needed
         else:
-            print 'IntentOutToReturnValues: converted', node.name
+
             new_node = ft.Function(node.name,
                                 node.filename,
                                 node.doc,
@@ -650,8 +663,10 @@ class IntentOutToReturnValues(ft.FortranTransformer):
                                 node.uses,
                                 node.attributes,
                                 ret_val,
-                                ret_val_doc)
-        new_node.orig_node = node
+                                ret_val_doc,
+                                mod_name=node.mod_name,
+                                type_name=node.type_name)
+            new_node.orig_node = node
         return new_node
 
 class RenameArguments(ft.FortranVisitor):
@@ -718,6 +733,7 @@ def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
     tree = collapse_single_interfaces(tree)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
+    tree = fix_subroutine_uses_clauses(tree, types, kinds)
     return tree
 
 def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
@@ -730,7 +746,6 @@ def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
        via Fortran transfer() intrinsic.
     """
     FunctionToSubroutineConverter().visit(tree)
-    tree = fix_subroutine_uses_clauses(tree, types, kinds)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
     ArrayDimensionConverter().visit(tree)
@@ -743,7 +758,6 @@ def transform_to_py_wrapper(tree, argument_name_map=None):
       * Rename arguments (e.g. this -> self)
     """
     IntentOutToReturnValues().visit(tree)
-    print 'about to rename args with tree', tree
     RenameArguments(argument_name_map).visit(tree)
     return tree
 
