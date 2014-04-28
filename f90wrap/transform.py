@@ -20,16 +20,10 @@ import copy
 import logging
 import re
 
-import numpy as np
-
-from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function,
-                             Declaration, Element, Argument, Type, Interface,
-                             FortranVisitor, FortranTransformer,
-                             walk, walk_procedures, walk_modules,
-                             iter_child_nodes, strip_type)
+from f90wrap import fortran as ft
 
 
-class AccessUpdater(FortranTransformer):
+class AccessUpdater(ft.FortranTransformer):
     """Visit module contents and update public_symbols and
        private_symbols lists to be consistent with (i) default module
        access; (ii) public and private statements at module level;
@@ -83,7 +77,7 @@ class AccessUpdater(FortranTransformer):
         return node  # no need to recurse further
 
 
-class PrivateSymbolsRemover(FortranTransformer):
+class PrivateSymbolsRemover(ft.FortranTransformer):
     """
     Transform a tree by removing private symbols.
     """
@@ -121,7 +115,7 @@ def remove_private_symbols(node):
     node = PrivateSymbolsRemover().visit(node)
     return node
 
-class UnwrappablesRemover(FortranTransformer):
+class UnwrappablesRemover(ft.FortranTransformer):
 
     def __init__(self, callbacks, types, constructors, destructors):
         self.callbacks = callbacks
@@ -137,7 +131,7 @@ class UnwrappablesRemover(FortranTransformer):
                 return node
 
         args = node.arguments[:]
-        if isinstance(node, Function):
+        if isinstance(node, ft.Function):
             args.append(node.ret_val)
 
         for arg in args:
@@ -246,7 +240,7 @@ def fix_subroutine_uses_clauses(tree, types, kinds):
        clauses to include the parent module and all necessary modules
        from types and kinds."""
 
-    for mod, sub, arguments in walk_procedures(tree):
+    for mod, sub, arguments in ft.walk_procedures(tree):
 
         sub.uses = set()
         sub.uses.add((mod.name, None))
@@ -268,7 +262,7 @@ def set_intent(attributes, intent):
     return attributes
 
 def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
-    for mod, sub, arguments in walk_procedures(tree):
+    for mod, sub, arguments in ft.walk_procedures(tree):
         sub.types = set()
         sub.transfer_in = []
         sub.transfer_out = []
@@ -291,7 +285,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             arg.attributes = arg.attributes + ['fortran_' + attr for attr in
                                arg.attributes if attr.startswith('intent')]
 
-            typename = strip_type(arg.type)
+            typename = ft.strip_type(arg.type)
             arg.wrapper_type = 'integer'
             arg.wrapper_dim = sizeof_fortran_t
             sub.types.add(typename)
@@ -315,7 +309,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
     return tree
 
 
-class StringLengthConverter(FortranVisitor):
+class StringLengthConverter(ft.FortranVisitor):
     """Convert lengths of all character strings to standard format
 
     Looks in all Procedure arguments and Type elements.
@@ -349,7 +343,7 @@ class StringLengthConverter(FortranVisitor):
 
         node.type = 'character*(%s)' % str(string_length)
 
-class ArrayDimensionConverter(FortranVisitor):
+class ArrayDimensionConverter(ft.FortranVisitor):
     """
     Transform unspecified dimensions into additional dummy arguments
 
@@ -409,7 +403,7 @@ class ArrayDimensionConverter(FortranVisitor):
                                            ','.join([attr for attr in arg.attributes if not attr.startswith('dimension')]),
                                            d.replace('len', 'slen'), arg.name))
                     continue
-                dummy_arg = Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
+                dummy_arg = ft.Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
 
                 if 'intent(out)' not in arg.attributes:
                     dummy_arg.f2py_line = ('!f2py intent(hide), depend(%s) :: %s = shape(%s,%d)' %
@@ -425,7 +419,7 @@ class ArrayDimensionConverter(FortranVisitor):
                 node.arguments.extend(new_dummy_args)
 
 
-class MethodFinder(FortranTransformer):
+class MethodFinder(ft.FortranTransformer):
 
     def __init__(self, types, constructor_names, destructor_names, short_names):
         self.types = types
@@ -436,7 +430,7 @@ class MethodFinder(FortranTransformer):
     def visit_Interface(self, node):
         new_procs = []
         for proc in node.procedures:
-            if isinstance(proc, Procedure):
+            if isinstance(proc, ft.Procedure):
                 new_proc = self.visit_Procedure(proc, interface=node)
                 if new_proc is not None:
                     new_procs.append(new_proc)
@@ -491,7 +485,7 @@ class MethodFinder(FortranTransformer):
                                   (node.method_name, intf.name, typ.name))
                     break
             else:
-                intf = Interface(interface.name,
+                intf = ft.Interface(interface.name,
                                  interface.filename,
                                  interface.doc,
                                  interface.lineno,
@@ -506,7 +500,7 @@ class MethodFinder(FortranTransformer):
 def collapse_single_interfaces(tree):
     """Collapse interfaces which contain only a single procedure."""
 
-    class _InterfaceCollapser(FortranTransformer):
+    class _InterfaceCollapser(ft.FortranTransformer):
         """Replace interfaces with only one procedure by that procedure"""
         def visit_Interface(self, node):
             if len(node.procedures) == 1:
@@ -517,16 +511,16 @@ def collapse_single_interfaces(tree):
             else:
                 return node
 
-    class _ProcedureRelocator(FortranTransformer):
+    class _ProcedureRelocator(ft.FortranTransformer):
         """Filter interfaces and procedures into correct lists"""
         def visit_Type(self, node):
             logging.debug('visiting %r' % node)
             interfaces = []
             procedures = []
-            for child in iter_child_nodes(node):
-                if isinstance(child, Interface):
+            for child in ft.iter_child_nodes(node):
+                if isinstance(child, ft.Interface):
                     interfaces.append(child)
-                elif isinstance(child, Procedure):
+                elif isinstance(child, ft.Procedure):
                     procedures.append(child)
                 else:
                     # other child nodes should be left where they are
@@ -543,21 +537,21 @@ def collapse_single_interfaces(tree):
     return tree
 
 def add_missing_constructors(tree):
-    for node in walk(tree):
-        if not isinstance(node, Type):
+    for node in ft.walk(tree):
+        if not isinstance(node, ft.Type):
             continue
-        for child in iter_child_nodes(node):
-            if isinstance(child, Procedure):
+        for child in ft.iter_child_nodes(node):
+            if isinstance(child, ft.Procedure):
                 if 'constructor' in child.attributes:
                     print 'found constructor', child.name
                     break
         else:
             print 'adding missing constructor for %s' % node.name
-            node.procedures.append(Subroutine('%s_initialise' % node.name,
+            node.procedures.append(ft.Subroutine('%s_initialise' % node.name,
                                               node.filename,
                                               'Automatically generated constructor for %s' % node.name,
                                               node.lineno,
-                                              [Argument(name='this',
+                                              [ft.Argument(name='this',
                                                         filename=node.filename,
                                                         doc='Object to be constructed',
                                                         lineno=node.lineno,
@@ -569,21 +563,21 @@ def add_missing_constructors(tree):
 
 
 def add_missing_destructors(tree):
-    for node in walk(tree):
-        if not isinstance(node, Type):
+    for node in ft.walk(tree):
+        if not isinstance(node, ft.Type):
             continue
-        for child in iter_child_nodes(node):
-            if isinstance(child, Procedure):
+        for child in ft.iter_child_nodes(node):
+            if isinstance(child, ft.Procedure):
                 if 'destructor' in child.attributes:
                     print 'found destructor', child.name
                     break
         else:
             print 'adding missing destructor for %s' % node.name
-            node.procedures.append(Subroutine('%s_finalise' % node.name,
+            node.procedures.append(ft.Subroutine('%s_finalise' % node.name,
                                               node.filename,
                                               'Automatically generated destructor for %s' % node.name,
                                               node.lineno,
-                                              [Argument(name='this',
+                                              [ft.Argument(name='this',
                                                         filename=node.filename,
                                                         doc='Object to be destructed',
                                                         lineno=node.lineno,
@@ -594,7 +588,7 @@ def add_missing_destructors(tree):
     return tree
 
 
-class FunctionToSubroutineConverter(FortranTransformer):
+class FunctionToSubroutineConverter(ft.FortranTransformer):
     """Convert all functions to subroutines, with return value as an
        intent(out) argument after the last non-optional argument"""
 
@@ -610,7 +604,7 @@ class FunctionToSubroutineConverter(FortranTransformer):
         arguments[i].name = 'ret_' + arguments[i].name
         arguments[i].attributes.append('intent(out)')
 
-        new_node = Subroutine(node.name,
+        new_node = ft.Subroutine(node.name,
                               node.filename,
                               node.doc,
                               node.lineno,
@@ -620,7 +614,7 @@ class FunctionToSubroutineConverter(FortranTransformer):
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
 
-class IntentOutToReturnValues(FortranTransformer):
+class IntentOutToReturnValues(ft.FortranTransformer):
     """
     Convert all Subroutine and Function intent(out) arguments to return values
     """
@@ -632,7 +626,7 @@ class IntentOutToReturnValues(FortranTransformer):
 
         ret_val = []
         ret_val_doc = None
-        if isinstance(node, Function) and node.ret_val is not None:
+        if isinstance(node, ft.Function) and node.ret_val is not None:
             ret_val.append(node.ret_val)
             if node.ret_val_doc is not None:
                 ret_val_doc = node.ret_val_doc
@@ -648,7 +642,7 @@ class IntentOutToReturnValues(FortranTransformer):
             new_node = node  # no changes needed
         else:
             print 'IntentOutToReturnValues: converted', node.name
-            new_node = Function(node.name,
+            new_node = ft.Function(node.name,
                                 node.filename,
                                 node.doc,
                                 node.lineno,
@@ -660,7 +654,7 @@ class IntentOutToReturnValues(FortranTransformer):
         new_node.orig_node = node
         return new_node
 
-class RenameArguments(FortranVisitor):
+class RenameArguments(ft.FortranVisitor):
     def __init__(self, name_map=None):
         if name_map is None:
             name_map = {'this': 'self'}
@@ -676,7 +670,7 @@ class RenameArguments(FortranVisitor):
         return node
 
 
-class OnlyAndSkip(FortranTransformer):
+class OnlyAndSkip(ft.FortranTransformer):
     """
     This class does the job of removing nodes from the tree 
     which are not necessary to write wrappers for (given user-supplied
@@ -776,7 +770,7 @@ def find_referenced_modules(mods, tree):
         temp = list(new_mods)
         for m in temp:
             for m2 in m.uses:
-                for m3 in walk_modules(tree):
+                for m3 in ft.walk_modules(tree):
                     if m3.name == m2:
                         new_mods.add(m3)
         new_mods -= mods
@@ -812,7 +806,7 @@ def find_referenced_types(mods, tree):
 
         for el in mod.elements:
             if el.type.startswith('type'):
-                for mod2 in walk_modules(tree):
+                for mod2 in ft.walk_modules(tree):
                     for mt in mod2.types:
                         if mt.name in el.type:
                             kept_types.add(mt)
@@ -825,7 +819,7 @@ def find_referenced_types(mods, tree):
         for t in temp_set:
             for el in t.elements:
                 if el.type.startswith('type'):  # a referenced type, need to find def
-                    for mod2 in walk_modules(tree):
+                    for mod2 in ft.walk_modules(tree):
                         for mt in mod2.types:
                             if mt.name in el.type:
                                 new_set.add(mt)

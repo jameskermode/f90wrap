@@ -16,40 +16,36 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-import logging
-import copy
-import re
-from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function, Prototype,
-                             Declaration, Element, Argument, Type, Interface, FortranVisitor, strip_type)
-from f90wrap.codegen import CodeGenerator
+from f90wrap import fortran as ft
+from f90wrap import codegen as cg
 import numpy as np
 
 # numeric codes for Fortran types.
 # Those with suffix _A are 1D arrays, _A2 are 2D arrays
-T_NONE        =  0
-T_INTEGER     =  1
-T_REAL        =  2
-T_COMPLEX     =  3
-T_LOGICAL     =  4
+T_NONE = 0
+T_INTEGER = 1
+T_REAL = 2
+T_COMPLEX = 3
+T_LOGICAL = 4
 
-T_INTEGER_A   =  5
-T_REAL_A      =  6
-T_COMPLEX_A   =  7
-T_LOGICAL_A   =  8
-T_CHAR        =  9
+T_INTEGER_A = 5
+T_REAL_A = 6
+T_COMPLEX_A = 7
+T_LOGICAL_A = 8
+T_CHAR = 9
 
-T_CHAR_A      =  10
-T_DATA        =  11
-T_INTEGER_A2  =  12
-T_REAL_A2     =  13
+T_CHAR_A = 10
+T_DATA = 11
+T_INTEGER_A2 = 12
+T_REAL_A2 = 13
 
-class F90WrapperGenerator(FortranVisitor, CodeGenerator):
+class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
     def __init__(self, prefix, sizeof_fortran_t, string_lengths):
-        CodeGenerator.__init__(self, indent=' ' * 4,
+        cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&')
-        FortranVisitor.__init__(self)
+        ft.FortranVisitor.__init__(self)
         self.prefix = prefix
         self.sizeof_fortran_t = sizeof_fortran_t
         self.string_lengths = string_lengths
@@ -66,7 +62,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
                 self.write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
             else:
                 self.write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
-        
+
         if len(self.code) > 0:
             f90_wrapper_file = open('%s%s.f90' % (self.prefix, node.name), 'w')
             f90_wrapper_file.write(str(self))
@@ -88,7 +84,7 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         """
         Write type definition for input type name
         """
-        tname = strip_type(tname)
+        tname = ft.strip_type(tname)
         self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
 end type %(typename)s_ptr_type""" % {'typename': tname})
@@ -166,7 +162,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
                      if 'intent(hide)' not in arg.attributes]
-        if isinstance(node, Function):
+        if isinstance(node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
                        {'ret_val': node.ret_val.name,
                         'func_name': node.name,
@@ -244,7 +240,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         else:
             typename = el.type
 
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             this = 'this, '
         else:
             this = 'dummy_this, '
@@ -252,19 +248,19 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('subroutine %s%s__array__%s(%snd, dtype, dshape, dloc)' % (self.prefix, t.name, el.name, this))
         self.indent()
         self.write_uses_lines(t)
-        if isinstance(t, Module):
+        if isinstance(t, ft.Module):
             use_only = []
             use_only.append('%s_%s => %s' % (t.name, el.name, el.name))
             use_only = ', '.join(use_only)
-            self.write('use %s, only: ' % t.name + use_only)        
+            self.write('use %s, only: ' % t.name + use_only)
         self.write('implicit none')
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
             self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
         else:
             self.write('integer, intent(in) :: dummy_this(%d)' % sizeof_fortran_t)
-            
+
         self.write('integer, intent(out) :: nd')
         self.write('integer, intent(out) :: dtype')
         try:
@@ -277,12 +273,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
         self.write('nd = %d' % rank)
         self.write('dtype = %s' % fortran_type_code[typename])
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write('this_ptr = transfer(this, this_ptr)')
             array_name = 'this_ptr%%p%%%s' % el.name
         else:
             array_name = '%s_%s' % (t.name, el.name)
-            
+
         if 'allocatable' in el.attributes:
             self.write('if (allocated(%s)) then' % array_name)
             self.indent()
@@ -432,31 +428,31 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if getset == "get":
             inout = "out"
 
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             this = 'this, '
-        elif isinstance(t, Module):
+        elif isinstance(t, ft.Module):
             this = ''
         else:
             raise ValueError("Don't know how to write scalar wrappers for %s type %s" (t, type(t)))
-                        
+
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
                                                     getset, el.name, this, el.name))
         self.indent()
         self.write_uses_lines(t)
-        if isinstance(t, Module):
+        if isinstance(t, ft.Module):
             use_only = []
             use_only.append('%s_%s => %s' % (t.name, el.name, el.name))
             use_only = ', '.join(use_only)
             self.write('use %s, only: ' % t.name + use_only)
-            
+
         self.write('implicit none')
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
-            
+
         if el.type.startswith('type'):
             self.write_type_lines(el.type)
 
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
 
@@ -464,12 +460,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             # For derived types elements, treat as opaque reference
             self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
 
-            self.write('type(%s_ptr_type) :: %s_ptr' % (strip_type(el.type), el.name))
+            self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
             self.write()
-            if isinstance(t, Type):
+            if isinstance(t, ft.Type):
                 self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
                 else:
                     self.write('%s_ptr%%p => %s_%s' % (el.name, t.name, el.name))
@@ -478,7 +474,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name,
                                                              el.name,
                                                              el.name))
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('this_ptr%%p%%%s = %s_ptr%%p' % (el.name, el.name))
                 else:
                     self.write('%s_%s = %s_ptr%%p' % (t.name, el.name, el.name))
@@ -494,15 +490,15 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 self.write('%s, intent(%s) :: %s' % (el.type, inout, el.name))
             self.write()
-            if isinstance(t, Type):
+            if isinstance(t, ft.Type):
                 self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('%s = this_ptr%%p%%%s' % (el.name, el.name))
                 else:
                     self.write('%s = %s_%s' % (el.name, t.name, el.name))
             else:
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('this_ptr%%p%%%s = %s' % (el.name, el.name))
                 else:
                     self.write('%s_%s = %s' % (t.name, el.name, el.name))

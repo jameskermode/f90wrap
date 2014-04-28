@@ -16,22 +16,16 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-import logging
-import copy
-import re
-from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function,
-                             Declaration, Element, Argument, Type, Interface,
-                             FortranVisitor, FortranTransformer, strip_type)
-from f90wrap.codegen import CodeGenerator
-import numpy as np
+from f90wrap import fortran as ft
+from f90wrap import codegen as cg
 
-class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
+class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
     def __init__(self, prefix, mod_name, types, imports=None):
-        CodeGenerator.__init__(self, indent=' ' * 4,
+        cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\')
-        FortranVisitor.__init__(self)
+        ft.FortranVisitor.__init__(self)
         self.prefix = prefix
         self.mod_name = mod_name
         self.types = types
@@ -49,7 +43,7 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
             if alias is None:
                 self.write('import %s' % mod)
             else:
-                self.write('import %s as %s' % (mod, alias)) 
+                self.write('import %s as %s' % (mod, alias))
         self.write()
         self.write('_sizeof_fortran_t = sizeof_fortran_t.sizeof_fortran_t()')
         self.write()
@@ -57,10 +51,10 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
         for el in node.elements:
             if el.type.startswith('type'):
                 mod_name = self.types[el.type].mod_name
-                cls_name = strip_type(el.type).title()
+                cls_name = ft.strip_type(el.type).title()
                 if mod_name != node.name:
                     self.write('from %s import %s' % (mod_name, cls_name))
-        self.write()        
+        self.write()
 
         cls_name = node.name.title()
         self.write('class %s(fortrantype.FortranModule):' % cls_name)
@@ -71,9 +65,9 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    self.write_dt_wrappers(node, el) 
+                    self.write_dt_wrappers(node, el)
                 else:
-                    self.write_scalar_wrappers(node, el) 
+                    self.write_scalar_wrappers(node, el)
             elif el.type.startswith('type'):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims)
             else:
@@ -82,15 +76,15 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
         self.write()
         self.write('fmod = %s()' % node.name.title())
         self.write()
-        
+
         self.generic_visit(node)
         py_wrapper_file = open('%s.py' % node.name.lower(), 'w')
         py_wrapper_file.write(str(self))
         py_wrapper_file.close()
-            
+
 
     def write_constructor(self, node):
-        handle_arg = Argument(name='handle',
+        handle_arg = ft.Argument(name='handle',
                               filename=node.filename,
                               doc='Opaque reference to existing derived type instance',
                               lineno=node.lineno,
@@ -100,7 +94,7 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
         # special case for constructors: return value is 'self' argument,
         # plus we add an extra optional argument
         args = node.ret_val + node.arguments + [handle_arg]
-        
+
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
                    mod_name=self.mod_name,
@@ -148,12 +142,12 @@ def __del__(%(py_arg_names)s):""" % dct)
                                                      arg.value is None and '=None' or '')
                                                      for arg in node.arguments ]),
                        f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments]))
-                       
+
             self.write("""@functools.wraps(%(mod_name)s.%(prefix)s%(func_name)s, assigned=['__doc__'])
 def %(func_name)s(%(py_arg_names)s):""" % dct)
             self.indent()
             call_line = '%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
-            if isinstance(node, Function):
+            if isinstance(node, ft.Function):
                 call_line = 'return %s' % call_line
             self.write(call_line)
             self.dedent()
@@ -163,7 +157,7 @@ def %(func_name)s(%(py_arg_names)s):""" % dct)
         for el in node.elements:
             if el.type.startswith('type'):
                 mod_name = self.types[el.type].mod_name
-                cls_name = strip_type(el.type).title()
+                cls_name = ft.strip_type(el.type).title()
                 # FIXME check if type is defined in same module: no need to improt if so
                 self.write('from %s import %s' % (mod_name, cls_name))
         self.write()
@@ -177,9 +171,9 @@ def %(func_name)s(%(py_arg_names)s):""" % dct)
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    self.write_dt_wrappers(node, el) 
+                    self.write_dt_wrappers(node, el)
                 else:
-                    self.write_scalar_wrappers(node, el) 
+                    self.write_scalar_wrappers(node, el)
             elif el.type.startswith('type'):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims)
             else:
@@ -189,12 +183,12 @@ def %(func_name)s(%(py_arg_names)s):""" % dct)
     def write_scalar_wrappers(self, node, el):
         dct = dict(el_name=el.name, mod_name=self.mod_name,
                    prefix=self.prefix, type_name=node.name,
-                   handle=isinstance(node, Type) and 'self._handle' or '')
-        if isinstance(node, Type):
+                   handle=isinstance(node, ft.Type) and 'self._handle' or '')
+        if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name)s' % dct
         else:
             dct['set_args'] = '%(el_name)s' % dct
-            
+
         self.write("""@property
 def %(el_name)s(self):
     return %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)
@@ -206,12 +200,12 @@ def %(el_name)s(self, %(el_name)s):
         self.write()
 
     def write_dt_wrappers(self, node, el):
-        cls_name = strip_type(el.type).title()
+        cls_name = ft.strip_type(el.type).title()
         dct = dict(el_name=el.name, mod_name=self.mod_name,
                    prefix=self.prefix, type_name=node.name,
                    cls_name=cls_name,
-                   handle=isinstance(node, Type) and 'self._handle' or '')
-        if isinstance(node, Type):
+                   handle=isinstance(node, ft.Type) and 'self._handle' or '')
+        if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name)s' % dct
         else:
             dct['set_args'] = '%(el_name)s' % dct
@@ -236,7 +230,7 @@ def %(el_name)s(self, %(el_name)s):
     def write_sc_array_wrapper(self, node, el, dims):
         dct = dict(el_name=el.name, mod_name=self.mod_name,
                    prefix=self.prefix, type_name=node.name,
-                   handle=isinstance(node, Type) and 'self._handle, ' or '[0]*_sizeof_fortran_t, ')
+                   handle=isinstance(node, ft.Type) and 'self._handle, ' or '[0]*_sizeof_fortran_t, ')
         self.write("""@property
 def %(el_name)s(self):
    if '%(el_name)s' in self._arrays:
