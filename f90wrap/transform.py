@@ -393,8 +393,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
             if dims == []:
                 continue
             if len(dims) != 1:
-                raise ValueError('more than one dimension attribute found for arg %s in sub %s' %
-                                 (arg.name, sub.name))
+                raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
 
             ds = ArrayDimensionConverter.split_dimensions(dims[0])
 

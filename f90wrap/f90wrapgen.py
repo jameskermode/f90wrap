@@ -19,6 +19,7 @@
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 import numpy as np
+import logging
 
 # numeric codes for Fortran types.
 # Those with suffix _A are 1D arrays, _A2 are 2D arrays
