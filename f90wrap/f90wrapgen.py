@@ -16,47 +16,69 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-import logging
-import copy
-import re
-from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function, Prototype,
-                             Declaration, Element, Argument, Type, Interface, FortranVisitor, strip_type)
-from f90wrap.codegen import CodeGenerator
+from f90wrap import fortran as ft
+from f90wrap import codegen as cg
 import numpy as np
+import logging
 
 # numeric codes for Fortran types.
 # Those with suffix _A are 1D arrays, _A2 are 2D arrays
-T_NONE        =  0
-T_INTEGER     =  1
-T_REAL        =  2
-T_COMPLEX     =  3
-T_LOGICAL     =  4
+T_NONE = 0
+T_INTEGER = 1
+T_REAL = 2
+T_COMPLEX = 3
+T_LOGICAL = 4
 
-T_INTEGER_A   =  5
-T_REAL_A      =  6
-T_COMPLEX_A   =  7
-T_LOGICAL_A   =  8
-T_CHAR        =  9
+T_INTEGER_A = 5
+T_REAL_A = 6
+T_COMPLEX_A = 7
+T_LOGICAL_A = 8
+T_CHAR = 9
 
-T_CHAR_A      =  10
-T_DATA        =  11
-T_INTEGER_A2  =  12
-T_REAL_A2     =  13
+T_CHAR_A = 10
+T_DATA = 11
+T_INTEGER_A2 = 12
+T_REAL_A2 = 13
 
-class F90WrapperGenerator(FortranVisitor, CodeGenerator):
-
+class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
+    """
+    Creates the Fortran90 code necessary to wrap a given Fortran parse tree
+    suitable for input to `f2py`. 
+    
+    Each node of the tree (Module, Subroutine etc.) is wrapped according to the
+    rules in this class when visited (using `F90WrapperGenerator.visit()`). 
+    
+    Each module's wrapper is written to a separate file, with top-level 
+    procedures written to another separate file. Derived-types and arrays (both
+    of normal types and derive-types) are specially treated. For each, a number
+    of subroutines allowing the getting/setting of items, and retrieval of array
+    length are written. Furthermore, derived-types are treated as opaque 
+    references to enable wrapping with `f2py`. 
+    
+    Parameters
+    ----------
+    prefix : `str`
+        A string with which to prefix module, subroutine and type names.
+        
+    sizeof_fortran_t : `int`
+        The size, in bytes, of a pointer to a fortran derived type ??
+        
+    string_lengths : `dict`
+        This is never used...
+        
+    """
     def __init__(self, prefix, sizeof_fortran_t, string_lengths):
-        CodeGenerator.__init__(self, indent=' ' * 4,
+        cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&')
-        FortranVisitor.__init__(self)
+        ft.FortranVisitor.__init__(self)
         self.prefix = prefix
         self.sizeof_fortran_t = sizeof_fortran_t
         self.string_lengths = string_lengths
 
     def visit_Root(self, node):
         """
-        Wrap subroutines and functions that are outside of Fortran modules
+        Write a wrapper for top-level procedures. 
         """
         self.code = []
         self.generic_visit(node)
@@ -68,6 +90,8 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
     def visit_Module(self, node):
         """
         Wrap modules. Each Fortran module generates one wrapper source file.
+        
+        Subroutines and elements within each module are properly wrapped.
         """
         logging.info('F90WrapperGenerator visiting module %s' % node.name)
         self.code = []
@@ -76,12 +100,12 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
-                self.write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
+                self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
             elif el.type.startswith('type'):  # array of derived types
-                self.write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
+                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
             else:
-                self.write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
-        
+                self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+
         if len(self.code) > 0:
             f90_wrapper_file = open('%s%s.f90' % (self.prefix, node.name), 'w')
             f90_wrapper_file.write(str(self))
@@ -89,6 +113,13 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
         self.code = []
 
     def write_uses_lines(self, node):
+        """
+        Write "uses mod, only: sub" lines to the code.
+        
+        Parameters
+        ----------
+        node : Node of parse tree
+        """
         if hasattr(node, 'uses'):
             for uses in node.uses:
                 if isinstance(uses, tuple):
@@ -102,14 +133,25 @@ class F90WrapperGenerator(FortranVisitor, CodeGenerator):
 
     def write_type_lines(self, tname):
         """
-        Write type definition for input type name
+        Write a pointer type for a given type name
+        
+        Parameters
+        ----------
+        tname : `str`
+            Should be the name of a derived type in the wrapped code.
         """
-        tname = strip_type(tname)
+        tname = ft.strip_type(tname)
         self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
 end type %(typename)s_ptr_type""" % {'typename': tname})
 
     def write_arg_decl_lines(self, node):
+        """
+        Write argument declaration lines to the code
+        
+        Takes care of argument attributes, and opaque references for derived 
+        types, as well as f2py-specific lines.
+        """
         for arg in node.arguments:
             attributes = [attr for attr in arg.attributes if attr in ('optional', 'pointer', 'intent(in)',
                                                                        'intent(out)', 'intent(inout)') or
@@ -131,6 +173,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 self.write(arg.f2py_line)
 
     def write_transfer_in_lines(self, node):
+        """
+        Write transfer of opaque references.
+        """
         for arg in node.arguments:
             arg_dict = {'arg_name': arg.name,  # self.prefix+arg.name,
                         'arg_type': arg.type}
@@ -150,6 +195,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                     self.write('end if')
 
     def write_init_lines(self, node):
+        """
+        Write special user-provided init lines to a node.
+        """
         for alloc in node.allocate:
             self.write('allocate(%s_ptr%%p)' % alloc)  # (self.prefix, alloc))
         for arg in node.arguments:
@@ -165,6 +213,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 self.write(exe % D)
 
     def write_call_lines(self, node):
+        """
+        Properly write function/subroutine calls
+        """
         if 'skip_call' in node.attributes:
             return
 
@@ -186,8 +237,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                         if 'intent(hide)' not in arg.attributes]
         else:
             arg_names = [actual_arg_name(arg) for arg in node.arguments if 'intent(hide)' not in arg.attributes]
-            
-        if isinstance(node, Function):
+
+        if isinstance(node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
                        {'ret_val': node.ret_val.name,
                         'func_name': node.name,
@@ -198,17 +249,28 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                         'arg_names': ', '.join(arg_names)})
 
     def write_transfer_out_lines(self, node):
+        """
+        WRite transfer from opaque reference.
+        """
         for arg in node.arguments:
             if arg.name in node.transfer_out:
                 self.write('%(arg_name)s = transfer(%(arg_name)s_ptr, %(arg_name)s)' %
                            {'arg_name': arg.name})
 
     def write_finalise_lines(self, node):
+        """
+        Deallocate the opaque reference to clean up.
+        """
         for dealloc in node.deallocate:
             self.write('deallocate(%s_ptr%%p)' % dealloc)  # (self.prefix, dealloc))
 
     def visit_Subroutine(self, node):
-        logging.info('F90WrapperGenerator visiting subroutine %s' % node.name)        
+        """
+        Visit a Subroutine node of the parse tree.
+        
+        Writes the code necessary for each propery wrapped subroutine.
+        """
+        logging.info('F90WrapperGenerator visiting subroutine %s' % node.name)
         self.write("subroutine %(sub_name)s(%(arg_names)s)" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': ', '.join([arg.name for arg in node.arguments])})
@@ -230,21 +292,41 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         return self.generic_visit(node)
 
     def visit_Type(self, node):
+        """
+        Properly wraps derived types, including derived-type arrays.
+        """
         logging.info('F90WrapperGenerator visiting type %s' % node.name)
 
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
-                self.write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
+                self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
             elif el.type.startswith('type'):  # array of derived types
-                self.write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
+                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
             else:
-                self.write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+                self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
 
         return self.generic_visit(node)
 
-    def write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
-
+    def _write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
+        """
+        Write wrapper for sc?? arrays
+        
+        Parameters
+        ----------
+        t : `fortran.Type` node
+            Derived-type node of the parse tree.
+            
+        el : `fortran.Element` node
+            An element of a module which is derived-type array
+            
+        dims : `tuple` of `int`s
+            The dimensions of the element
+            
+        sizeof_fortan_t : `int`
+            The size, in bytes, of a pointer to a fortran derived type ??
+            
+        """
         # The following maps the element type to a numeric code
         fortran_type_code = {'d': T_REAL_A,
                              'i': T_INTEGER_A,
@@ -266,7 +348,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         else:
             typename = el.type
 
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             this = 'this, '
         else:
             this = 'dummy_this, '
@@ -274,19 +356,19 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('subroutine %s%s__array__%s(%snd, dtype, dshape, dloc)' % (self.prefix, t.name, el.name, this))
         self.indent()
         self.write_uses_lines(t)
-        if isinstance(t, Module):
+        if isinstance(t, ft.Module):
             use_only = []
             use_only.append('%s_%s => %s' % (t.name, el.name, el.name))
             use_only = ', '.join(use_only)
-            self.write('use %s, only: ' % t.name + use_only)        
+            self.write('use %s, only: ' % t.name + use_only)
         self.write('implicit none')
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
             self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
         else:
             self.write('integer, intent(in) :: dummy_this(%d)' % sizeof_fortran_t)
-            
+
         self.write('integer, intent(out) :: nd')
         self.write('integer, intent(out) :: dtype')
         try:
@@ -299,12 +381,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
         self.write('nd = %d' % rank)
         self.write('dtype = %s' % fortran_type_code[typename])
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write('this_ptr = transfer(this, this_ptr)')
             array_name = 'this_ptr%%p%%%s' % el.name
         else:
             array_name = '%s_%s' % (t.name, el.name)
-            
+
         if 'allocatable' in el.attributes:
             self.write('if (allocated(%s)) then' % array_name)
             self.indent()
@@ -326,17 +408,24 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.name))
         self.write()
 
-    def write_dt_array_wrapper(self, t, element, dims,
-                            sizeof_fortran_t):
+    def _write_dt_array_wrapper(self, t, element, dims,
+                               sizeof_fortran_t):
         """
-        Write fortran get/set/len routine for an array
+        Write fortran get/set/len routines for a derived-type array.
         
         Parameters
         ----------
-        t : type
-        element : element
-        dims : dims
-        sizeof_fortran_t : sizeof_fortran_t
+        t : `fortran.Type` node
+            Derived-type node of the parse tree.
+            
+        el : `fortran.Element` node
+            An element of a module which is derived-type array
+            
+        dims : `tuple` of `int`s
+            The dimensions of the element
+            
+        sizeof_fortan_t : `int`
+            The size, in bytes, of a pointer to a fortran derived type ??
         """
         if element.type.startswith('type') and len(dims) != 1:
             return
@@ -345,12 +434,42 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self._write_array_getset_item(t, element, sizeof_fortran_t, 'set')
         self._write_array_len(t, element, sizeof_fortran_t)
 
-    def write_scalar_wrappers(self, t, element, sizeof_fortran_t):
-
-        self.write_scalar_wrapper(t, element, sizeof_fortran_t, "get")
-        self.write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
+    def _write_scalar_wrappers(self, t, element, sizeof_fortran_t):
+        """
+        Write fortran get/set routines for scalar derived-types
+        
+        Parameters
+        ----------
+        t : `fortran.Type` node
+            Derived-type node of the parse tree.
+            
+        el : `fortran.Element` node
+            An element of a module which is derived-type array
+            
+        sizeof_fortan_t : `int`
+            The size, in bytes, of a pointer to a fortran derived type ??
+        """
+        self._write_scalar_wrapper(t, element, sizeof_fortran_t, "get")
+        self._write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
 
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
+        """
+        Write a subroutine to get/set items in a derived-type array.
+        
+        Parameters
+        ----------
+        t : `fortran.Type` node
+            Derived-type node of the parse tree.
+            
+        el : `fortran.Element` node
+            An element of a module which is derived-type array
+            
+        sizeof_fortan_t : `int`
+            The size, in bytes, of a pointer to a fortran derived type ??
+            
+        getset : `str` {``"get"``,``"set"``}
+            String indicating whether to write a get routine, or a set routine.
+        """
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -410,6 +529,20 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
 
     def _write_array_len(self, t, el, sizeof_fortran_t):
+        """
+        Write a subroutine which returns the length of a derived-type array
+        
+        Parameters
+        ----------
+        t : `fortran.Type` node
+            Derived-type node of the parse tree.
+            
+        el : `fortran.Element` node
+            An element of a module which is derived-type array
+            
+        sizeof_fortan_t : `int`
+            The size, in bytes, of a pointer to a fortran derived type ??
+        """
         self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
         self.indent()
         self.write()
@@ -443,42 +576,54 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
 
-    def write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
+    def _write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
         """
-        t : a Type or Module object from the parse tree
-        element : an element within this type or module
-        getset : either 'get' or 'set'
+        Write get/set routines for scalar derived-types.
+        
+        Parameters
+        ----------
+        t : `fortran.Type` node
+            Derived-type node of the parse tree.
+            
+        el : `fortran.Element` node
+            An element of a module which is derived-type array
+            
+        sizeof_fortan_t : `int`
+            The size, in bytes, of a pointer to a fortran derived type ??
+            
+        getset : `str` {``"get"``,``"set"``}
+            String indicating whether to write a get routine, or a set routine.
         """
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
             inout = "out"
 
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             this = 'this, '
-        elif isinstance(t, Module):
+        elif isinstance(t, ft.Module):
             this = ''
         else:
             raise ValueError("Don't know how to write scalar wrappers for %s type %s" (t, type(t)))
-                        
+
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
                                                     getset, el.name, this, el.name))
         self.indent()
         self.write_uses_lines(t)
-        if isinstance(t, Module):
+        if isinstance(t, ft.Module):
             use_only = []
             use_only.append('%s_%s => %s' % (t.name, el.name, el.name))
             use_only = ', '.join(use_only)
             self.write('use %s, only: ' % t.name + use_only)
-            
+
         self.write('implicit none')
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
-            
+
         if el.type.startswith('type'):
             self.write_type_lines(el.type)
 
-        if isinstance(t, Type):
+        if isinstance(t, ft.Type):
             self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
 
@@ -486,12 +631,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             # For derived types elements, treat as opaque reference
             self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
 
-            self.write('type(%s_ptr_type) :: %s_ptr' % (strip_type(el.type), el.name))
+            self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
             self.write()
-            if isinstance(t, Type):
+            if isinstance(t, ft.Type):
                 self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
                 else:
                     self.write('%s_ptr%%p => %s_%s' % (el.name, t.name, el.name))
@@ -500,7 +645,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name,
                                                              el.name,
                                                              el.name))
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('this_ptr%%p%%%s = %s_ptr%%p' % (el.name, el.name))
                 else:
                     self.write('%s_%s = %s_ptr%%p' % (t.name, el.name, el.name))
@@ -516,15 +661,15 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 self.write('%s, intent(%s) :: %s' % (el.type, inout, el.name))
             self.write()
-            if isinstance(t, Type):
+            if isinstance(t, ft.Type):
                 self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('%s = this_ptr%%p%%%s' % (el.name, el.name))
                 else:
                     self.write('%s = %s_%s' % (el.name, t.name, el.name))
             else:
-                if isinstance(t, Type):
+                if isinstance(t, ft.Type):
                     self.write('this_ptr%%p%%%s = %s' % (el.name, el.name))
                 else:
                     self.write('%s_%s = %s' % (t.name, el.name, el.name))

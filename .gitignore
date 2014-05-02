@@ -10,3 +10,7 @@ f90wrap*.f90
 *.pyc
 .pydevproject
 examples/mockderivetype/mockdt.py
+define_a_type.py
+leveltwomod.py
+use_a_type.py
+org.eclipse.core.resources.prefs

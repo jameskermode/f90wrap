@@ -15,13 +15,39 @@
 # HF X   http://www.jrkermode.co.uk/f90wrap
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
+"""
+This module defines a series of classes which inherit an abstract base class.
+Each represents a node in a Fortran parse tree -- Modules, Subroutines, 
+Arguments etc. A Fortran parse tree will contain only these classes as nodes.
+"""
 import logging
+
+def _rep_des(doc, string):
+    """
+    Replaces the description line of a documentation with `string`
+    """
+    doc_desc = doc.split("\n")[0] or doc.split("\n")[1]
+    doc_desc = doc_desc.lstrip()
+    doc = doc.replace(doc_desc, string)
+    return doc
 
 class Fortran(object):
     """
-    Abstract base class for all nodes in Fortran parser tree. Has
-    attributes *name*, *filename*, *doc*, *lineno*.
+    Abstract base class for all nodes in Fortran parser tree. 
+    
+    Parameters
+    ----------
+    name : `str`
+        Name of the node
+        
+    filename : `str`
+        Name of the file in which node is defined
+        
+    doc : `list` of `str`
+        Documentation found in the node
+        
+    lineno : `int`
+        Line number at which the node begins.
     """
 
     _fields = []
@@ -39,6 +65,7 @@ class Fortran(object):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
 
     def __eq__(self, other):
+        # FIXME: could not we use getattr here to simplify all cases?
         if other is None: return False
         return (self.name == other.name and
                 self.doc == other.doc)
@@ -49,10 +76,16 @@ class Fortran(object):
 
 class Root(Fortran):
     """
-    Root node of a Fortran parse tree. Has attributes *programs*, *modules*
-    and *procedures* in addition to those in Fortran base class.
+    programs : `list` of `fortran.Program`s
+        A list of Programs within the parse tree.
+        
+    modules : `list` of `fortran.Module`s
+        A list of modules within the parse tree
+        
+    procedures : `list` of `fortran.Procedure`s
+        A list of top-level procedures within the parse tree.
     """
-
+    __doc__ = _rep_des(Fortran.__doc__, "The Root node of a Fortan parse tree") + __doc__
     _fields = ['programs', 'modules', 'procedures']
 
     def __init__(self, name='', filename='', doc=None, lineno=0,

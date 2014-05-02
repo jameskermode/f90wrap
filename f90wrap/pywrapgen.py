@@ -17,25 +17,19 @@
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 import logging
-import copy
-import re
-from f90wrap.fortran import (Fortran, Root, Program, Module, Procedure, Subroutine, Function,
-                             Declaration, Element, Argument, Type, Interface,
-                             FortranVisitor, FortranTransformer, strip_type)
-from f90wrap.codegen import CodeGenerator
-import numpy as np
+from f90wrap import fortran as ft
+from f90wrap import codegen as cg
 
-class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
-
+class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, imports=None, f90_mod_name=None):
-        CodeGenerator.__init__(self, indent=' ' * 4,
+        cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\')
-        FortranVisitor.__init__(self)
+        ft.FortranVisitor.__init__(self)
         self.prefix = prefix
         self.py_mod_name = mod_name
         if f90_mod_name is None:
-            f90_mod_name = '_'+mod_name
+            f90_mod_name = '_' + mod_name
         self.f90_mod_name = f90_mod_name
         self.types = types
         if imports is None:
@@ -57,14 +51,73 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
             FIXME could link to source repository (e.g. github)
             """
             if isinstance(lineno, slice):
-                return 'lines %d-%d' % (lineno.start, lineno.stop-1)
+                return 'lines %d-%d' % (lineno.start, lineno.stop - 1)
             else:
                 return 'line %d' % lineno
-        
-        doc = [str(node), ''] + node.doc[:] # incoming docstring from Fortran source
+
+        doc = [str(node), ''] + node.doc[:]  # incoming docstring from Fortran source
         doc.append('')
         doc.append('Defined at %s %s' % (node.filename, _format_line_no(node.lineno)))
 
+        # For procedures, write required parameters and return values in numpydoc format
+        if isinstance(node, ft.Procedure):
+            doc.append('')
+            # Input parameters
+            i = 0
+            for arg in node.arguments:
+                if "real" in arg.type:
+                    pytype = "float"
+                elif "integer" in arg.type:
+                    pytype = "int"
+                elif "character" in arg.type:
+                    pytype = 'str'
+                elif "logical" in arg.type:
+                    pytype = "bool"
+                else:
+                    pytype = "unknown"
+
+                dims = filter(lambda x: x.startswith("dimension"), arg.attributes)
+                if len(dims) > 0:
+                    pytype += " array"
+
+                if "intent(out)" not in arg.attributes:
+                    if i == 0:
+                        doc.append("Parameters")
+                        doc.append("----------")
+                    i += 1
+                    doc.append("%s : %s" % (arg.name, pytype))
+                    for d in arg.doc:
+                        doc.append("\t%s" % d)
+                    doc.append("")
+
+            i = 0
+            for arg in node.arguments:
+                print "DICT FOR ARG: ", arg.__dict__
+                if "real" in arg.type:
+                    pytype = "float"
+                elif "integer" in arg.type:
+                    pytype = "int"
+                elif "character" in arg.type:
+                    pytype = 'str'
+                elif "logical" in arg.type:
+                    pytype = "bool"
+                else:
+                    pytype = "unknown"
+                dims = filter(lambda x: x.startswith("dimension"), arg.attributes)
+                if len(dims) > 0:
+                    pytype += " array"
+
+                if "intent(out)" in arg.attributes:
+                    if i == 0:
+                        doc.append("Returns")
+                        doc.append("-------")
+                    i += 1
+                    doc.append("%s : %s" % (arg.name, pytype))
+                    doc.append("\t%s" % arg.doc)
+                    doc.append("")
+
+
+            print "DICT FOR SUBROUTINE: ", node.__dict__
         return '\n'.join(['"""'] + doc + ['"""'])
 
     def write_imports(self):
@@ -72,7 +125,7 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
             if alias is None:
                 self.write('import %s' % mod)
             else:
-                self.write('import %s as %s' % (mod, alias)) 
+                self.write('import %s as %s' % (mod, alias))
         self.write()
         self.write('_sizeof_fortran_t = sizeof_fortran_t.sizeof_fortran_t()')
         self.write()
@@ -84,29 +137,29 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
         self.code = []
         self.write_imports()
         self.generic_visit(node)
-        
+
         if len(self.code) > 0:
             py_wrapper_file = open('%s.py' % self.py_mod_name, 'w')
             py_wrapper_file.write(str(self))
             py_wrapper_file.close()
 
     def visit_Module(self, node):
-        logging.info('PythonWrapper visiting module %s' % node.name)        
+        logging.info('PythonWrapper visiting module %s' % node.name)
         cls_name = node.name.title()
         self.write('class %s(fortrantype.FortranModule):' % cls_name)
         self.indent()
         self.write(self.format_doc_string(node))
-        
+
         if len(node.elements) == 0 and len(node.types) == 0 and len(node.procedures) == 0:
             self.write('pass')
-            
+
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    self.write_dt_wrappers(node, el) 
+                    self.write_dt_wrappers(node, el)
                 else:
-                    self.write_scalar_wrappers(node, el) 
+                    self.write_scalar_wrappers(node, el)
             elif el.type.startswith('type'):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims)
             else:
@@ -114,14 +167,14 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
 
         self.generic_visit(node)
 
-        self.dedent() # finish the FortranModule class
+        self.dedent()  # finish the FortranModule class
         self.write()
         # instantise the module class
         self.write('%s = %s()' % (node.name, node.name.title()))
         self.write()
 
     def write_constructor(self, node):
-        handle_arg = Argument(name='handle',
+        handle_arg = ft.Argument(name='handle',
                               filename=node.filename,
                               doc=['Opaque reference to existing derived type instance'],
                               lineno=node.lineno,
@@ -131,7 +184,7 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
         # special case for constructors: return value is 'self' argument,
         # plus we add an extra optional argument
         args = node.ret_val + node.arguments + [handle_arg]
-        
+
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
                    mod_name=self.f90_mod_name,
@@ -180,7 +233,7 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
                                                      arg.value is None and '=None' or '')
                                                      for arg in node.arguments ]),
                        f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments]))
-                       
+
             # module procedures become static methods
             if node.type_name is None and node.mod_name is not None:
                 self.write('@staticmethod')
@@ -188,27 +241,28 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
             self.indent()
             self.write(self.format_doc_string(node))
             call_line = '%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
-            if isinstance(node, Function):
+            if isinstance(node, ft.Function):
                 call_line = 'return %s' % call_line
             self.write(call_line)
             self.dedent()
             self.write()
 
     def visit_Type(self, node):
+
         logging.info('PythonWrapperGenerator visiting type %s' % node.name)
         cls_name = node.name.title()
         self.write('class %s(fortrantype.FortranDerivedType):' % cls_name)
         self.indent()
-        self.write(self.format_doc_string(node))        
+        self.write(self.format_doc_string(node))
         self.generic_visit(node)
 
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    self.write_dt_wrappers(node, el) 
+                    self.write_dt_wrappers(node, el)
                 else:
-                    self.write_scalar_wrappers(node, el) 
+                    self.write_scalar_wrappers(node, el)
             elif el.type.startswith('type'):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims)
             else:
@@ -218,12 +272,12 @@ class PythonWrapperGenerator(FortranVisitor, CodeGenerator):
     def write_scalar_wrappers(self, node, el):
         dct = dict(el_name=el.name, mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
-                   handle=isinstance(node, Type) and 'self._handle' or '')
-        if isinstance(node, Type):
+                   handle=isinstance(node, ft.Type) and 'self._handle' or '')
+        if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name)s' % dct
         else:
             dct['set_args'] = '%(el_name)s' % dct
-            
+
         self.write('''@property
 def %(el_name)s(self):''' % dct)
         self.indent()
@@ -238,14 +292,14 @@ def %(el_name)s(self, %(el_name)s):
         self.write()
 
     def write_dt_wrappers(self, node, el):
-        cls_name = strip_type(el.type).title()
-        cls_mod_name = self.types[strip_type(el.type)].mod_name
+        cls_name = ft.strip_type(el.type).title()
+        cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
         dct = dict(el_name=el.name, mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    cls_name=cls_name,
                    cls_mod_name=cls_mod_name,
-                   handle=isinstance(node, Type) and 'self._handle' or '')
-        if isinstance(node, Type):
+                   handle=isinstance(node, ft.Type) and 'self._handle' or '')
+        if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name)s' % dct
         else:
             dct['set_args'] = '%(el_name)s' % dct
@@ -272,8 +326,9 @@ def %(el_name)s(self, %(el_name)s):
     def write_sc_array_wrapper(self, node, el, dims):
         dct = dict(el_name=el.name, mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
+
                    doc=self.format_doc_string(el),
-                   handle=isinstance(node, Type) and 'self._handle, ' or '[0]*_sizeof_fortran_t, ')
+                   handle=isinstance(node, ft.Type) and 'self._handle, ' or '[0]*_sizeof_fortran_t, ')
         self.write("""@property
 def %(el_name)s(self):""" % dct)
         self.indent()

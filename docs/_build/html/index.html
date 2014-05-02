@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>f90wrap: Fortran to Python interface generator with derived type support &mdash; f90wrap 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="f90wrap 0.1.0 documentation" href="#" />
+    <link rel="next" title="f90wrap package" href="apidocs/f90wrap.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="apidocs/f90wrap.html" title="f90wrap package"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">f90wrap 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="f90wrap-fortran-to-python-interface-generator-with-derived-type-support">
+<h1>f90wrap: Fortran to Python interface generator with derived type support<a class="headerlink" href="#f90wrap-fortran-to-python-interface-generator-with-derived-type-support" title="Permalink to this headline">¶</a></h1>
+<p><cite>f90wrap</cite> extends the capabilities of <cite>f2py</cite> by providing support for derived
+types and other features specific to the Fortran90 standard.</p>
+<p>It constitutes a layer on top of <cite>f2py</cite>, through which modified Fortran source
+files are created for input to <cite>f2py</cite>.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>At this stage, you must get the source from <a class="reference external" href="https://github.com/jkermode/f90wrap">https://github.com/jkermode/f90wrap</a>
+and then do <tt class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">install</span></tt>.</p>
+<p>At a later date we will provide support for <tt class="docutils literal"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">f90wrap</span></tt>.</p>
+</div>
+<div class="section" id="basic-usage">
+<h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this headline">¶</a></h2>
+<p>There are two primary usages of this package. To create documentation from
+Fortran90 source code, use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">f90doc</span> <span class="o">--</span><span class="n">help</span>
+</pre></div>
+</div>
+<p>Otherwise, to use <cite>f90wrap</cite> to generate Fortran90 code suitable for input to
+<cite>f2py</cite>, use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">f90wrap</span> <span class="o">--</span><span class="n">help</span>
+</pre></div>
+</div>
+<p>For more advanced usage, see the link below.</p>
+</div>
+<div class="section" id="authors">
+<h2>Authors<a class="headerlink" href="#authors" title="Permalink to this headline">¶</a></h2>
+<p>James Kermode: <a class="reference external" href="mailto:james&#46;kermode&#37;&#52;&#48;gmail&#46;com">james<span>&#46;</span>kermode<span>&#64;</span>gmail<span>&#46;</span>com</a></p>
+</div>
+<div class="section" id="contributors">
+<h2>Contributors<a class="headerlink" href="#contributors" title="Permalink to this headline">¶</a></h2>
+<p>Steven Murray: <a class="reference external" href="mailto:steven&#46;murray&#37;&#52;&#48;uwa&#46;edu&#46;au">steven<span>&#46;</span>murray<span>&#64;</span>uwa<span>&#46;</span>edu<span>&#46;</span>au</a></p>
+</div>
+<div class="section" id="copyright">
+<h2>Copyright<a class="headerlink" href="#copyright" title="Permalink to this headline">¶</a></h2>
+<p>Copyright (C)James Kermode 2011. Released under the GNU General Public
+License, version 2.</p>
+<p>Originally based on f90doc - automatic documentation generator for
+Fortran 90. Copyright (C) 2004 Ian Rutt</p>
+<p>These portions of the source code are released under the GNU General
+Public License, version 2, <a class="reference external" href="http://www.gnu.org/copyleft/gpl.html">http://www.gnu.org/copyleft/gpl.html</a></p>
+<p>If you would like to license the source code under different terms,
+please contact James Kermode, <a class="reference external" href="mailto:james&#46;kermode&#37;&#52;&#48;gmail&#46;com">james<span>&#46;</span>kermode<span>&#64;</span>gmail<span>&#46;</span>com</a></p>
+<p>When using this software, please cite the following reference:</p>
+<p><a class="reference external" href="http://www.jrkermode.co.uk/f90wrap">http://www.jrkermode.co.uk/f90wrap</a></p>
+</div>
+<div class="section" id="api-documentation">
+<h2>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidocs/f90wrap.html">f90wrap package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="apidocs/f90wrap.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apidocs/f90wrap.html#module-f90wrap">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="notes-on-usage">
+<h2>Notes on Usage<a class="headerlink" href="#notes-on-usage" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">f90wrap: Fortran to Python interface generator with derived type support</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li><a class="reference internal" href="#authors">Authors</a></li>
+<li><a class="reference internal" href="#contributors">Contributors</a></li>
+<li><a class="reference internal" href="#copyright">Copyright</a></li>
+<li><a class="reference internal" href="#api-documentation">API Documentation</a></li>
+<li><a class="reference internal" href="#notes-on-usage">Notes on Usage</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="apidocs/f90wrap.html"
+                        title="next chapter">f90wrap package</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="apidocs/f90wrap.html" title="f90wrap package"
+             >next</a> |</li>
+        <li><a href="#">f90wrap 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, James Kermode, Steven Murray.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>

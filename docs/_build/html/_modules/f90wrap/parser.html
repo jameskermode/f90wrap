@@ -1,0 +1,1371 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>f90wrap.parser &mdash; f90wrap 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="f90wrap 0.1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">f90wrap 0.1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for f90wrap.parser</h1><div class="highlight"><pre>
+<span class="c"># HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   f90wrap: F90 to Python interface generator with derived type support</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   Copyright James Kermode 2011</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   These portions of the source code are released under the GNU General</span>
+<span class="c"># HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   If you would like to license the source code under different terms,</span>
+<span class="c"># HF X   please contact James Kermode, james.kermode@gmail.com</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   When using this software, please cite the following reference:</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   http://www.jrkermode.co.uk/f90wrap</span>
+<span class="c"># HF X</span>
+<span class="c"># HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX</span>
+
+<span class="c"># Originally based on:</span>
+<span class="c"># f90doc - automatic documentation generator for Fortran 90</span>
+<span class="c"># Copyright (C) 2004 Ian Rutt</span>
+<span class="c">#</span>
+<span class="c"># This program is free software; you can redistribute it and/or</span>
+<span class="c"># modify it under the terms of the GNU General Public License as</span>
+<span class="c"># published by the Free Software Foundation; either version 2 of</span>
+<span class="c"># the License, or (at your option) any later version.</span>
+<span class="c">#</span>
+<span class="c"># This program is distributed in the hope that it will be useful,</span>
+<span class="c"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the</span>
+<span class="c"># GNU General Public License for more details.</span>
+<span class="c">#</span>
+<span class="c"># You should have received a copy of the GNU General Public</span>
+<span class="c"># License along with this program; if not, write to the Free</span>
+<span class="c"># Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,</span>
+<span class="c"># MA 02111-1307 USA</span>
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">f90wrap.fortran</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c"># Define some regular expressions</span>
+
+<span class="n">module</span>      <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^module&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">module_end</span>  <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^end\s*module&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">program</span>      <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^program&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">program_end</span>  <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^end\s*program&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">type_re</span>   <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^type\s+(?!\()&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">type_end</span>  <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^end\s*type&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">types</span>       <span class="o">=</span> <span class="s">r&#39;recursive|pure|double precision|elemental|(real(\(.*?\))?)|(complex(\(.*?\))?)|(integer(\(.*?\))?)|(logical)|(character(\(.*?\))?)|(type\s*\().*?(\))&#39;</span>
+<span class="n">attribs</span>     <span class="o">=</span> <span class="s">r&#39;allocatable|pointer|save|dimension\(.*?\)|parameter|target|public|private&#39;</span> <span class="c"># jrk33 added target</span>
+<span class="n">a_attribs</span>   <span class="o">=</span> <span class="s">r&#39;allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private&#39;</span>
+
+<span class="n">types_re</span>    <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">types</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">quoted</span>      <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;(</span><span class="se">\&quot;</span><span class="s">.*?</span><span class="se">\&quot;</span><span class="s">)|(</span><span class="se">\&#39;</span><span class="s">.*?</span><span class="se">\&#39;</span><span class="s">)&#39;</span><span class="p">)</span> <span class="c"># A quoted expression</span>
+<span class="n">comment</span>     <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;!.*&#39;</span><span class="p">)</span>                 <span class="c"># A comment</span>
+<span class="n">whitespace</span>  <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^\s*&#39;</span><span class="p">)</span>               <span class="c"># Initial whitespace</span>
+<span class="n">c_ret</span>       <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;\r&#39;</span><span class="p">)</span>
+
+<span class="n">iface</span>       <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^interface&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">iface_end</span>   <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^end\s*interface&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">subt</span>        <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^(recursive\s+)?subroutine&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">subt_end</span>    <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^end\s*subroutine\s*(\w*)&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">recursive</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;recursive&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">funct</span>       <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^((&#39;</span><span class="o">+</span><span class="n">types</span><span class="o">+</span><span class="s">r&#39;)\s+)*function&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="c">#funct       = re.compile(&#39;^function&#39;,re.IGNORECASE)</span>
+<span class="n">funct_end</span>   <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^end\s*function\s*(\w*)&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">prototype</span>   <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^module procedure ([a-zA-Z0-9_,\s]*)&#39;</span><span class="p">)</span>
+
+<span class="n">contains</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^contains&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">uses</span> <span class="o">=</span>  <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^use\s+&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">only</span> <span class="o">=</span>  <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;only\s*:\s*&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">decl</span>        <span class="o">=</span>  <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^(&#39;</span><span class="o">+</span><span class="n">types</span><span class="o">+</span><span class="s">r&#39;)\s*(,\s*(&#39;</span><span class="o">+</span><span class="n">attribs</span><span class="o">+</span><span class="s">r&#39;)\s*)*(::)?\s*\w+(\s*,\s*\w+)*&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">d_colon</span>     <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;::&#39;</span><span class="p">)</span>
+
+<span class="n">attr_re</span>     <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;(,\s*(&#39;</span><span class="o">+</span><span class="n">attribs</span><span class="o">+</span><span class="s">r&#39;)\s*)+&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">s_attrib_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">attribs</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+
+<span class="n">decl_a</span>        <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;^(&#39;</span><span class="o">+</span><span class="n">types</span><span class="o">+</span><span class="s">r&#39;)\s*(,\s*(&#39;</span><span class="o">+</span><span class="n">a_attribs</span><span class="o">+</span><span class="s">r&#39;)\s*)*(::)?\s*\w+(\s*,\s*\w+)*&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">attr_re_a</span>     <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;(,\s*(&#39;</span><span class="o">+</span><span class="n">a_attribs</span><span class="o">+</span><span class="s">r&#39;)\s*)+&#39;</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">s_attrib_re_a</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">a_attribs</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+<span class="n">cont_line</span>   <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;&amp;&#39;</span><span class="p">)</span>
+
+<span class="n">fdoc_comm</span>     <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^!\s*\*FD&#39;</span><span class="p">)</span>
+<span class="n">fdoc_comm_mid</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;!\s*\*FD&#39;</span><span class="p">)</span>
+<span class="n">fdoc_mark</span>     <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;_FD\s*&#39;</span><span class="p">)</span>
+<span class="n">fdoc_rv_mark</span>  <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;_FDRV\s*&#39;</span><span class="p">)</span>
+
+<span class="n">result_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;result\s*\((.*?)\)&#39;</span><span class="p">)</span>
+
+<span class="n">arg_split</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;\s*(\w*)\s*(\(.+?\))?\s*(=\s*[\w\.]+\s*)?,?\s*&#39;</span><span class="p">)</span>
+
+<span class="n">size_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;size\(([^,]+),([^\)]+)\)&#39;</span><span class="p">)</span>
+<span class="n">dimension_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^([-0-9.e]+)|((rank\(.*\))|(size\(.*\))|(len\(.*\))|(slen\(.*\)))$&#39;</span><span class="p">)</span>
+
+<span class="n">alnum</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="o">+</span><span class="n">string</span><span class="o">.</span><span class="n">digits</span><span class="o">+</span><span class="s">&#39;_&#39;</span>
+
+<span class="n">valid_dim_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$&#39;</span><span class="p">)</span>
+
+<span class="n">public</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;(^public$)|(^public\s*(\w+)\s*$)|(^public\s*::\s*(\w+)(\s*,\s*\w+)*$)&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">private</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(\s*,\s*\w+)*$)&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="remove_delimited"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.remove_delimited">[docs]</a><span class="k">def</span> <span class="nf">remove_delimited</span><span class="p">(</span><span class="n">line</span><span class="p">,</span><span class="n">d1</span><span class="p">,</span><span class="n">d2</span><span class="p">):</span>
+
+    <span class="n">bk</span><span class="o">=</span><span class="mi">0</span>
+    <span class="n">temp_str</span><span class="o">=</span><span class="s">&#39;&#39;</span>
+    <span class="n">undel_str</span><span class="o">=</span><span class="s">&#39;&#39;</span>
+    <span class="n">delimited</span><span class="o">=</span><span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">bk</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">==</span><span class="n">d2</span><span class="p">:</span>
+                <span class="n">bk</span><span class="o">=</span><span class="mi">0</span>
+                <span class="n">delimited</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp_str</span><span class="p">[:])</span>
+                <span class="n">temp_str</span><span class="o">=</span><span class="s">&#39;&#39;</span>
+                <span class="n">undel_str</span><span class="o">=</span><span class="n">undel_str</span><span class="o">+</span><span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="k">continue</span>
+            <span class="n">temp_str</span><span class="o">=</span><span class="n">temp_str</span><span class="o">+</span><span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">==</span><span class="n">d1</span><span class="p">:</span>
+            <span class="n">bk</span><span class="o">=</span><span class="mi">1</span>
+        <span class="n">undel_str</span><span class="o">=</span><span class="n">undel_str</span><span class="o">+</span><span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">bk</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">undel_str</span><span class="o">=</span><span class="n">undel_str</span><span class="o">+</span><span class="n">temp_str</span>
+
+    <span class="k">return</span> <span class="n">delimited</span><span class="p">,</span><span class="n">undel_str</span>
+</div>
+<div class="viewcode-block" id="recover_delimited"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.recover_delimited">[docs]</a><span class="k">def</span> <span class="nf">recover_delimited</span><span class="p">(</span><span class="n">line</span><span class="p">,</span><span class="n">d1</span><span class="p">,</span><span class="n">d2</span><span class="p">,</span><span class="n">delimited</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">delimited</span><span class="o">==</span><span class="p">[]:</span>
+        <span class="k">return</span> <span class="n">line</span><span class="p">,[]</span>
+
+    <span class="n">i</span><span class="o">=</span><span class="mi">0</span>
+    <span class="k">while</span> <span class="n">i</span><span class="o">&lt;</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">==</span><span class="n">d1</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">=</span><span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">delimited</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">delimited</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span>
+            <span class="n">delimited</span><span class="o">=</span><span class="n">delimited</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">line</span><span class="p">,</span><span class="n">delimited</span>
+
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="split_attribs"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.split_attribs">[docs]</a><span class="k">def</span> <span class="nf">split_attribs</span><span class="p">(</span><span class="n">atr</span><span class="p">):</span>
+
+    <span class="n">atr</span><span class="o">=</span><span class="n">atr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">&#39;[,]&#39;</span><span class="p">,</span><span class="n">atr</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">atr</span><span class="o">=</span><span class="n">atr</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">atr</span><span class="o">=</span><span class="n">atr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="n">atrc</span><span class="o">=</span><span class="n">atr</span>
+    <span class="n">bk</span><span class="o">=</span><span class="mi">0</span>
+    <span class="n">atrl</span><span class="o">=</span><span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atrc</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">atrc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">==</span><span class="s">&#39;(&#39;</span><span class="p">:</span>
+            <span class="n">bk</span><span class="o">=</span><span class="n">bk</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="n">bk</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">atrc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">==</span><span class="s">&#39;)&#39;</span><span class="p">:</span>
+            <span class="n">bk</span><span class="o">=</span><span class="n">bk</span><span class="o">-</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="n">bk</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">atrc</span><span class="o">=</span><span class="n">atrc</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;0&#39;</span><span class="o">+</span><span class="n">atrc</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="k">while</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;[,]&#39;</span><span class="p">,</span><span class="n">atrc</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">atrl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">atr</span><span class="p">[:</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;[,]&#39;</span><span class="p">,</span><span class="n">atrc</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()])</span> <span class="c"># jrk33 changed [\s,] to [,]</span>
+        <span class="n">atr</span><span class="o">=</span><span class="n">atr</span><span class="p">[</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;[,]&#39;</span><span class="p">,</span><span class="n">atrc</span><span class="p">)</span><span class="o">.</span><span class="n">end</span><span class="p">():]</span>
+        <span class="n">atrc</span><span class="o">=</span><span class="n">atrc</span><span class="p">[</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;[,]&#39;</span><span class="p">,</span><span class="n">atrc</span><span class="p">)</span><span class="o">.</span><span class="n">end</span><span class="p">():]</span>
+        
+    <span class="k">if</span> <span class="n">atr</span><span class="o">!=</span><span class="s">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">atrl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">atr</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">map</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">strip</span><span class="p">,</span><span class="n">atrl</span><span class="p">)</span> <span class="c"># jrk33 added strip</span>
+
+</div>
+<span class="n">hold_doc</span> <span class="o">=</span> <span class="bp">None</span>
+
+
+<div class="viewcode-block" id="F90File"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.F90File">[docs]</a><span class="k">class</span> <span class="nc">F90File</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">fname</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">fname</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">=</span><span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lineno</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lineno_offset</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dquotes</span><span class="o">=</span><span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">squotes</span><span class="o">=</span><span class="p">[]</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="F90File.lineno"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.F90File.lineno">[docs]</a>    <span class="k">def</span> <span class="nf">lineno</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lineno</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lineno_offset</span>
+</div>
+<div class="viewcode-block" id="F90File.next"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.F90File.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cline</span><span class="o">=</span><span class="s">&#39;&#39;</span>
+
+        <span class="k">while</span> <span class="p">(</span><span class="n">cline</span><span class="o">==</span><span class="s">&#39;&#39;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span><span class="o">!=</span><span class="mi">0</span><span class="p">):</span>
+            <span class="n">cline</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">cline</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;_FD&#39;</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="c"># jrk33 - join lines before removing delimiters</span>
+
+            <span class="c"># Join together continuation lines</span>
+            <span class="n">FD_index</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;_FD&#39;</span><span class="p">)</span>
+            <span class="n">com2_index</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;_COMMENT&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">FD_index</span><span class="o">==</span><span class="mi">0</span> <span class="ow">or</span> <span class="n">com2_index</span><span class="o">==</span><span class="mi">0</span><span class="p">):</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cont_index</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;&amp;&#39;</span><span class="p">)</span>
+                <span class="n">comm_index</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;!&#39;</span><span class="p">)</span>
+                <span class="k">while</span> <span class="p">(</span><span class="n">cont_index</span><span class="o">!=-</span><span class="mi">1</span> <span class="ow">and</span> <span class="p">(</span><span class="n">comm_index</span><span class="o">==-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">comm_index</span><span class="o">&gt;</span><span class="n">cont_index</span><span class="p">)):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">=</span><span class="p">[</span><span class="n">cline</span><span class="p">[:</span><span class="n">cont_index</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_lineno</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lineno</span> <span class="o">+</span> <span class="mi">1</span>                    
+                    <span class="n">cline</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">cont_index</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;&amp;&#39;</span><span class="p">)</span>
+
+            <span class="c"># split by &#39;!&#39;, if necessary            </span>
+            <span class="n">comm_index</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;!&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">comm_index</span><span class="o">!=-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">=</span><span class="p">[</span><span class="n">cline</span><span class="p">[:</span><span class="n">comm_index</span><span class="p">],</span><span class="n">cline</span><span class="p">[</span><span class="n">comm_index</span><span class="p">:]]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+                <span class="n">cline</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">cline</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="c"># jrk33 - changed comment mark from &#39;!*FD&#39; to &#39;!%&#39;</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;!%&#39;</span><span class="p">)</span><span class="o">!=-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">+</span><span class="p">[</span><span class="s">&#39;_FD&#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">2</span><span class="p">:]]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_lineno_offset</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">+</span><span class="p">[</span><span class="s">&#39;_COMMENT&#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_lineno_offset</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_lineno_offset</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_lineno</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lineno</span> <span class="o">+</span> <span class="mi">1</span>
+                                 
+            <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="k">if</span> <span class="n">cline</span><span class="o">==</span><span class="s">&#39;&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cline</span>
+
+
+</div></div>
+<div class="viewcode-block" id="check_uses"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_uses">[docs]</a><span class="k">def</span> <span class="nf">check_uses</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">uses</span><span class="p">,</span><span class="n">cline</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">cline</span><span class="o">=</span><span class="n">uses</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cline</span><span class="p">)</span>
+        <span class="n">cline</span><span class="o">=</span><span class="n">cline</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">out</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&quot;\w+&quot;</span><span class="p">),</span><span class="n">cline</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+        <span class="n">cline</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cline</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cline</span><span class="p">]</span>
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_doc"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_doc">[docs]</a><span class="k">def</span> <span class="nf">check_doc</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">cline</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">fdoc_mark</span><span class="p">,</span><span class="n">cline</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">=</span><span class="n">fdoc_mark</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cline</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+        <span class="n">cline</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cline</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cline</span><span class="p">]</span>
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_doc_rv"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_doc_rv">[docs]</a><span class="k">def</span> <span class="nf">check_doc_rv</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="n">cl</span><span class="o">=</span><span class="n">cline</span>
+
+    <span class="k">if</span> <span class="n">cl</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span> <span class="n">cl</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">fdoc_rv_mark</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">=</span><span class="n">fdoc_rv_mark</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_cont"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_cont">[docs]</a><span class="k">def</span> <span class="nf">check_cont</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="n">cl</span><span class="o">=</span><span class="n">cline</span>
+
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">contains</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s">&#39;yes&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_program"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_program">[docs]</a><span class="k">def</span> <span class="nf">check_program</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="k">global</span> <span class="n">hold_doc</span>
+
+    <span class="n">out</span><span class="o">=</span><span class="n">Program</span><span class="p">()</span>
+    <span class="n">cont</span><span class="o">=</span><span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">program</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="c"># Get program name</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="n">program</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;\w+&#39;</span><span class="p">),</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">==</span><span class="s">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;&lt;Unnamed&gt;&#39;</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+
+        <span class="c"># Get next line, and check each possibility in turn</span>
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">program_end</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+
+            <span class="c"># contains statement</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_cont</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">cont</span><span class="o">=</span><span class="mi">1</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">cont</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                
+                <span class="c"># use statements</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_uses</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">uses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+                
+                <span class="c"># Doc comment</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="c"># jrk33 - hold doc comment relating to next subrt or funct </span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">hold_doc</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="n">hold_doc</span> <span class="o">=</span> <span class="p">[</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">hold_doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+                <span class="c"># Subroutine definition</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_subt</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;    subroutine &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+                
+                <span class="c"># Function definition</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_funct</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;    function &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+
+                
+            
+            <span class="c"># If no joy, get next line</span>
+            <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_module"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_module">[docs]</a><span class="k">def</span> <span class="nf">check_module</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="k">global</span> <span class="n">hold_doc</span>
+
+    <span class="n">out</span><span class="o">=</span><span class="n">Module</span><span class="p">()</span>
+    <span class="n">cont</span><span class="o">=</span><span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+
+        <span class="c"># jrk33 - if we&#39;re holding a doc comment from before</span>
+        <span class="c"># subroutine definition, spit it out now</span>
+        <span class="k">if</span> <span class="n">hold_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hold_doc</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">hold_doc</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="c"># Get module name</span>
+        <span class="n">cl</span><span class="o">=</span><span class="n">module</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;\w+&#39;</span><span class="p">),</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+        
+        <span class="c"># Get next line, and check each possibility in turn</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        
+        <span class="k">while</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">module_end</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+
+            <span class="c"># contains statement</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_cont</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">cont</span><span class="o">=</span><span class="mi">1</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">cont</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+
+                <span class="c"># use statements</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_uses</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">uses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+                
+                <span class="c"># Doc comment</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">hold_doc</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="n">hold_doc</span> <span class="o">=</span> <span class="p">[</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">hold_doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+                <span class="c"># jrk33 - Interface definition</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_interface</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;    interface &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">interfaces</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+                
+                <span class="c"># Type definition</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_type</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;    type &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+                <span class="c"># Module variable</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_decl</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                        <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+                <span class="c"># public and private access specifiers</span>
+                <span class="n">m</span> <span class="o">=</span> <span class="n">public</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="s">&#39;public&#39;</span><span class="p">:</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">default_access</span> <span class="o">=</span> <span class="s">&#39;public&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;public&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;::&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">public_symbols</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">field</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)])</span>
+
+                <span class="n">m</span> <span class="o">=</span> <span class="n">private</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="s">&#39;private&#39;</span><span class="p">:</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">default_access</span> <span class="o">=</span> <span class="s">&#39;private&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;private&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;::&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">private_symbols</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">field</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)])</span>
+                
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="c"># jrk33 - hold doc comment relating to next subrt or funct </span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">hold_doc</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="n">hold_doc</span> <span class="o">=</span> <span class="p">[</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">hold_doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+                
+                <span class="c"># Subroutine definition</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_subt</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;    subroutine &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">interfaces</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">procedures</span><span class="p">):</span>
+                            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                                <span class="c"># Replace prototype with procedure</span>
+                                <span class="n">i</span><span class="o">.</span><span class="n">procedures</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                                <span class="k">break</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                        <span class="k">break</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+                
+                <span class="c"># Function definition</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_funct</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;    function &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">interfaces</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">procedures</span><span class="p">):</span>
+                            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                                <span class="c"># Replace prototype with procedure</span>
+                                <span class="n">i</span><span class="o">.</span><span class="n">procedures</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                                <span class="k">break</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                        <span class="k">break</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+            
+            <span class="c"># If no joy, get next line</span>
+            <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+ 
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_subt"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_subt">[docs]</a><span class="k">def</span> <span class="nf">check_subt</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">,</span> <span class="n">grab_hold_doc</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+
+    <span class="k">global</span> <span class="n">hold_doc</span>
+
+    <span class="n">out</span><span class="o">=</span><span class="n">Subroutine</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">subt</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+        
+        <span class="c"># Check if recursive</span>
+
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">recursive</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;recursive&#39;</span><span class="p">)</span>
+        
+        <span class="c"># Get subt name</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="n">subt</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;\w+&#39;</span><span class="p">),</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+
+        <span class="c"># Check to see if there are any arguments</span>
+
+        <span class="n">has_args</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;\(.+&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">has_args</span><span class="o">=</span><span class="mi">1</span>
+
+        <span class="c"># get argument list</span>
+            
+        <span class="k">if</span> <span class="n">has_args</span><span class="p">:</span>
+
+            <span class="n">cl</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;\w+&#39;</span><span class="p">,</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">,</span><span class="n">count</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">argl</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;[\W]+&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        
+            <span class="k">del</span><span class="p">(</span><span class="n">argl</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">del</span><span class="p">(</span><span class="n">argl</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">argl</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="k">while</span> <span class="n">cl</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;&#39;</span> <span class="ow">or</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;&amp;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">cl</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span> <span class="k">continue</span>
+                <span class="n">arglt</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;[\W]+&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+                <span class="k">del</span><span class="p">(</span><span class="n">arglt</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">arglt</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arglt</span><span class="p">:</span>
+                    <span class="n">argl</span><span class="o">.</span><span class="n">append</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">argl</span><span class="o">=</span><span class="p">[]</span>
+
+        <span class="n">argl</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="n">argl</span><span class="p">)</span>
+
+        <span class="c"># Get next line, and check each possibility in turn</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+
+            <span class="c"># Use statement</span>
+            <span class="c">##check=check_uses(cl,file)</span>
+            <span class="c">##if check[0]!=None:</span>
+            <span class="c">##    out.uses.append(check[0])</span>
+            <span class="c">##    cl=check[1]</span>
+            <span class="c">##    continue</span>
+
+            <span class="c"># Doc comment</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+
+            <span class="k">if</span> <span class="n">has_args</span><span class="p">:</span>
+                <span class="c"># Argument</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_arg</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+                <span class="c"># Interface section</span>
+                <span class="n">check</span><span class="o">=</span><span class="n">check_interface_decl</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">procedures</span><span class="p">:</span>
+                        <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                    <span class="n">cl</span> <span class="o">=</span> <span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">continue</span>
+
+
+            <span class="n">m</span> <span class="o">=</span> <span class="n">subt_end</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">m</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+                <span class="k">continue</span>
+            <span class="k">elif</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="c"># If no joy, get next line</span>
+            <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+
+
+        <span class="c"># Select only those declarations that match entries</span>
+        <span class="c"># in argument list</span>
+        
+        <span class="k">if</span> <span class="n">has_args</span><span class="p">:</span>
+            <span class="c">#t_re_str=&#39;(^&#39;</span>
+            <span class="n">ag_temp</span><span class="o">=</span><span class="p">[]</span>
+            <span class="c">#for a in argl:</span>
+            <span class="c">#    t_re_str=t_re_str+a+&#39;$)|(^&#39;</span>
+            <span class="c">#t_re_str=t_re_str[:-3]</span>
+            <span class="c">#t_re=re.compile(t_re_str,re.IGNORECASE)</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">argl</span><span class="p">:</span>
+                    <span class="n">ag_temp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+            <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">=</span><span class="n">ag_temp</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">argl</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">=</span><span class="p">[]</span>
+            
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="c"># jrk33 - if we&#39;re holding a doc comment from before</span>
+        <span class="c"># subroutine definition, spit it out now</span>
+        <span class="k">if</span> <span class="n">grab_hold_doc</span> <span class="ow">and</span> <span class="n">hold_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hold_doc</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">hold_doc</span> <span class="o">=</span> <span class="bp">None</span>
+
+
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+ 
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_funct"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_funct">[docs]</a><span class="k">def</span> <span class="nf">check_funct</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">,</span><span class="n">grab_hold_doc</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+
+    <span class="k">global</span> <span class="n">hold_doc</span>
+
+    <span class="n">out</span><span class="o">=</span><span class="n">Function</span><span class="p">()</span>
+   
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">funct</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">ret_val</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">ret_val</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">lineno</span>
+
+        <span class="c"># Check if recursive</span>
+
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">recursive</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;recursive&#39;</span><span class="p">)</span>
+            <span class="n">cl</span><span class="o">=</span><span class="n">recursive</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+
+        <span class="c"># Get return type, if present</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="n">cl</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">types_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">ret_val</span><span class="o">.</span><span class="n">type</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">types_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+
+        <span class="c"># jrk33 - Does function header specify alternate name of</span>
+        <span class="c"># return variable?</span>
+        <span class="n">ret_var</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">result_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">ret_var</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">result_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">cl</span> <span class="o">=</span> <span class="n">result_re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+
+        <span class="c"># Get func name</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="n">funct</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;\w+&#39;</span><span class="p">),</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+
+        <span class="c"># Default name of return value is function name</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">ret_val</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="c"># Check to see if there are any arguments</span>
+
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">r&#39;\([^\)]+&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">has_args</span><span class="o">=</span><span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">has_args</span><span class="o">=</span><span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">has_args</span><span class="p">:</span>
+            <span class="c"># get argument list</span>
+
+            <span class="n">cl</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;\w+&#39;</span><span class="p">,</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">,</span><span class="n">count</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">argl</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;[\W]+&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        
+            <span class="k">del</span><span class="p">(</span><span class="n">argl</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">del</span><span class="p">(</span><span class="n">argl</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">argl</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        
+            <span class="k">while</span> <span class="n">cl</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;&#39;</span> <span class="ow">or</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;&amp;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">cl</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span> 
+                    <span class="k">continue</span>
+                <span class="n">arglt</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;[\W]+&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+                <span class="k">del</span><span class="p">(</span><span class="n">arglt</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">arglt</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arglt</span><span class="p">:</span>
+                    <span class="n">argl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">argl</span><span class="o">=</span><span class="p">[]</span>
+
+        <span class="n">argl</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="n">argl</span><span class="p">)</span>
+
+        <span class="c"># Get next line, and check each possibility in turn</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+
+            <span class="c"># Use statement</span>
+            <span class="c">##check=check_uses(cl,file)</span>
+            <span class="c">##if check[0]!=None:</span>
+            <span class="c">##    out.uses.append(check[0])</span>
+            <span class="c">##    cl=check[1]</span>
+            <span class="c">##    continue</span>
+
+            <span class="c"># Doc comment - return value</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_doc_rv</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">ret_val_doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+            
+            <span class="c"># Doc comment</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="c"># Interface section</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_interface_decl</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">procedures</span><span class="p">:</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                <span class="n">cl</span> <span class="o">=</span> <span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="c"># Argument</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_arg</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                    <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">funct_end</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">m</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+                <span class="k">continue</span>
+            
+            <span class="k">elif</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">cl</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="c"># Select only those declarations that match entries</span>
+        <span class="c"># in argument list</span>
+
+        <span class="n">ag_temp</span><span class="o">=</span><span class="p">[]</span>
+
+        <span class="c">#if has_args:</span>
+        <span class="c">#    t_re_str=&#39;(^&#39;</span>
+        <span class="c">#    for a in argl:</span>
+        <span class="c">#        t_re_str=t_re_str+a+&#39;$)|(^&#39;</span>
+        <span class="c">#   t_re_str=t_re_str[:-3]</span>
+        <span class="c">#    t_re=re.compile(t_re_str,re.IGNORECASE)</span>
+            
+        <span class="n">name_re</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">has_args</span> <span class="ow">and</span> <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">argl</span> <span class="ow">and</span> \
+                   <span class="nb">len</span><span class="p">([</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ag_temp</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ag_temp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">name_re</span><span class="p">,</span><span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">ret_val</span><span class="o">=</span><span class="n">i</span>
+            <span class="k">if</span> <span class="n">ret_var</span> <span class="o">!=</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">ret_var</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">ret_val</span><span class="o">=</span><span class="n">i</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">=</span><span class="n">ag_temp</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">argl</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()))</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="c"># jrk33 - if we&#39;re holding a doc comment from before</span>
+        <span class="c"># subroutine definition, spit it out now</span>
+        <span class="k">if</span> <span class="n">grab_hold_doc</span> <span class="ow">and</span> <span class="n">hold_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hold_doc</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">hold_doc</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+ 
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_type"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_type">[docs]</a><span class="k">def</span> <span class="nf">check_type</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+<span class="c">#    global hold_doc</span>
+
+    <span class="n">out</span><span class="o">=</span><span class="n">Type</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">type_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+        
+        <span class="c"># jrk33 - see if it&#39;s a global variable of this type.</span>
+        <span class="c"># if so, do nothing - it will be found by check_decl</span>
+        <span class="k">if</span> <span class="n">decl</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+<span class="c">#        if hold_doc != None:</span>
+<span class="c">#            for line in hold_doc:</span>
+<span class="c">#                out.doc.append(line)</span>
+<span class="c">#            hold_doc = None</span>
+
+
+        <span class="c"># Get type name</span>
+        <span class="n">cl</span><span class="o">=</span><span class="n">type_re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;\w+&#39;</span><span class="p">),</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+
+        <span class="c"># Get next line, and check each possibility in turn</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">type_end</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="n">check</span><span class="o">=</span><span class="n">check_decl</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="check_interface"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_interface">[docs]</a><span class="k">def</span> <span class="nf">check_interface</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="k">global</span> <span class="n">hold_doc</span>
+    
+    <span class="n">out</span><span class="o">=</span><span class="n">Interface</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">iface</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+        
+        <span class="n">cl</span> <span class="o">=</span> <span class="n">iface</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="n">cl</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="c">#if out.name == &#39;&#39;:</span>
+        <span class="c">#    return [None, cl]</span>
+
+        <span class="k">if</span> <span class="n">hold_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hold_doc</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="n">hold_doc</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="n">cl</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">while</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">iface_end</span><span class="p">,</span> <span class="n">cl</span><span class="p">)</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+
+            <span class="n">check</span> <span class="o">=</span> <span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span> <span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cl</span> <span class="o">=</span> <span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="n">check</span> <span class="o">=</span> <span class="n">check_prototype</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span> <span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">out</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                <span class="n">cl</span> <span class="o">=</span> <span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="check_interface_decl"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_interface_decl">[docs]</a><span class="k">def</span> <span class="nf">check_interface_decl</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Interface</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">cl</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">iface</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+        
+        <span class="n">cl</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">while</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">iface_end</span><span class="p">,</span> <span class="n">cl</span><span class="p">)</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+
+            <span class="c"># Subroutine declaration</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_subt</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">,</span><span class="n">grab_hold_doc</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+                
+            <span class="c"># Function declaration</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_funct</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">,</span><span class="n">grab_hold_doc</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+            
+            <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+        <span class="n">out</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="check_prototype"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_prototype">[docs]</a><span class="k">def</span> <span class="nf">check_prototype</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="n">m</span> <span class="o">=</span> <span class="n">prototype</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">m</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">strip</span><span class="p">,</span> <span class="nb">map</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)))</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">[</span><span class="n">Prototype</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">out</span><span class="p">]</span>
+        
+        <span class="n">cl</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span> <span class="n">cl</span><span class="p">]</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span> <span class="n">cl</span><span class="p">]</span>
+    
+        
+
+            
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+
+</div>
+<div class="viewcode-block" id="check_decl"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_decl">[docs]</a><span class="k">def</span> <span class="nf">check_decl</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="n">out</span><span class="o">=</span><span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">decl</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+        
+        <span class="n">tp</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">types_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+        <span class="n">atr</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">attr_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">atr</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">atrl</span><span class="o">=</span><span class="n">s_attrib_re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">atr</span><span class="o">.</span><span class="n">group</span><span class="p">())</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atrl</span><span class="p">)):</span>
+                <span class="n">atrl</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">=</span><span class="n">atrl</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">atrl</span><span class="o">=</span><span class="p">[]</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">d_colon</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">names</span><span class="o">=</span><span class="n">cl</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">end</span><span class="p">():]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">names</span><span class="o">=</span><span class="n">types_re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        
+        <span class="c"># old line - doesn&#39;t handle array constants</span>
+        <span class="c"># nl=re.split(r&#39;\s*,\s*&#39;,names)</span>
+        <span class="n">nl</span><span class="o">=</span><span class="n">split_attribs</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+
+
+        <span class="n">alist</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atrl</span><span class="p">)):</span>
+            <span class="n">alist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">atrl</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+            
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+
+        <span class="n">dc</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">while</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Doc comment</span>
+            <span class="n">dc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nl</span><span class="p">)):</span>
+            <span class="n">nl</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="n">nl</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">nlv</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">r&#39;\s*=\s*&#39;</span><span class="p">,</span><span class="n">nl</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="n">names</span><span class="p">,</span> <span class="n">sizes</span> <span class="o">=</span> <span class="n">splitnames</span><span class="p">(</span><span class="n">nlv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">temp</span><span class="o">=</span><span class="n">Element</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">type</span><span class="o">=</span><span class="n">tp</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="n">dc</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="n">alist</span><span class="p">[:],</span>
+                         <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="n">lineno</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nlv</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+                <span class="n">temp</span><span class="o">.</span><span class="n">value</span><span class="o">=</span><span class="n">nlv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">sizes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+                <span class="n">temp</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;dimension&#39;</span><span class="o">+</span><span class="n">sizes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+</div>
+<div class="viewcode-block" id="splitnames"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.splitnames">[docs]</a><span class="k">def</span> <span class="nf">splitnames</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+   <span class="n">nl</span> <span class="o">=</span> <span class="p">[]</span>
+   <span class="n">sizes</span> <span class="o">=</span> <span class="p">[]</span>
+   <span class="n">b</span> <span class="o">=</span> <span class="mi">0</span>
+   <span class="n">namestart</span> <span class="o">=</span> <span class="mi">0</span>
+   <span class="n">sizestart</span> <span class="o">=</span> <span class="mi">0</span>
+   <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+   <span class="n">size</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+   <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="s">&#39;(&#39;</span><span class="p">:</span>
+         <span class="n">b</span> <span class="o">+=</span> <span class="mi">1</span>
+         <span class="n">size</span> <span class="o">+=</span> <span class="s">&#39;(&#39;</span>
+      <span class="k">elif</span> <span class="n">n</span> <span class="o">==</span> <span class="s">&#39;)&#39;</span><span class="p">:</span>
+         <span class="n">b</span> <span class="o">-=</span> <span class="mi">1</span>
+         <span class="n">size</span> <span class="o">+=</span> <span class="s">&#39;)&#39;</span>
+      <span class="k">elif</span> <span class="n">n</span> <span class="o">==</span> <span class="s">&#39;,&#39;</span> <span class="ow">and</span> <span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+         <span class="n">nl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+         <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+         <span class="n">sizes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+         <span class="n">size</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+      <span class="k">elif</span> <span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+         <span class="n">name</span> <span class="o">+=</span> <span class="n">n</span>
+      <span class="k">else</span><span class="p">:</span>
+         <span class="n">size</span> <span class="o">+=</span> <span class="n">n</span>
+
+   <span class="n">nl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+   <span class="n">sizes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+   <span class="k">return</span> <span class="n">nl</span><span class="p">,</span><span class="n">sizes</span>
+
+</div>
+<div class="viewcode-block" id="check_arg"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.check_arg">[docs]</a><span class="k">def</span> <span class="nf">check_arg</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">):</span>
+
+    <span class="n">out</span><span class="o">=</span><span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">cl</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">decl_a</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+        <span class="n">filename</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">filename</span>
+        <span class="n">lineno</span> <span class="o">=</span> <span class="nb">file</span><span class="o">.</span><span class="n">lineno</span>
+        
+        <span class="n">tp</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">types_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">d_colon</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">atr_temp</span><span class="o">=</span><span class="n">cl</span><span class="p">[</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">types_re</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span><span class="o">.</span><span class="n">end</span><span class="p">():</span><span class="n">m</span><span class="o">.</span><span class="n">start</span><span class="p">()]</span>
+            <span class="n">names</span><span class="o">=</span><span class="n">cl</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">end</span><span class="p">():]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">atr_temp</span><span class="o">=</span> <span class="s">&#39;&#39;</span>
+            <span class="n">names</span><span class="o">=</span><span class="n">types_re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">cl</span><span class="p">)</span>
+
+        <span class="n">atrl</span><span class="o">=</span><span class="n">split_attribs</span><span class="p">(</span><span class="n">atr_temp</span><span class="p">)</span>
+
+<span class="c">#        names=cl[re.search(d_colon,cl).end():]</span>
+<span class="c">##        nl=re.split(&#39;,&#39;,names)</span>
+<span class="c">##        for i in range(len(nl)):</span>
+<span class="c">##            nl[i]=nl[i].strip()</span>
+
+
+        <span class="c"># jrk33 - added code to cope with array declarations with</span>
+        <span class="c"># size after variable name, e.g. matrix(3,3) etc.</span>
+
+        <span class="c"># Remove values</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s">r&#39;=.*$&#39;</span><span class="p">,</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">names</span><span class="p">)</span>
+
+        <span class="n">nl</span><span class="p">,</span> <span class="n">sizes</span> <span class="o">=</span> <span class="n">splitnames</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+
+        <span class="n">alist</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">atrl</span><span class="p">)):</span>
+            <span class="n">alist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">atrl</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+
+        <span class="n">dc</span><span class="o">=</span><span class="p">[]</span>
+
+        <span class="k">while</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Doc comment</span>
+            <span class="n">dc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+
+        <span class="n">cl</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nl</span><span class="p">)):</span>
+            <span class="n">nl</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">=</span><span class="n">nl</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">temp</span><span class="o">=</span><span class="n">Argument</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">nl</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">doc</span><span class="o">=</span><span class="n">dc</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">tp</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="n">alist</span><span class="p">[:],</span>
+                          <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="n">lineno</span><span class="p">)</span>
+
+            <span class="c"># Append dimension if necessary</span>
+            <span class="k">if</span> <span class="n">sizes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+                <span class="n">temp</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;dimension&#39;</span><span class="o">+</span><span class="n">sizes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="p">[</span><span class="n">out</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">None</span><span class="p">,</span><span class="n">cl</span><span class="p">]</span>
+
+
+<span class="c">#+++++++++++++++++++++++++++++++++++++++++++++++++++++++</span>
+
+</div>
+<div class="viewcode-block" id="read_files"><a class="viewcode-back" href="../../apidocs/f90wrap.parser.html#f90wrap.parser.read_files">[docs]</a><span class="k">def</span> <span class="nf">read_files</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+
+    <span class="k">global</span> <span class="n">hold_doc</span>
+
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Root</span><span class="p">()</span>
+    
+    <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+
+        <span class="n">fname</span><span class="o">=</span><span class="n">fn</span>
+
+        <span class="c"># Open the filename for reading</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;processing file &#39;</span><span class="o">+</span><span class="n">fname</span><span class="p">)</span>
+        <span class="nb">file</span> <span class="o">=</span> <span class="n">F90File</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+
+        <span class="c"># Get first line</span>
+        
+        <span class="n">cline</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        
+        <span class="k">while</span> <span class="n">cline</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+
+            <span class="c"># programs</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_program</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;  program &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">root</span><span class="o">.</span><span class="n">programs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cline</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="c"># modules</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_module</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;  module &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">root</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cline</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+            <span class="c"># jrk33 - hold doc comment relating to next module, subrt or funct </span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_doc</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">hold_doc</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">hold_doc</span> <span class="o">=</span> <span class="p">[</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">hold_doc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cline</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+
+        
+            <span class="c"># stand-alone subroutines</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_subt</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;  subroutine &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">root</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cline</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+        
+            <span class="c"># stand-alone functions</span>
+            <span class="n">check</span><span class="o">=</span><span class="n">check_funct</span><span class="p">(</span><span class="n">cline</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;  function &#39;</span><span class="o">+</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">root</span><span class="o">.</span><span class="n">procedures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">check</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cline</span><span class="o">=</span><span class="n">check</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+       
+            <span class="n">cline</span><span class="o">=</span><span class="nb">file</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+    <span class="c"># apply some rules to the parsed tree</span>
+    <span class="kn">from</span> <span class="nn">fortran</span> <span class="kn">import</span> <span class="n">fix_argument_attributes</span><span class="p">,</span> <span class="n">LowerCaseConverter</span>
+    
+    <span class="n">root</span> <span class="o">=</span> <span class="n">fix_argument_attributes</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">LowerCaseConverter</span><span class="p">()</span><span class="o">.</span><span class="n">visit</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">root</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">f90wrap 0.1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, James Kermode, Steven Murray.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>

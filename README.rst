@@ -31,5 +31,10 @@ Usage
 f90doc --help
 f90wrap --help
 
+Authors
+=======
+
+James Kermode: james.kermode@gmail.com
+Steven Murray: steven.murray@uwa.edu.au
 
 

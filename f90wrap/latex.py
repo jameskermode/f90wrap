@@ -41,8 +41,7 @@ import copy
 import logging
 import os
 
-from f90wrap.fortran import (Fortran, Program, Module, Subroutine, Function,
-                             Declaration, Type, Interface, Prototype, FortranVisitor)
+from f90wrap import fortran as ft
 
 import sys
 major, minor = sys.version_info[0:2]
@@ -56,9 +55,9 @@ latex_ = re.compile(r'([_])')
 latex_special_chars = re.compile(r'([%#])')
 
 def escape_code_sample(matchobj):
-    s = matchobj.group(0).replace('$',r'\$')
-    s = s.replace('{','\{')
-    s = s.replace('}','\}')
+    s = matchobj.group(0).replace('$', r'\$')
+    s = s.replace('{', '\{')
+    s = s.replace('}', '\}')
     return s
 
 class LatexOutput(object):
@@ -66,7 +65,7 @@ class LatexOutput(object):
     def __init__(self):
         self.verbatim = False
         self.displaymath = False
-        self.sections = ['\section','\subsection*','\subparagraph']
+        self.sections = ['\section', '\subsection*', '\subparagraph']
 
     def print_line(self, str):
 
@@ -77,12 +76,12 @@ class LatexOutput(object):
         # Lines starting with '>' are to be printed verbatim
         if self.verbatim:
             if str[0] == '>':
-                self.stream.write(str[1:]+'\n')
+                self.stream.write(str[1:] + '\n')
                 return
             else:
                 self.verbatim = False
-                #print_line(r'\end{verbatim}')
-                #print_line(r'\end{sidebar}')
+                # print_line(r'\end{verbatim}')
+                # print_line(r'\end{sidebar}')
                 self.stream.write(r'''\end{verbatim}
                 %\end{boxedminipage}
 
@@ -99,44 +98,44 @@ class LatexOutput(object):
 
 
                 self.verbatim = True
-                self.stream.write(str[1:]+'\n')
+                self.stream.write(str[1:] + '\n')
                 return
             else:
                 pass
 
         if self.displaymath:
-            if re.search(r'\\end{(displaymath|equation|eqnarray)}',str):
+            if re.search(r'\\end{(displaymath|equation|eqnarray)}', str):
                 self.displaymath = False
         else:
-            if re.search(r'\\begin{(displaymath|equation|eqnarray)}',str):
+            if re.search(r'\\begin{(displaymath|equation|eqnarray)}', str):
                 self.displaymath = True
 
         # Escape latex special chars everywhere
-        s = latex_special_chars.sub(r'\\\1',str)
+        s = latex_special_chars.sub(r'\\\1', str)
 
         if not self.displaymath and not self.verbatim:
             # Escape '{' and '}' when between '...'
-            ##L = re.split(r"\\'", s)
-            ##L[::2] = [re.sub(r'([\{\}])',r'\\\1',p) for p in L[::2]]
-            ##s = "'".join(L)
-            
+            # #L = re.split(r"\\'", s)
+            # #L[::2] = [re.sub(r'([\{\}])',r'\\\1',p) for p in L[::2]]
+            # #s = "'".join(L)
+
             # Put code examples in single quotes in \texttt{} font
             s = re.sub(r"\\'", r"\\quote\\", s)
-            s = re.sub(r"'(.*?)'",escape_code_sample,s)
-            
+            s = re.sub(r"'(.*?)'", escape_code_sample, s)
+
             s = re.sub(r"\\quote\\", r"'", s)
 
             # Escape '_' only when not between $...$
-            L = re.split(r'\$',s)
-            L[::2] = [latex_.sub(r'\\\1',p) for p in L[::2]]
+            L = re.split(r'\$', s)
+            L[::2] = [latex_.sub(r'\\\1', p) for p in L[::2]]
 
-            
 
-            self.stream.write('$'.join(L)+'\n')
+
+            self.stream.write('$'.join(L) + '\n')
 
         else:
-            self.stream.write(s+'\n')
-        
+            self.stream.write(s + '\n')
+
 
 def uniq(L, idfun=None):
     if idfun is None:
@@ -154,17 +153,17 @@ def uniq(L, idfun=None):
 def combine_elements(elements):
     element_dict = {}
     func_args = []
-    i = 0 # counter for appearance order of args
+    i = 0  # counter for appearance order of args
     for a in elements:
-        if isinstance(a,Subroutine) or isinstance(a,Function):
+        if isinstance(a, ft.Subroutine) or isinstance(a, ft.Function):
             func_args.append(a)
             continue
         i = i + 1
-        element_dict[a.name] = (a,i)
+        element_dict[a.name] = (a, i)
 
     # Combine names with the same type, attributes and doc string
     rev_dict = {}
-    for type, name in zip( [ x[0].type.lower() + str([y.lower for y in x[0].attributes]) + str(x[0].doc) \
+    for type, name in zip([ x[0].type.lower() + str([y.lower for y in x[0].attributes]) + str(x[0].doc) \
                              for x in element_dict.values() ], element_dict.keys()):
         if rev_dict.has_key(type):
             rev_dict[type].append(element_dict[name])
@@ -181,7 +180,7 @@ def combine_elements(elements):
             length = 0
             while (length < 30 and n < len(names)):
                 length = length + len(names[n])
-                n = n +1
+                n = n + 1
             ns = names[:n]
             del names[:n]
             b = copy.copy(a)
@@ -197,17 +196,17 @@ def combine_elements(elements):
     return keys, rev_dict, func_args
 
 
-class LatexGenerator(FortranVisitor, LatexOutput):
+class LatexGenerator(ft.FortranVisitor, LatexOutput):
 
     def __init__(self, stream, fn='', short_doc=False):
-        FortranVisitor.__init__(self)
+        ft.FortranVisitor.__init__(self)
         LatexOutput.__init__(self)
         self.stream = stream
         self.depth = 0
         self.compact = False
         self.is_ret_val = False
         self.short_doc = short_doc
-        
+
 
     def visit_Program(self, node):
 
@@ -221,32 +220,32 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                 else:
                     node.doc = node.doc[1:]
 
-        
-        self.print_line( r"\newpage")
-        self.print_line(r'\index{general}{'+node.name+' program}')
-        self.print_line( self.sections[self.depth]+r'[Program \texttt{')
-        self.print_line( node.name+'}]')
-        self.print_line( r"""{Program \texttt{""")
-        self.print_line( node.name )
-        if self.depth==0:
-            self.print_line( r"""} in file """+node.filename+"""}""")
+
+        self.print_line(r"\newpage")
+        self.print_line(r'\index{general}{' + node.name + ' program}')
+        self.print_line(self.sections[self.depth] + r'[Program \texttt{')
+        self.print_line(node.name + '}]')
+        self.print_line(r"""{Program \texttt{""")
+        self.print_line(node.name)
+        if self.depth == 0:
+            self.print_line(r"""} in file """ + node.filename + """}""")
         else:
-            self.print_line( r"}}")
-        self.print_line( self.sections[self.depth+1]+"""{Purpose}""")
+            self.print_line(r"}}")
+        self.print_line(self.sections[self.depth + 1] + """{Purpose}""")
         for a in node.doc:
-            #self.print_line( a)
+            # self.print_line( a)
             self.print_line(a)
-        if node.uses!=[]:
-            self.print_line( self.sections[self.depth+1]+r"{Uses}")
-            u_temp=''
+        if node.uses != []:
+            self.print_line(self.sections[self.depth + 1] + r"{Uses}")
+            u_temp = ''
             for a in node.uses:
-                u_temp=u_temp+a+', '
-                if len(u_temp)>50:
-                    self.print_line( r"\texttt{"+u_temp[:-2]+"}")
-                    u_temp=''
+                u_temp = u_temp + a + ', '
+                if len(u_temp) > 50:
+                    self.print_line(r"\texttt{" + u_temp[:-2] + "}")
+                    u_temp = ''
                     self.print_line("\n")
-            if u_temp!='':
-                self.print_line( r"\texttt{"+u_temp[:-2]+"}")
+            if u_temp != '':
+                self.print_line(r"\texttt{" + u_temp[:-2] + "}")
         self.depth += 1
         for a in node.procedures:
             self.visit(a)
@@ -257,51 +256,51 @@ class LatexGenerator(FortranVisitor, LatexOutput):
 
         if node.doc:
             if node.doc[0].strip() == 'OMIT':
-                returns
+                return
 
             if node.doc[0].strip() == 'OMIT SHORT':
                 if self.short_doc:
                     return
                 else:
                     node.doc = node.doc[1:]
-                
-        
-        self.print_line( r"\newpage")
-        self.print_line(r'\index{general}{'+node.name+' module}')
-        self.print_line( self.sections[self.depth]+r'[Module \texttt{')
-        self.print_line( node.name+'}]')
-        self.print_line( r"""{Module \texttt{""")
-        self.print_line( node.name)
-        if self.depth==0:
-            self.print_line( r"""} in file """+node.filename+"""}""")
+
+
+        self.print_line(r"\newpage")
+        self.print_line(r'\index{general}{' + node.name + ' module}')
+        self.print_line(self.sections[self.depth] + r'[Module \texttt{')
+        self.print_line(node.name + '}]')
+        self.print_line(r"""{Module \texttt{""")
+        self.print_line(node.name)
+        if self.depth == 0:
+            self.print_line(r"""} in file """ + node.filename + """}""")
         else:
-            self.print_line( r"}}")
-        self.print_line( self.sections[self.depth+1]+"""{Purpose}""")
+            self.print_line(r"}}")
+        self.print_line(self.sections[self.depth + 1] + """{Purpose}""")
         for a in node.doc:
             self.print_line(a)
-        self.print_line( self.sections[self.depth+1]+r'{Usage}')
-        self.print_line('>    use '+node.name)
-        if node.uses!=[]:
-            self.print_line( self.sections[self.depth+1]+r"{Uses}")
-            u_temp=''
+        self.print_line(self.sections[self.depth + 1] + r'{Usage}')
+        self.print_line('>    use ' + node.name)
+        if node.uses != []:
+            self.print_line(self.sections[self.depth + 1] + r"{Uses}")
+            u_temp = ''
             for a in node.uses:
-                u_temp=u_temp+a+', '
-                if len(u_temp)>50:
-                    self.print_line( r"\texttt{"+u_temp[:-2]+"}")
-                    u_temp=''
+                u_temp = u_temp + a + ', '
+                if len(u_temp) > 50:
+                    self.print_line(r"\texttt{" + u_temp[:-2] + "}")
+                    u_temp = ''
                     self.print_line("\n")
-            if u_temp!='':
-                self.print_line( r"\texttt{"+u_temp[:-2]+"}")
+            if u_temp != '':
+                self.print_line(r"\texttt{" + u_temp[:-2] + "}")
 
-        if node.elements!=[]:
-            self.print_line( self.sections[self.depth+1]+r"""{Module variables}""")
+        if node.elements != []:
+            self.print_line(self.sections[self.depth + 1] + r"""{Module variables}""")
 
             keys, rev_dict, func_args = combine_elements(node.elements)
-            self.print_line( r"\begin{description}")
+            self.print_line(r"\begin{description}")
             for k in keys:
                 for a in rev_dict[k][0]:
                     self.visit(a)
-            self.print_line( r"\end{description}")
+            self.print_line(r"\end{description}")
 
         self.depth += 1
         for a in node.types:
@@ -326,16 +325,16 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                     node.doc = node.doc[1:]
 
         if self.compact:
-            if node.arguments!=[]:
-                argl='('+','.join([x.name for x in node.arguments])+')'
+            if node.arguments != []:
+                argl = '(' + ','.join([x.name for x in node.arguments]) + ')'
             else:
-                argl=''
+                argl = ''
 
-            d_ent=r"Subroutine \texttt{"+node.name+argl+"}"
+            d_ent = r"Subroutine \texttt{" + node.name + argl + "}"
 
-            self.print_line(r"\item["+d_ent+r"]\mbox{} \par\noindent")
+            self.print_line(r"\item[" + d_ent + r"]\mbox{} \par\noindent")
 
-            if node.arguments!=[]:
+            if node.arguments != []:
                 self.print_line(r'\begin{description}')
                 keys, rev_dict, func_args = combine_elements(node.arguments)
                 for k in keys:
@@ -350,57 +349,57 @@ class LatexGenerator(FortranVisitor, LatexOutput):
             return
 
 
-        if node.arguments!=[]:
-            argl='('
+        if node.arguments != []:
+            argl = '('
             for a in range(len(node.arguments)):
                 arg = node.arguments[a]
-                if isinstance(arg,Declaration) and 'optional' in arg.attributes:
+                if isinstance(arg, ft.Declaration) and 'optional' in arg.attributes:
                     if argl[-2:] == '],':
-                        argl = argl[:-2]+','+arg.name.rstrip()+'],'
+                        argl = argl[:-2] + ',' + arg.name.rstrip() + '],'
                     elif argl.rstrip()[-4:] == '], &':
-                        argl = argl.rstrip()[:-4]+', &\n                        '+arg.name.rstrip()+'],'
+                        argl = argl.rstrip()[:-4] + ', &\n                        ' + arg.name.rstrip() + '],'
                     elif argl[-1] == ',':
-                        argl = argl[:-1]+'[,'+arg.name.rstrip()+'],'
+                        argl = argl[:-1] + '[,' + arg.name.rstrip() + '],'
                     else:
-                        argl = argl+'['+arg.name.rstrip()+'],'
+                        argl = argl + '[' + arg.name.rstrip() + '],'
                 else:
-                    argl=argl+arg.name.rstrip()+','
-                if (a+1)%4==0.0 and a+1!=len(node.arguments):
-                    argl=argl+' &\n                        '
-            argl=argl[:-1]+')'
+                    argl = argl + arg.name.rstrip() + ','
+                if (a + 1) % 4 == 0.0 and a + 1 != len(node.arguments):
+                    argl = argl + ' &\n                        '
+            argl = argl[:-1] + ')'
         else:
-            argl=''
+            argl = ''
 
-        self.print_line(r'\index{general}{'+node.name+' subroutine}')
-        
-        if 'recursive' not in node.attributes:           
-            self.print_line( self.sections[self.depth]+r""" {Subroutine \texttt{"""+node.name)
+        self.print_line(r'\index{general}{' + node.name + ' subroutine}')
+
+        if 'recursive' not in node.attributes:
+            self.print_line(self.sections[self.depth] + r""" {Subroutine \texttt{""" + node.name)
         else:
-            self.print_line( self.sections[self.depth],r"""{Recursive subroutine \texttt{""",node.name)
+            self.print_line(self.sections[self.depth], r"""{Recursive subroutine \texttt{""", node.name)
 
         self.print_line("""}}""")
-        self.print_line('>    call '+node.name+argl)
-        
+        self.print_line('>    call ' + node.name + argl)
+
         for a in node.doc:
             self.print_line(a)
 
-        if node.uses!=[]:
-            self.print_line( self.sections[self.depth+1]+r"{Uses}")
-            u_temp=''
+        if node.uses != []:
+            self.print_line(self.sections[self.depth + 1] + r"{Uses}")
+            u_temp = ''
             for a in node.uses:
-                u_temp=u_temp+a+', '
-                if len(u_temp)>50:
-                    self.print_line( r"\texttt{"+u_temp[:-2]+"}")
-                    u_temp=''
+                u_temp = u_temp + a + ', '
+                if len(u_temp) > 50:
+                    self.print_line(r"\texttt{" + u_temp[:-2] + "}")
+                    u_temp = ''
                     self.print_line("\n")
-            if u_temp!='':
-                self.print_line( r"\texttt{"+u_temp[:-2]+"}")
+            if u_temp != '':
+                self.print_line(r"\texttt{" + u_temp[:-2] + "}")
 
-        if node.arguments!=[]:
+        if node.arguments != []:
 
             keys, rev_dict, func_args = combine_elements(node.arguments)
-            
-            self.print_line( r"\begin{description}")
+
+            self.print_line(r"\begin{description}")
             for k in keys:
                 for a in rev_dict[k][0]:
                     self.visit(a)
@@ -409,7 +408,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                 self.visit(f)
                 self.compact = False
 
-            self.print_line( r"\end{description}")
+            self.print_line(r"\end{description}")
 
 
     def visit_Function(self, node):
@@ -426,20 +425,20 @@ class LatexGenerator(FortranVisitor, LatexOutput):
 
 
         if self.compact:
-            if node.arguments!=[]:
-                argl='('+','.join([x.name for x in node.arguments])+')'
+            if node.arguments != []:
+                argl = '(' + ','.join([x.name for x in node.arguments]) + ')'
             else:
-                argl=''
+                argl = ''
 
 
-            d_ent=r"Function \texttt{"+node.name+argl+"} --- "+node.ret_val.type
+            d_ent = r"Function \texttt{" + node.name + argl + "} --- " + node.ret_val.type
 
             for a in node.ret_val.attributes:
-                d_ent=d_ent+", "+a
+                d_ent = d_ent + ", " + a
 
-            self.print_line(r"\item["+d_ent+r"]\mbox{} \par\noindent")
+            self.print_line(r"\item[" + d_ent + r"]\mbox{} \par\noindent")
 
-            if node.arguments!=[]:
+            if node.arguments != []:
 
                 keys, rev_dict, func_args = combine_elements(node.arguments)
 
@@ -459,35 +458,35 @@ class LatexGenerator(FortranVisitor, LatexOutput):
 #        self.print_line( r"""\rule{\textwidth}{0.5pt}""")
 
 
-        self.print_line(r'\index{general}{'+node.name+' function}')
+        self.print_line(r'\index{general}{' + node.name + ' function}')
 
-        if node.arguments!=[]:
-            argl='('
+        if node.arguments != []:
+            argl = '('
             for a in range(len(node.arguments)):
                 arg = node.arguments[a]
-                if isinstance(arg,Declaration) and 'optional' in arg.attributes:
+                if isinstance(arg, ft.Declaration) and 'optional' in arg.attributes:
                     if argl[-2:] == '],':
-                        argl = argl[:-2]+','+arg.name.rstrip()+'],'
+                        argl = argl[:-2] + ',' + arg.name.rstrip() + '],'
                     elif argl.rstrip()[-4:] == '], &':
-                        argl = argl.rstrip()[:-4]+', &\n                        '+arg.name.rstrip()+'],'
+                        argl = argl.rstrip()[:-4] + ', &\n                        ' + arg.name.rstrip() + '],'
                     elif argl[-1] == ',':
-                        argl = argl[:-1]+'[,'+arg.name.rstrip()+'],'
+                        argl = argl[:-1] + '[,' + arg.name.rstrip() + '],'
                     else:
-                        argl = argl+'['+arg.name.rstrip()+'],'
+                        argl = argl + '[' + arg.name.rstrip() + '],'
                 else:
-                    argl=argl+arg.name.rstrip()+','
-                if (a+1)%4==0.0 and a+1!=len(node.arguments):
-                    argl=argl+' &\n                        '
-            argl=argl[:-1]+')'
+                    argl = argl + arg.name.rstrip() + ','
+                if (a + 1) % 4 == 0.0 and a + 1 != len(node.arguments):
+                    argl = argl + ' &\n                        '
+            argl = argl[:-1] + ')'
         else:
-            argl=''
-        
+            argl = ''
+
         if 'recursive' not in node.attributes:
-            self.print_line( self.sections[self.depth]+r"""{Function \texttt{"""+node.name)
+            self.print_line(self.sections[self.depth] + r"""{Function \texttt{""" + node.name)
         else:
-            self.print_line( self.sections[self.depth]+r"""{Recursive function\texttt{"""+node.name)
-        if self.depth==0:
-            self.print_line("} (in file "+node.filename+")}")
+            self.print_line(self.sections[self.depth] + r"""{Recursive function\texttt{""" + node.name)
+        if self.depth == 0:
+            self.print_line("} (in file " + node.filename + ")}")
         else:
             self.print_line("""}}""")
 #        self.print_line( self.sections[depth+1]+r'{Usage}')
@@ -495,26 +494,26 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         ret_name = node.ret_val.name
         if ret_name.lower() == node.name.lower():
             ret_name = ret_name[0].lower()
-        self.print_line('>    '+ret_name+' = '+node.name+argl)
+        self.print_line('>    ' + ret_name + ' = ' + node.name + argl)
 #        self.print_line(r'\end{boxedminipage}'+'\n\n')
         for a in node.doc:
             self.print_line(a)
 
-        if node.uses!=[]:
-            self.print_line(self.sections[self.depth+1]+r"{Uses}")
-            u_temp=''
+        if node.uses != []:
+            self.print_line(self.sections[self.depth + 1] + r"{Uses}")
+            u_temp = ''
             for a in node.uses:
-                u_temp=u_temp+a+', '
-                if len(u_temp)>50:
-                    self.print_line(r"\texttt{"+u_temp[:-2]+"}")
-                    u_temp=''
+                u_temp = u_temp + a + ', '
+                if len(u_temp) > 50:
+                    self.print_line(r"\texttt{" + u_temp[:-2] + "}")
+                    u_temp = ''
                     self.print_line("\n")
-            if u_temp!='':
-                self.print_line(r"\texttt{"+u_temp[:-2]+"}")
+            if u_temp != '':
+                self.print_line(r"\texttt{" + u_temp[:-2] + "}")
 
         self.print_line(r"\begin{description}")
 
-        if node.arguments!=[]:
+        if node.arguments != []:
 
             keys, rev_dict, func_args = combine_elements(node.arguments)
 
@@ -526,7 +525,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                 self.compact = True
                 self.visit(f)
                 self.compact = False
-        
+
         #        self.print_line(self.sections[depth+1]+"{Return value --- ",)
 
 
@@ -535,7 +534,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         self.is_ret_val = True
         self.visit(node.ret_val)
         self.is_ret_val = False
-        
+
         self.print_line(r"]\mbox{} \par\noindent")
         for a in node.ret_val_doc:
             self.print_line(a)
@@ -558,39 +557,39 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         if self.is_ret_val:
             d_ent = node.type
             for a in node.attributes:
-                d_ent=d_ent+", "+a
-            if node.value!='':
-                d_ent=d_ent+r", value = \texttt{"+node.value+'}'
+                d_ent = d_ent + ", " + a
+            if node.value != '':
+                d_ent = d_ent + r", value = \texttt{" + node.value + '}'
             self.print_line(d_ent)
             return
 
         if type(node.type) == type([]) and len(node.type) > 1:
-            d_ent=r'\texttt{'+node.name+'} --- '
-            
+            d_ent = r'\texttt{' + node.name + '} --- '
+
 
             for a in node.attributes:
-                d_ent=d_ent+' '+a+', '
+                d_ent = d_ent + ' ' + a + ', '
 
             if d_ent[-1] == ',':
-                d_ent=d_ent[:-2] # remove trailing ','
+                d_ent = d_ent[:-2]  # remove trailing ','
 
-            if (sum([len(t) for t in node.type])+len(node.attributes) < 30):
-                self.print_line(r"\item["+d_ent+' \emph{or} '.join(node.type)+r"]\mbox{} \par\noindent")
+            if (sum([len(t) for t in node.type]) + len(node.attributes) < 30):
+                self.print_line(r"\item[" + d_ent + ' \emph{or} '.join(node.type) + r"]\mbox{} \par\noindent")
             else:
-                self.print_line(r"\item["+d_ent+r"]\mbox{} \par\noindent")
-                self.print_line(r'\bfseries{'+' \emph{or} '.join(node.type)+r'} \par\noindent')
+                self.print_line(r"\item[" + d_ent + r"]\mbox{} \par\noindent")
+                self.print_line(r'\bfseries{' + ' \emph{or} '.join(node.type) + r'} \par\noindent')
 
         else:
             if (type(node.type) == type([])):
                 typename = node.type[0]
             else:
                 typename = node.type
-            d_ent=r"\texttt{"+node.name+"} --- "+typename
+            d_ent = r"\texttt{" + node.name + "} --- " + typename
 
             for a in node.attributes:
-                d_ent=d_ent+", "+a
-                
-            self.print_line(r"\item["+d_ent+r"]\mbox{} \par\noindent")
+                d_ent = d_ent + ", " + a
+
+            self.print_line(r"\item[" + d_ent + r"]\mbox{} \par\noindent")
 
 
 #        if node.value!='':
@@ -599,8 +598,8 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         for a in node.doc:
             self.print_line(a)
         self.print_line('')
-        
-    
+
+
 
     def visit_Type(self, node):
 
@@ -619,12 +618,12 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         #        self.print_line( r"""\rule{\textwidth}{0.5pt}""")
 
 
-        self.print_line(r'\index{general}{'+node.name+' type}')
-        
-        self.print_line(r"""\subsection*{Type \texttt{"""+node.name+"""}}""")
+        self.print_line(r'\index{general}{' + node.name + ' type}')
+
+        self.print_line(r"""\subsection*{Type \texttt{""" + node.name + """}}""")
         for a in node.doc:
             self.print_line(a)
-            
+
         self.print_line(r"""\subsubsection*{Elements}""")
 
         keys, rev_dict, func_args = combine_elements(node.elements)
@@ -638,7 +637,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
 
 
     def visit_Interface(self, node):
-        
+
         if node.doc:
             if node.doc[0].strip() == 'OMIT':
                 return
@@ -650,18 +649,18 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                     node.doc = node.doc[1:]
 
 
-        
+
         #        self.print_line( r"""\rule{\textwidth}{0.5pt}""")
 
         if len(node.procedures) == 0:
             return
 
-        if any([isinstance(proc,Prototype) for proc in node.procedures]):
+        if any([isinstance(proc, ft.Prototype) for proc in node.procedures]):
             logging.debug('Skipping interface %s as some procedures were not found' % node.name)
             return
-        
-        n_sub  = sum([isinstance(proc,Subroutine) for proc in node.procedures])
-        n_func = sum([isinstance(proc,Function) for proc in node.procedures])
+
+        n_sub = sum([isinstance(proc, ft.Subroutine) for proc in node.procedures])
+        n_func = sum([isinstance(proc, ft.Function) for proc in node.procedures])
 
         if n_sub == len(node.procedures):
             is_sub = True
@@ -670,9 +669,9 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         else:
             raise ValueError('mixture of subroutines and functions in interface %s' % node.name)
 
-        self.print_line(r'\index{general}{'+node.name+' interface}')
-        
-        self.print_line(self.sections[self.depth]+r'{Interface \texttt{'+node.name+'}}')
+        self.print_line(r'\index{general}{' + node.name + ' interface}')
+
+        self.print_line(self.sections[self.depth] + r'{Interface \texttt{' + node.name + '}}')
 
         #        self.print_line(self.sections[depth+1]+r"""{Usage}""")
 
@@ -680,26 +679,26 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         #        self.print_line(r'\begin{boxedminipage}{\textwidth}')
         for sub in node.procedures:
 
-            if sub.arguments!=[]:
-                argl='('
+            if sub.arguments != []:
+                argl = '('
                 for a in range(len(sub.arguments)):
                     arg = sub.arguments[a]
-                    if isinstance(arg,Declaration) and 'optional' in arg.attributes:
+                    if isinstance(arg, ft.Declaration) and 'optional' in arg.attributes:
                         if argl[-2:] == '],':
-                            argl = argl[:-2]+','+arg.name.rstrip()+'],'
+                            argl = argl[:-2] + ',' + arg.name.rstrip() + '],'
                         elif argl.rstrip()[-4:] == '], &':
-                            argl = argl.rstrip()[:-4]+', &\n                        '+arg.name.rstrip()+'],'
+                            argl = argl.rstrip()[:-4] + ', &\n                        ' + arg.name.rstrip() + '],'
                         elif argl[-1] == ',':
-                            argl = argl[:-1]+'[,'+arg.name.rstrip()+'],'
+                            argl = argl[:-1] + '[,' + arg.name.rstrip() + '],'
                         else:
-                            argl = argl+'['+arg.name.rstrip()+'],'
+                            argl = argl + '[' + arg.name.rstrip() + '],'
                     else:
-                        argl=argl+arg.name.rstrip()+','
-                    if (a+1)%4==0.0 and a+1!=len(sub.arguments):
-                        argl=argl+' &\n                        '
-                argl=argl[:-1]+')'
+                        argl = argl + arg.name.rstrip() + ','
+                    if (a + 1) % 4 == 0.0 and a + 1 != len(sub.arguments):
+                        argl = argl + ' &\n                        '
+                argl = argl[:-1] + ')'
             else:
-                argl=''
+                argl = ''
 
             if not is_sub and sub.ret_val.name != sub.name:
                 hash_value = argl
@@ -714,10 +713,10 @@ class LatexGenerator(FortranVisitor, LatexOutput):
             if not is_sub:
                 ret_name = sub.ret_val.name
                 if ret_name.lower() == node.name.lower() or ret_name.lower() == sub.name.lower():
-                    ret_name = ret_name[0].lower()+str(node.procedures.index(sub)+1)
-                self.print_line('>    '+ret_name+' = '+node.name+argl)
+                    ret_name = ret_name[0].lower() + str(node.procedures.index(sub) + 1)
+                self.print_line('>    ' + ret_name + ' = ' + node.name + argl)
             else:
-                self.print_line('>    call '+node.name+argl)
+                self.print_line('>    call ' + node.name + argl)
                 #        self.print_line(r'\end{boxedminipage}'+'\n\n')
 
 
@@ -737,22 +736,22 @@ class LatexGenerator(FortranVisitor, LatexOutput):
 
 
             arg_dict = {}
-            i = 0 # counter for appearance order of args
+            i = 0  # counter for appearance order of args
             for sub in node.procedures:
                 for a in sub.arguments:
-                    if isinstance(a,Subroutine) or isinstance(a,Function):
+                    if isinstance(a, ft.Subroutine) or isinstance(a, Function):
                         func_args.append(a)
                         continue
                     i = i + 1
                     if arg_dict.has_key(a.name):
-                        if a.type.lower()+str(sorted(map(string.lower,a.attributes))) in \
-                           [x[0].type.lower()+str(sorted(map(string.lower, x[0].attributes))) for x in arg_dict[a.name]]:
-                            pass # already got this name/type/attribute combo 
+                        if a.type.lower() + str(sorted(map(string.lower, a.attributes))) in \
+                           [x[0].type.lower() + str(sorted(map(string.lower, x[0].attributes))) for x in arg_dict[a.name]]:
+                            pass  # already got this name/type/attribute combo
                         else:
-                            arg_dict[a.name].append((a,i))
-                            
+                            arg_dict[a.name].append((a, i))
+
                     else:
-                        arg_dict[a.name] = [(a,i)]
+                        arg_dict[a.name] = [(a, i)]
 
             # Combine multiple types with the same name
             for name in arg_dict:
@@ -762,7 +761,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                 attributes = []
 
                 contains_dimension = [ len([x for x in y if x.find('dimension') != -1]) != 0 for y in attr_lists ]
-                
+
                 for t in attr_lists:
                     attributes.extend(t)
                 attributes = uniq(attributes, string.lower)
@@ -775,19 +774,19 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                 if True in contains_dimension and False in contains_dimension:
                     dims.insert(0, 'scalar')
 
-                
+
                 if (len(dims) != 0):
                     attributes.append(' \emph{or} '.join(dims))
 
                 a = arg_dict[name][0][0]
-                a.type = types #r' \emph{or} '.join(types)
+                a.type = types  # r' \emph{or} '.join(types)
                 a.attributes = attributes
                 arg_dict[name] = (a, arg_dict[name][0][1])
 
 
             # Combine names with the same type, attributes and doc string
             rev_dict = {}
-            for type, name in zip( [ str([y.lower for y in x[0].type]) + \
+            for type, name in zip([ str([y.lower for y in x[0].type]) + \
                                      str([y.lower for y in x[0].attributes]) + str(x[0].doc) \
                                      for x in arg_dict.values() ], arg_dict.keys()):
                 if rev_dict.has_key(type):
@@ -807,7 +806,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                     length = 0
                     while (length < 30 and n < len(names)):
                         length = length + len(names[n])
-                        n = n +1
+                        n = n + 1
                     ns = names[:n]
                     del names[:n]
                     b = copy.copy(a)
@@ -823,7 +822,7 @@ class LatexGenerator(FortranVisitor, LatexOutput):
             for k in keys:
                 for a in rev_dict[k][0]:
                     self.visit(a)
-                            
+
             for f in func_args:
                 self.compact = True
                 self.visit(f)
@@ -833,11 +832,11 @@ class LatexGenerator(FortranVisitor, LatexOutput):
         if not is_sub:
             #            self.print_line(self.sections[depth+1]+"{Return value --- ",)
 
-            ret_types = [a.ret_val.type+str(a.ret_val.attributes) for a in node.procedures]
+            ret_types = [a.ret_val.type + str(a.ret_val.attributes) for a in node.procedures]
 
-            if len(filter(lambda x: x != node.procedures[0].ret_val.type+str(node.procedures[0].ret_val.attributes), \
+            if len(filter(lambda x: x != node.procedures[0].ret_val.type + str(node.procedures[0].ret_val.attributes), \
                           ret_types)) == 0:
-                
+
                 self.print_line(r"\item[Return value --- ",)
                 self.is_ret_val = True
                 self.visit(node.procedures[0].ret_val)
@@ -849,8 +848,8 @@ class LatexGenerator(FortranVisitor, LatexOutput):
                 self.print_line(r"\item[Return values:]\mbox{} \par\noindent")
                 self.print_line(r'\begin{description}')
                 for f in node.procedures:
-                    shortname = f.ret_val.name[0].lower()+str(node.procedures.index(f)+1)
-                    self.print_line(r"\item[\texttt{"+shortname+"} --- ")
+                    shortname = f.ret_val.name[0].lower() + str(node.procedures.index(f) + 1)
+                    self.print_line(r"\item[\texttt{" + shortname + "} --- ")
                     self.is_ret_val = True
                     self.visit(f.ret_val)
                     self.is_ret_val = False
@@ -869,7 +868,7 @@ def write_latex(root, doc_title, doc_author, do_short_doc, intro, header, stream
     # Print start
     if os.path.exists('COPYRIGHT'):
         for line in open('COPYRIGHT').readlines():
-            stream.write('%'+line.strip()+'\n')
+            stream.write('%' + line.strip() + '\n')
 
     if header:
         stream.write(r"""
@@ -901,9 +900,9 @@ def write_latex(root, doc_title, doc_author, do_short_doc, intro, header, stream
 \begin{document}
 
 
-\title{"""+doc_title+r"""}
+\title{""" + doc_title + r"""}
 \date{\today}
-\author{"""+doc_author+r"""}
+\author{""" + doc_author + r"""}
 \maketitle
 
 \thispagestyle{empty}
@@ -918,7 +917,7 @@ def write_latex(root, doc_title, doc_author, do_short_doc, intro, header, stream
 """)
 
     if intro is not None:
-        stream.write(r'\include{'+intro+'}')
+        stream.write(r'\include{' + intro + '}')
 
     lg = LatexGenerator(stream, '', do_short_doc)
 
@@ -930,7 +929,7 @@ def write_latex(root, doc_title, doc_author, do_short_doc, intro, header, stream
 
     if len(root.procedures) != 0:
 
-        stream.write(r'\section{Miscellaneous Subroutines and Functions}'+'\n')
+        stream.write(r'\section{Miscellaneous Subroutines and Functions}' + '\n')
 
         for subt in root.procedures:
             lg.visit(subt)

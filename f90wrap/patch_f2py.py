@@ -35,8 +35,8 @@ is generated. We make several changes to f2py:
 """
 
 import numpy
-if not tuple([int(x) for x in numpy.__version__.split('.')[0:3]]) >= (1,2,1):
-   raise ImportError('patch_f2py only tested with numpy version 1.2.1 or later, found version %s' % numpy.__version__)
+if not tuple([int(x) for x in numpy.__version__.split('.')[0:3]]) >= (1, 2, 1):
+    raise ImportError('patch_f2py only tested with numpy version 1.2.1 or later, found version %s' % numpy.__version__)
 
 
 import numpy.f2py.auxfuncs
@@ -82,12 +82,12 @@ numpy.f2py.rules.arg_rules[7]['cleanupfrompyobj'] = {l_not(persistant_callbacks)
                                                      persistant_callbacks: '}'}
 
 numpy.f2py.rules.arg_rules[8]['callfortran'] = {isintent_c:'#varname#,',
-                                                l_and(isoptional,l_not(isintent_c)):'#varname#_capi == Py_None ? NULL : &#varname#,',
-                                                l_and(l_not(isoptional),l_not(isintent_c)):'&#varname#,'}
+                                                l_and(isoptional, l_not(isintent_c)):'#varname#_capi == Py_None ? NULL : &#varname#,',
+                                                l_and(l_not(isoptional), l_not(isintent_c)):'&#varname#,'}
 
 
-numpy.f2py.rules.arg_rules[14]['callfortran'] = {isintent_c:'#varname#,',l_and(isoptional,l_not(isintent_c)):'#varname#_capi == Py_None ? NULL : &#varname#,',
-                                                 l_and(l_not(isoptional),l_not(isintent_c)):'&#varname#,'}
+numpy.f2py.rules.arg_rules[14]['callfortran'] = {isintent_c:'#varname#,', l_and(isoptional, l_not(isintent_c)):'#varname#_capi == Py_None ? NULL : &#varname#,',
+                                                 l_and(l_not(isoptional), l_not(isintent_c)):'&#varname#,'}
 
 numpy.f2py.rules.arg_rules[21]['callfortran'] = {isintent_out:'#varname#,', l_and(isoptional, l_not(isintent_out)):'#varname#_capi == Py_None ? NULL : #varname#,',
                                                  l_and(l_not(isoptional), l_not(isintent_out)): '#varname#,'}
@@ -127,7 +127,7 @@ import numpy.distutils.ccompiler
 numpy.distutils.fcompiler.FCompiler.library_option = library_option
 numpy.distutils.unixccompiler.UnixCCompiler.library_option = library_option
 
-# Replace distutils.ccompiler.CCompiler setup_compile and _prep_compile methods 
+# Replace distutils.ccompiler.CCompiler setup_compile and _prep_compile methods
 # with versions from Python 2.6.4 to avoid excessive recompilation of .o files
 # (see, e.g. http://stackoverflow.com/questions/3145933/python-distutils-builds-extensions-differently-on-different-machines)
 
@@ -182,7 +182,7 @@ def old_setup_compile(self, outdir, macros, incdirs, sources, depends,
      # XXX instead create build and issue skip messages inline
 
      if self.force:
-         skip_source = {}            # rebuild everything
+         skip_source = {}  # rebuild everything
          for source in sources:
              skip_source[source] = 0
      elif depends is None:
@@ -190,13 +190,13 @@ def old_setup_compile(self, outdir, macros, incdirs, sources, depends,
          # have to recompile according to a simplistic check. We
          # just compare the source and object file, no deep
          # dependency checking involving header files.
-         skip_source = {}            # rebuild everything
-         for source in sources:      # no wait, rebuild nothing
+         skip_source = {}  # rebuild everything
+         for source in sources:  # no wait, rebuild nothing
              skip_source[source] = 1
 
          n_sources, n_objects = newer_pairwise(sources, objects)
-         for source in n_sources:    # no really, only rebuild what's
-             skip_source[source] = 0 # out-of-date
+         for source in n_sources:  # no really, only rebuild what's
+             skip_source[source] = 0  # out-of-date
      else:
          # If depends is a list of files, then do a different
          # simplistic check.  Assume that each object depends on
@@ -241,7 +241,7 @@ def old_prep_compile(self, sources, output_dir, depends=None):
   assert len(objects) == len(sources)
 
   if self.force:
-      skip_source = {}            # rebuild everything
+      skip_source = {}  # rebuild everything
       for source in sources:
           skip_source[source] = 0
   elif depends is None:
@@ -249,13 +249,13 @@ def old_prep_compile(self, sources, output_dir, depends=None):
       # have to recompile according to a simplistic check. We
       # just compare the source and object file, no deep
       # dependency checking involving header files.
-      skip_source = {}            # rebuild everything
-      for source in sources:      # no wait, rebuild nothing
+      skip_source = {}  # rebuild everything
+      for source in sources:  # no wait, rebuild nothing
           skip_source[source] = 1
 
       n_sources, n_objects = newer_pairwise(sources, objects)
-      for source in n_sources:    # no really, only rebuild what's
-          skip_source[source] = 0 # out-of-date
+      for source in n_sources:  # no really, only rebuild what's
+          skip_source[source] = 0  # out-of-date
   else:
       # If depends is a list of files, then do a different
       # simplistic check.  Assume that each object depends on
@@ -280,4 +280,4 @@ def find_library_file(self, dirs, lib, debug=0):
 from distutils.ccompiler import CCompiler
 CCompiler._setup_compile = old_setup_compile
 CCompiler._prep_comile = old_prep_compile
-CCompiler.find_library_file = find_library_file   
+CCompiler.find_library_file = find_library_file
