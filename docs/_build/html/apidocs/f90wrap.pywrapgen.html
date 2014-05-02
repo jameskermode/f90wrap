@@ -1,0 +1,237 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>f90wrap.pywrapgen module &mdash; f90wrap 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="f90wrap 0.1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">f90wrap 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-f90wrap.pywrapgen">
+<span id="f90wrap-pywrapgen-module"></span><h1>f90wrap.pywrapgen module<a class="headerlink" href="#module-f90wrap.pywrapgen" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator">
+<em class="property">class </em><tt class="descclassname">f90wrap.pywrapgen.</tt><tt class="descname">PythonWrapperGenerator</tt><big>(</big><em>prefix</em>, <em>mod_name</em>, <em>types</em>, <em>imports=None</em>, <em>f90_mod_name=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="f90wrap.fortran.html#f90wrap.fortran.FortranVisitor" title="f90wrap.fortran.FortranVisitor"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.FortranVisitor</span></tt></a>, <a class="reference internal" href="f90wrap.codegen.html#f90wrap.codegen.CodeGenerator" title="f90wrap.codegen.CodeGenerator"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.codegen.CodeGenerator</span></tt></a></p>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><tt class="xref py py-obj docutils literal"><span class="pre">dedent</span></tt>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.format_doc_string" title="f90wrap.pywrapgen.PythonWrapperGenerator.format_doc_string"><tt class="xref py py-obj docutils literal"><span class="pre">format_doc_string</span></tt></a>(node)</td>
+<td>Generate Python docstring from Fortran docstring and call signature</td>
+</tr>
+<tr class="row-odd"><td><tt class="xref py py-obj docutils literal"><span class="pre">generic_visit</span></tt>(node)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><tt class="xref py py-obj docutils literal"><span class="pre">indent</span></tt>()</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><tt class="xref py py-obj docutils literal"><span class="pre">split_long_lines</span></tt>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><tt class="xref py py-obj docutils literal"><span class="pre">visit</span></tt>(node)</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Module" title="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Module"><tt class="xref py py-obj docutils literal"><span class="pre">visit_Module</span></tt></a>(node)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Procedure" title="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Procedure"><tt class="xref py py-obj docutils literal"><span class="pre">visit_Procedure</span></tt></a>(node)</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Root" title="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Root"><tt class="xref py py-obj docutils literal"><span class="pre">visit_Root</span></tt></a>(node)</td>
+<td>Wrap subroutines and functions that are outside of any Fortran modules</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Type" title="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Type"><tt class="xref py py-obj docutils literal"><span class="pre">visit_Type</span></tt></a>(node)</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><tt class="xref py py-obj docutils literal"><span class="pre">write</span></tt>(*args)</td>
+<td>behaves like print statement, with implied</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_constructor" title="f90wrap.pywrapgen.PythonWrapperGenerator.write_constructor"><tt class="xref py py-obj docutils literal"><span class="pre">write_constructor</span></tt></a>(node)</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_destructor" title="f90wrap.pywrapgen.PythonWrapperGenerator.write_destructor"><tt class="xref py py-obj docutils literal"><span class="pre">write_destructor</span></tt></a>(node)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_array_wrapper" title="f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_array_wrapper"><tt class="xref py py-obj docutils literal"><span class="pre">write_dt_array_wrapper</span></tt></a>(node,&nbsp;el,&nbsp;dims)</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_wrappers" title="f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_wrappers"><tt class="xref py py-obj docutils literal"><span class="pre">write_dt_wrappers</span></tt></a>(node,&nbsp;el)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_imports" title="f90wrap.pywrapgen.PythonWrapperGenerator.write_imports"><tt class="xref py py-obj docutils literal"><span class="pre">write_imports</span></tt></a>()</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_sc_array_wrapper" title="f90wrap.pywrapgen.PythonWrapperGenerator.write_sc_array_wrapper"><tt class="xref py py-obj docutils literal"><span class="pre">write_sc_array_wrapper</span></tt></a>(node,&nbsp;el,&nbsp;dims)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_scalar_wrappers" title="f90wrap.pywrapgen.PythonWrapperGenerator.write_scalar_wrappers"><tt class="xref py py-obj docutils literal"><span class="pre">write_scalar_wrappers</span></tt></a>(node,&nbsp;el)</td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><tt class="xref py py-obj docutils literal"><span class="pre">writelines</span></tt>(items)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.format_doc_string">
+<tt class="descname">format_doc_string</tt><big>(</big><em>node</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.format_doc_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.format_doc_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate Python docstring from Fortran docstring and call signature</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Module">
+<tt class="descname">visit_Module</tt><big>(</big><em>node</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.visit_Module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Module" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Procedure">
+<tt class="descname">visit_Procedure</tt><big>(</big><em>node</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.visit_Procedure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Procedure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Root">
+<tt class="descname">visit_Root</tt><big>(</big><em>node</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.visit_Root"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Root" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wrap subroutines and functions that are outside of any Fortran modules</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.visit_Type">
+<tt class="descname">visit_Type</tt><big>(</big><em>node</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.visit_Type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.visit_Type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.write_constructor">
+<tt class="descname">write_constructor</tt><big>(</big><em>node</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.write_constructor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_constructor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.write_destructor">
+<tt class="descname">write_destructor</tt><big>(</big><em>node</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.write_destructor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_destructor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_array_wrapper">
+<tt class="descname">write_dt_array_wrapper</tt><big>(</big><em>node</em>, <em>el</em>, <em>dims</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.write_dt_array_wrapper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_array_wrapper" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_wrappers">
+<tt class="descname">write_dt_wrappers</tt><big>(</big><em>node</em>, <em>el</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.write_dt_wrappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_dt_wrappers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.write_imports">
+<tt class="descname">write_imports</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.write_imports"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_imports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.write_sc_array_wrapper">
+<tt class="descname">write_sc_array_wrapper</tt><big>(</big><em>node</em>, <em>el</em>, <em>dims</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.write_sc_array_wrapper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_sc_array_wrapper" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="f90wrap.pywrapgen.PythonWrapperGenerator.write_scalar_wrappers">
+<tt class="descname">write_scalar_wrappers</tt><big>(</big><em>node</em>, <em>el</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/pywrapgen.html#PythonWrapperGenerator.write_scalar_wrappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.pywrapgen.PythonWrapperGenerator.write_scalar_wrappers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/apidocs/f90wrap.pywrapgen.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">f90wrap 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, James Kermode, Steven Murray.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>

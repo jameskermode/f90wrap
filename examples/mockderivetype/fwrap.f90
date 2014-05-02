@@ -7,12 +7,12 @@ module use_a_type
     type(atype), allocatable :: P_array(:) !% An array of derived types (not yet wrapped, but will be soon)
     real(8),allocatable :: vector(:) !% It also contains allocatable arrays
 
-    ! For simplicity, P has a variable of each of several base types.
-    ! That is, a logical, real, integer, real array (not allocatable!), and a
-    ! derived type from a different module.
+    !% For simplicity, P has a variable of each of several base types.
+    !% That is, a logical, real, integer, real array (not allocatable!), and a
+    !% derived type from a different module.
 
-    !I make a mock subroutine that uses all these bits in some way to make
-    !sure they all work.
+    !% I make a mock subroutine that uses all these bits in some way to make
+    !% sure they all work.
     contains
 
     !% Here's a routine that does something

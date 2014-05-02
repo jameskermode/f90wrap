@@ -1,0 +1,778 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>f90wrap.f90wrapgen &mdash; f90wrap 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="f90wrap 0.1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">f90wrap 0.1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for f90wrap.f90wrapgen</h1><div class="highlight"><pre>
+<span class="c"># HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   f90wrap: F90 to Python interface generator with derived type support</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   Copyright James Kermode 2011</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   These portions of the source code are released under the GNU General</span>
+<span class="c"># HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   If you would like to license the source code under different terms,</span>
+<span class="c"># HF X   please contact James Kermode, james.kermode@gmail.com</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   When using this software, please cite the following reference:</span>
+<span class="c"># HF X</span>
+<span class="c"># HF X   http://www.jrkermode.co.uk/f90wrap</span>
+<span class="c"># HF X</span>
+<span class="c"># HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX</span>
+
+<span class="kn">from</span> <span class="nn">f90wrap</span> <span class="kn">import</span> <span class="n">fortran</span> <span class="k">as</span> <span class="n">ft</span>
+<span class="kn">from</span> <span class="nn">f90wrap</span> <span class="kn">import</span> <span class="n">codegen</span> <span class="k">as</span> <span class="n">cg</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="c"># numeric codes for Fortran types.</span>
+<span class="c"># Those with suffix _A are 1D arrays, _A2 are 2D arrays</span>
+<span class="n">T_NONE</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">T_INTEGER</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">T_REAL</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">T_COMPLEX</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">T_LOGICAL</span> <span class="o">=</span> <span class="mi">4</span>
+
+<span class="n">T_INTEGER_A</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">T_REAL_A</span> <span class="o">=</span> <span class="mi">6</span>
+<span class="n">T_COMPLEX_A</span> <span class="o">=</span> <span class="mi">7</span>
+<span class="n">T_LOGICAL_A</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">T_CHAR</span> <span class="o">=</span> <span class="mi">9</span>
+
+<span class="n">T_CHAR_A</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">T_DATA</span> <span class="o">=</span> <span class="mi">11</span>
+<span class="n">T_INTEGER_A2</span> <span class="o">=</span> <span class="mi">12</span>
+<span class="n">T_REAL_A2</span> <span class="o">=</span> <span class="mi">13</span>
+
+<div class="viewcode-block" id="F90WrapperGenerator"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator">[docs]</a><span class="k">class</span> <span class="nc">F90WrapperGenerator</span><span class="p">(</span><span class="n">ft</span><span class="o">.</span><span class="n">FortranVisitor</span><span class="p">,</span> <span class="n">cg</span><span class="o">.</span><span class="n">CodeGenerator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates the Fortran90 code necessary to wrap a given Fortran parse tree</span>
+<span class="sd">    suitable for input to `f2py`. </span>
+<span class="sd">    </span>
+<span class="sd">    Each node of the tree (Module, Subroutine etc.) is wrapped according to the</span>
+<span class="sd">    rules in this class when visited (using `F90WrapperGenerator.visit()`). </span>
+<span class="sd">    </span>
+<span class="sd">    Each module&#39;s wrapper is written to a separate file, with top-level </span>
+<span class="sd">    procedures written to another separate file. Derived-types and arrays (both</span>
+<span class="sd">    of normal types and derive-types) are specially treated. For each, a number</span>
+<span class="sd">    of subroutines allowing the getting/setting of items, and retrieval of array</span>
+<span class="sd">    length are written. Furthermore, derived-types are treated as opaque </span>
+<span class="sd">    references to enable wrapping with `f2py`. </span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prefix : `str`</span>
+<span class="sd">        A string with which to prefix module, subroutine and type names.</span>
+<span class="sd">        </span>
+<span class="sd">    sizeof_fortran_t : `int`</span>
+<span class="sd">        The size, in bytes, of a pointer to a fortran derived type ??</span>
+<span class="sd">        </span>
+<span class="sd">    string_lengths : `dict`</span>
+<span class="sd">        This is never used...</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">,</span> <span class="n">string_lengths</span><span class="p">):</span>
+        <span class="n">cg</span><span class="o">.</span><span class="n">CodeGenerator</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="s">&#39; &#39;</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+                               <span class="n">max_length</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span>
+                               <span class="n">continuation</span><span class="o">=</span><span class="s">&#39;&amp;&#39;</span><span class="p">)</span>
+        <span class="n">ft</span><span class="o">.</span><span class="n">FortranVisitor</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sizeof_fortran_t</span> <span class="o">=</span> <span class="n">sizeof_fortran_t</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">string_lengths</span> <span class="o">=</span> <span class="n">string_lengths</span>
+
+<div class="viewcode-block" id="F90WrapperGenerator.visit_Root"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.visit_Root">[docs]</a>    <span class="k">def</span> <span class="nf">visit_Root</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write a wrapper for top-level procedures. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">f90_wrapper_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s%s</span><span class="s">.f90&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="s">&#39;toplevel&#39;</span><span class="p">),</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+            <span class="n">f90_wrapper_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+            <span class="n">f90_wrapper_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.visit_Module"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.visit_Module">[docs]</a>    <span class="k">def</span> <span class="nf">visit_Module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Wrap modules. Each Fortran module generates one wrapper source file.</span>
+<span class="sd">        </span>
+<span class="sd">        Subroutines and elements within each module are properly wrapped.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;F90WrapperGenerator visiting module </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">elements</span><span class="p">:</span>
+            <span class="n">dims</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;dimension&#39;</span><span class="p">),</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c"># proper scalar type (normal or derived)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_write_scalar_wrappers</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizeof_fortran_t</span><span class="p">)</span>  <span class="c"># where to get sizeof_fortran_t from??</span>
+            <span class="k">elif</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">):</span>  <span class="c"># array of derived types</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_write_dt_array_wrapper</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizeof_fortran_t</span><span class="p">)</span>  <span class="c"># where to get dims from?</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_write_sc_array_wrapper</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizeof_fortran_t</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">f90_wrapper_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s%s</span><span class="s">.f90&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">),</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+            <span class="n">f90_wrapper_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+            <span class="n">f90_wrapper_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">=</span> <span class="p">[]</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_uses_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_uses_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_uses_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write &quot;uses mod, only: sub&quot; lines to the code.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        node : Node of parse tree</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="s">&#39;uses&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">uses</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">uses</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">uses</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                    <span class="n">mod</span><span class="p">,</span> <span class="n">only</span> <span class="o">=</span> <span class="n">uses</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">mod</span><span class="p">,</span> <span class="n">only</span> <span class="o">=</span> <span class="n">uses</span><span class="p">,</span> <span class="bp">None</span>
+                <span class="k">if</span> <span class="n">only</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;use </span><span class="si">%s</span><span class="s">, only: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="s">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">only</span><span class="p">)))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;use </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">mod</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_type_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_type_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_type_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tname</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write a pointer type for a given type name</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tname : `str`</span>
+<span class="sd">            Should be the name of a derived type in the wrapped code.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tname</span> <span class="o">=</span> <span class="n">ft</span><span class="o">.</span><span class="n">strip_type</span><span class="p">(</span><span class="n">tname</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;type </span><span class="si">%(typename)s</span><span class="s">_ptr_type</span>
+<span class="s">    type(</span><span class="si">%(typename)s</span><span class="s">), pointer :: p =&gt; NULL()</span>
+<span class="s">end type </span><span class="si">%(typename)s</span><span class="s">_ptr_type&quot;&quot;&quot;</span> <span class="o">%</span> <span class="p">{</span><span class="s">&#39;typename&#39;</span><span class="p">:</span> <span class="n">tname</span><span class="p">})</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_arg_decl_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_arg_decl_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_arg_decl_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write argument declaration lines to the code</span>
+<span class="sd">        </span>
+<span class="sd">        Takes care of argument attributes, and opaque references for derived </span>
+<span class="sd">        types, as well as f2py-specific lines.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span><span class="p">:</span>
+            <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">attr</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">arg</span><span class="o">.</span><span class="n">attributes</span> <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;optional&#39;</span><span class="p">,</span> <span class="s">&#39;pointer&#39;</span><span class="p">,</span> <span class="s">&#39;intent(in)&#39;</span><span class="p">,</span>
+                                                                       <span class="s">&#39;intent(out)&#39;</span><span class="p">,</span> <span class="s">&#39;intent(inout)&#39;</span><span class="p">)</span> <span class="ow">or</span>
+                                                                       <span class="n">attr</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;dimension&#39;</span><span class="p">)</span> <span class="p">]</span>
+            <span class="n">arg_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;arg_type&#39;</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">type</span><span class="p">,</span>
+                        <span class="s">&#39;type_name&#39;</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">arg</span><span class="o">.</span><span class="n">type</span><span class="p">[</span><span class="mi">5</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">None</span><span class="p">,</span>
+                        <span class="s">&#39;arg_name&#39;</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>  <span class="c"># self.prefix+arg.name}</span>
+
+            <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">transfer_in</span> <span class="ow">or</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">transfer_out</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;type(</span><span class="si">%(type_name)s</span><span class="s">_ptr_type) :: </span><span class="si">%(arg_name)s</span><span class="s">_ptr&#39;</span> <span class="o">%</span> <span class="n">arg_dict</span><span class="p">)</span>
+                <span class="n">arg_dict</span><span class="p">[</span><span class="s">&#39;arg_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">arg</span><span class="o">.</span><span class="n">wrapper_type</span>
+                <span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;dimension(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">arg</span><span class="o">.</span><span class="n">wrapper_dim</span><span class="p">)</span>
+
+            <span class="n">arg_dict</span><span class="p">[</span><span class="s">&#39;arg_attribs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span>
+            <span class="n">arg_dict</span><span class="p">[</span><span class="s">&#39;comma&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="s">&#39;, &#39;</span> <span class="ow">or</span> <span class="s">&#39;&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%(arg_type)s%(comma)s%(arg_attribs)s</span><span class="s"> :: </span><span class="si">%(arg_name)s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">arg_dict</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="s">&#39;f2py_line&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">f2py_line</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_transfer_in_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_transfer_in_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_transfer_in_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write transfer of opaque references.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span><span class="p">:</span>
+            <span class="n">arg_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;arg_name&#39;</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>  <span class="c"># self.prefix+arg.name,</span>
+                        <span class="s">&#39;arg_type&#39;</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">type</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">transfer_in</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s">&#39;optional&#39;</span> <span class="ow">in</span> <span class="n">arg</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;if (present(</span><span class="si">%(arg_name)s</span><span class="s">)) then&quot;</span> <span class="o">%</span> <span class="n">arg_dict</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%(arg_name)s</span><span class="s">_ptr = transfer(</span><span class="si">%(arg_name)s</span><span class="s">, </span><span class="si">%(arg_name)s</span><span class="s">_ptr)&#39;</span> <span class="o">%</span> <span class="n">arg_dict</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="s">&#39;optional&#39;</span> <span class="ow">in</span> <span class="n">arg</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;else&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%(arg_name)s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p =&gt; null()&#39;</span> <span class="o">%</span> <span class="n">arg_dict</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end if&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_init_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_init_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_init_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write special user-provided init lines to a node.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">alloc</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">allocate</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;allocate(</span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p)&#39;</span> <span class="o">%</span> <span class="n">alloc</span><span class="p">)</span>  <span class="c"># (self.prefix, alloc))</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="s">&#39;init_lines&#39;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">exe_optional</span><span class="p">,</span> <span class="n">exe</span> <span class="o">=</span> <span class="n">arg</span><span class="o">.</span><span class="n">init_lines</span>
+            <span class="n">D</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;OLD_ARG&#39;</span><span class="p">:</span><span class="n">arg</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                 <span class="s">&#39;ARG&#39;</span><span class="p">:</span><span class="n">arg</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>  <span class="c"># self.prefix+arg.name,</span>
+                 <span class="s">&#39;PTR&#39;</span><span class="p">:</span><span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&#39;_ptr%p&#39;</span><span class="p">}</span>
+            <span class="k">if</span> <span class="s">&#39;optional&#39;</span> <span class="ow">in</span> <span class="n">arg</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">exe_optional</span> <span class="o">%</span> <span class="n">D</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">exe</span> <span class="o">%</span> <span class="n">D</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_call_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_call_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_call_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Properly write function/subroutine calls</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s">&#39;skip_call&#39;</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="s">&#39;orig_node&#39;</span><span class="p">):</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">orig_node</span>
+
+        <span class="k">def</span> <span class="nf">dummy_arg_name</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="k">def</span> <span class="nf">actual_arg_name</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">transfer_in</span> <span class="ow">or</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">transfer_out</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p&#39;</span> <span class="o">%</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">mod_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># use keyword arguments if subroutine is in a module and we have an explicit interface</span>
+            <span class="n">arg_names</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">=</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">dummy_arg_name</span><span class="p">(</span><span class="n">arg</span><span class="p">),</span> <span class="n">actual_arg_name</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span>
+                        <span class="k">if</span> <span class="s">&#39;intent(hide)&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arg</span><span class="o">.</span><span class="n">attributes</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">arg_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">actual_arg_name</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span> <span class="k">if</span> <span class="s">&#39;intent(hide)&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">arg</span><span class="o">.</span><span class="n">attributes</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Function</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%(ret_val)s</span><span class="s"> = </span><span class="si">%(func_name)s</span><span class="s">(</span><span class="si">%(arg_names)s</span><span class="s">)&#39;</span> <span class="o">%</span>
+                       <span class="p">{</span><span class="s">&#39;ret_val&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">ret_val</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="s">&#39;func_name&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="s">&#39;arg_names&#39;</span><span class="p">:</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">arg_names</span><span class="p">)})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;call </span><span class="si">%(sub_name)s</span><span class="s">(</span><span class="si">%(arg_names)s</span><span class="s">)&#39;</span> <span class="o">%</span>
+                       <span class="p">{</span><span class="s">&#39;sub_name&#39;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="s">&#39;arg_names&#39;</span><span class="p">:</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">arg_names</span><span class="p">)})</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_transfer_out_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_transfer_out_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_transfer_out_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        WRite transfer from opaque reference.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">transfer_out</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%(arg_name)s</span><span class="s"> = transfer(</span><span class="si">%(arg_name)s</span><span class="s">_ptr, </span><span class="si">%(arg_name)s</span><span class="s">)&#39;</span> <span class="o">%</span>
+                           <span class="p">{</span><span class="s">&#39;arg_name&#39;</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">name</span><span class="p">})</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.write_finalise_lines"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.write_finalise_lines">[docs]</a>    <span class="k">def</span> <span class="nf">write_finalise_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deallocate the opaque reference to clean up.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">dealloc</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">deallocate</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;deallocate(</span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p)&#39;</span> <span class="o">%</span> <span class="n">dealloc</span><span class="p">)</span>  <span class="c"># (self.prefix, dealloc))</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.visit_Subroutine"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.visit_Subroutine">[docs]</a>    <span class="k">def</span> <span class="nf">visit_Subroutine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visit a Subroutine node of the parse tree.</span>
+<span class="sd">        </span>
+<span class="sd">        Writes the code necessary for each propery wrapped subroutine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;F90WrapperGenerator visiting subroutine </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;subroutine </span><span class="si">%(sub_name)s</span><span class="s">(</span><span class="si">%(arg_names)s</span><span class="s">)&quot;</span> <span class="o">%</span>
+                   <span class="p">{</span><span class="s">&#39;sub_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="s">&#39;arg_names&#39;</span><span class="p">:</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">arg</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">arguments</span><span class="p">])})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_uses_lines</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;implicit none&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">tname</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">types</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">tname</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_arg_decl_lines</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_transfer_in_lines</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_init_lines</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_call_lines</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_transfer_out_lines</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_finalise_lines</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;end subroutine </span><span class="si">%(sub_name)s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">{</span><span class="s">&#39;sub_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="F90WrapperGenerator.visit_Type"><a class="viewcode-back" href="../../apidocs/f90wrap.f90wrapgen.html#f90wrap.f90wrapgen.F90WrapperGenerator.visit_Type">[docs]</a>    <span class="k">def</span> <span class="nf">visit_Type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Properly wraps derived types, including derived-type arrays.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;F90WrapperGenerator visiting type </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">elements</span><span class="p">:</span>
+            <span class="n">dims</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;dimension&#39;</span><span class="p">),</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c"># proper scalar type (normal or derived)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_write_scalar_wrappers</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizeof_fortran_t</span><span class="p">)</span>  <span class="c"># where to get sizeof_fortran_t from??</span>
+            <span class="k">elif</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">):</span>  <span class="c"># array of derived types</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_write_dt_array_wrapper</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizeof_fortran_t</span><span class="p">)</span>  <span class="c"># where to get dims from?</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_write_sc_array_wrapper</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizeof_fortran_t</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_write_sc_array_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write wrapper for sc?? arrays</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t : `fortran.Type` node</span>
+<span class="sd">            Derived-type node of the parse tree.</span>
+<span class="sd">            </span>
+<span class="sd">        el : `fortran.Element` node</span>
+<span class="sd">            An element of a module which is derived-type array</span>
+<span class="sd">            </span>
+<span class="sd">        dims : `tuple` of `int`s</span>
+<span class="sd">            The dimensions of the element</span>
+<span class="sd">            </span>
+<span class="sd">        sizeof_fortan_t : `int`</span>
+<span class="sd">            The size, in bytes, of a pointer to a fortran derived type ??</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># The following maps the element type to a numeric code</span>
+        <span class="n">fortran_type_code</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;d&#39;</span><span class="p">:</span> <span class="n">T_REAL_A</span><span class="p">,</span>
+                             <span class="s">&#39;i&#39;</span><span class="p">:</span> <span class="n">T_INTEGER_A</span><span class="p">,</span>
+                             <span class="s">&#39;S&#39;</span><span class="p">:</span> <span class="n">T_CHAR_A</span><span class="p">,</span>
+                             <span class="s">&#39;complex&#39;</span><span class="p">:</span> <span class="n">T_COMPLEX_A</span><span class="p">}</span>
+
+        <span class="n">numpy_type_map</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;real(8)&#39;</span><span class="p">:</span> <span class="s">&#39;d&#39;</span><span class="p">,</span>  <span class="c"># FIXME user-provided kinds should be included here</span>
+                          <span class="s">&#39;real(dp)&#39;</span><span class="p">:</span><span class="s">&#39;d&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;real(dl)&#39;</span><span class="p">:</span><span class="s">&#39;d&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;integer&#39;</span><span class="p">:</span><span class="s">&#39;i&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;logical&#39;</span><span class="p">:</span><span class="s">&#39;i&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;character*(*)&#39;</span><span class="p">:</span><span class="s">&#39;S&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;complex(dp)&#39;</span><span class="p">:</span><span class="s">&#39;complex&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;real(16)&#39;</span><span class="p">:</span><span class="s">&#39;float128&#39;</span><span class="p">,</span>
+                          <span class="s">&#39;real(qp)&#39;</span><span class="p">:</span><span class="s">&#39;float128&#39;</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="n">numpy_type_map</span><span class="p">:</span>
+            <span class="n">typename</span> <span class="o">=</span> <span class="n">numpy_type_map</span><span class="p">[</span><span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">typename</span> <span class="o">=</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+            <span class="n">this</span> <span class="o">=</span> <span class="s">&#39;this, &#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">this</span> <span class="o">=</span> <span class="s">&#39;dummy_this, &#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;subroutine </span><span class="si">%s%s</span><span class="s">__array__</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">nd, dtype, dshape, dloc)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">this</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_uses_lines</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+            <span class="n">use_only</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">use_only</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="n">use_only</span> <span class="o">=</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">use_only</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;use </span><span class="si">%s</span><span class="s">, only: &#39;</span> <span class="o">%</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="n">use_only</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;implicit none&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(in) :: this(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">sizeof_fortran_t</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;type(</span><span class="si">%s</span><span class="s">_ptr_type) :: this_ptr&#39;</span> <span class="o">%</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(in) :: dummy_this(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">sizeof_fortran_t</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(out) :: nd&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(out) :: dtype&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">rank</span> <span class="o">=</span> <span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;character&#39;</span><span class="p">):</span> <span class="n">rank</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">rank</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, dimension(10), intent(out) :: dshape&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer*</span><span class="si">%d</span><span class="s">, intent(out) :: dloc&#39;</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s">&#39;O&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">itemsize</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;nd = </span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">rank</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;dtype = </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">fortran_type_code</span><span class="p">[</span><span class="n">typename</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr = transfer(this, this_ptr)&#39;</span><span class="p">)</span>
+            <span class="n">array_name</span> <span class="o">=</span> <span class="s">&#39;this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">array_name</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s">&#39;allocatable&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;if (allocated(</span><span class="si">%s</span><span class="s">)) then&#39;</span> <span class="o">%</span> <span class="n">array_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;character&#39;</span><span class="p">):</span>
+            <span class="n">first</span> <span class="o">=</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&#39;1&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rank</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;dshape(1:</span><span class="si">%d</span><span class="s">) = (/len(</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)), shape(</span><span class="si">%s</span><span class="s">)/)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">array_name</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">array_name</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;dshape(1:</span><span class="si">%d</span><span class="s">) = shape(</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">array_name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;dloc = loc(</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">array_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s">&#39;allocatable&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;else&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;dloc = 0&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end if&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end subroutine </span><span class="si">%s%s</span><span class="s">__array__</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_write_dt_array_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span>
+                               <span class="n">sizeof_fortran_t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write fortran get/set/len routines for a derived-type array.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t : `fortran.Type` node</span>
+<span class="sd">            Derived-type node of the parse tree.</span>
+<span class="sd">            </span>
+<span class="sd">        el : `fortran.Element` node</span>
+<span class="sd">            An element of a module which is derived-type array</span>
+<span class="sd">            </span>
+<span class="sd">        dims : `tuple` of `int`s</span>
+<span class="sd">            The dimensions of the element</span>
+<span class="sd">            </span>
+<span class="sd">        sizeof_fortan_t : `int`</span>
+<span class="sd">            The size, in bytes, of a pointer to a fortran derived type ??</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">element</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_array_getset_item</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">,</span> <span class="s">&#39;get&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_array_getset_item</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">,</span> <span class="s">&#39;set&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_array_len</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_write_scalar_wrappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write fortran get/set routines for scalar derived-types</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t : `fortran.Type` node</span>
+<span class="sd">            Derived-type node of the parse tree.</span>
+<span class="sd">            </span>
+<span class="sd">        el : `fortran.Element` node</span>
+<span class="sd">            An element of a module which is derived-type array</span>
+<span class="sd">            </span>
+<span class="sd">        sizeof_fortan_t : `int`</span>
+<span class="sd">            The size, in bytes, of a pointer to a fortran derived type ??</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_scalar_wrapper</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">,</span> <span class="s">&quot;get&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_scalar_wrapper</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">,</span> <span class="s">&quot;set&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_write_array_getset_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">,</span> <span class="n">getset</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write a subroutine to get/set items in a derived-type array.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t : `fortran.Type` node</span>
+<span class="sd">            Derived-type node of the parse tree.</span>
+<span class="sd">            </span>
+<span class="sd">        el : `fortran.Element` node</span>
+<span class="sd">            An element of a module which is derived-type array</span>
+<span class="sd">            </span>
+<span class="sd">        sizeof_fortan_t : `int`</span>
+<span class="sd">            The size, in bytes, of a pointer to a fortran derived type ??</span>
+<span class="sd">            </span>
+<span class="sd">        getset : `str` {``&quot;get&quot;``,``&quot;set&quot;``}</span>
+<span class="sd">            String indicating whether to write a get routine, or a set routine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># getset and inout just change things simply from a get to a set routine.</span>
+        <span class="n">inout</span> <span class="o">=</span> <span class="s">&quot;in&quot;</span>
+        <span class="k">if</span> <span class="n">getset</span> <span class="o">==</span> <span class="s">&quot;get&quot;</span><span class="p">:</span>
+            <span class="n">inout</span> <span class="o">=</span> <span class="s">&quot;out&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;subroutine </span><span class="si">%s%s</span><span class="s">__array_</span><span class="si">%s</span><span class="s">item__</span><span class="si">%s</span><span class="s">(this, i, </span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                                                       <span class="n">getset</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                                                       <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_uses_lines</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;implicit none&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(in) :: this(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">sizeof_fortran_t</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;type(</span><span class="si">%s</span><span class="s">_ptr_type) :: this_ptr&#39;</span> <span class="o">%</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(in) :: i&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(</span><span class="si">%s</span><span class="s">) :: </span><span class="si">%s</span><span class="s">(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">inout</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;type(</span><span class="si">%s</span><span class="s">_ptr_type) :: </span><span class="si">%s</span><span class="s">_ptr&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr = transfer(this, this_ptr)&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s">&#39;allocatable&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;if (allocated(this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">)) then&#39;</span> <span class="o">%</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;if (i &lt; 1 .or. i &gt; size(this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">)) then&#39;</span> <span class="o">%</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;call system_abort(&quot;array index out of range&quot;)&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;else&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">getset</span> <span class="o">==</span> <span class="s">&quot;get&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p =&gt; this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">(i)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> = transfer(</span><span class="si">%s</span><span class="s">_ptr,</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_ptr = transfer(</span><span class="si">%s</span><span class="s">,</span><span class="si">%s</span><span class="s">_ptr)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">(i) = </span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;endif&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s">&#39;allocatable&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;else&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;call system_abort(&quot;derived type array not allocated&quot;)&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end if&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end subroutine </span><span class="si">%s%s</span><span class="s">__array_</span><span class="si">%s</span><span class="s">item__</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                                              <span class="n">getset</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_write_array_len</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write a subroutine which returns the length of a derived-type array</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t : `fortran.Type` node</span>
+<span class="sd">            Derived-type node of the parse tree.</span>
+<span class="sd">            </span>
+<span class="sd">        el : `fortran.Element` node</span>
+<span class="sd">            An element of a module which is derived-type array</span>
+<span class="sd">            </span>
+<span class="sd">        sizeof_fortan_t : `int`</span>
+<span class="sd">            The size, in bytes, of a pointer to a fortran derived type ??</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;subroutine </span><span class="si">%s%s</span><span class="s">__array_len__</span><span class="si">%s</span><span class="s">(this, n)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_uses_lines</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;implicit none&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(in) :: this(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">sizeof_fortran_t</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(out) :: n&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;type(</span><span class="si">%s</span><span class="s">_ptr_type) :: this_ptr&#39;</span> <span class="o">%</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr = transfer(this, this_ptr)&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s">&#39;allocatable&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;if (allocated(this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">)) then&#39;</span> <span class="o">%</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;n = size(this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s">&#39;allocatable&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;else&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;n = 0&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end if&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end subroutine </span><span class="si">%s%s</span><span class="s">__array_len__</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_write_scalar_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">el</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">,</span> <span class="n">getset</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write get/set routines for scalar derived-types.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t : `fortran.Type` node</span>
+<span class="sd">            Derived-type node of the parse tree.</span>
+<span class="sd">            </span>
+<span class="sd">        el : `fortran.Element` node</span>
+<span class="sd">            An element of a module which is derived-type array</span>
+<span class="sd">            </span>
+<span class="sd">        sizeof_fortan_t : `int`</span>
+<span class="sd">            The size, in bytes, of a pointer to a fortran derived type ??</span>
+<span class="sd">            </span>
+<span class="sd">        getset : `str` {``&quot;get&quot;``,``&quot;set&quot;``}</span>
+<span class="sd">            String indicating whether to write a get routine, or a set routine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># getset and inout just change things simply from a get to a set routine.</span>
+        <span class="n">inout</span> <span class="o">=</span> <span class="s">&quot;in&quot;</span>
+        <span class="k">if</span> <span class="n">getset</span> <span class="o">==</span> <span class="s">&quot;get&quot;</span><span class="p">:</span>
+            <span class="n">inout</span> <span class="o">=</span> <span class="s">&quot;out&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+            <span class="n">this</span> <span class="o">=</span> <span class="s">&#39;this, &#39;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+            <span class="n">this</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Don&#39;t know how to write scalar wrappers for </span><span class="si">%s</span><span class="s"> type </span><span class="si">%s</span><span class="s">&quot;</span> <span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">t</span><span class="p">)))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;subroutine </span><span class="si">%s%s</span><span class="s">__</span><span class="si">%s</span><span class="s">__</span><span class="si">%s</span><span class="s">(</span><span class="si">%s%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                                    <span class="n">getset</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">this</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_uses_lines</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+            <span class="n">use_only</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">use_only</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s"> =&gt; </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="n">use_only</span> <span class="o">=</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">use_only</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;use </span><span class="si">%s</span><span class="s">, only: &#39;</span> <span class="o">%</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="n">use_only</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;implicit none&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_type_lines</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(in)   :: this(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="n">sizeof_fortran_t</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;type(</span><span class="si">%s</span><span class="s">_ptr_type) :: this_ptr&#39;</span> <span class="o">%</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">):</span>
+            <span class="c"># For derived types elements, treat as opaque reference</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;integer, intent(</span><span class="si">%s</span><span class="s">) :: </span><span class="si">%s</span><span class="s">(</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">inout</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">sizeof_fortran_t</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;type(</span><span class="si">%s</span><span class="s">_ptr_type) :: </span><span class="si">%s</span><span class="s">_ptr&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ft</span><span class="o">.</span><span class="n">strip_type</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="p">),</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr = transfer(this, this_ptr)&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">getset</span> <span class="o">==</span> <span class="s">&quot;get&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p =&gt; this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p =&gt; </span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> = transfer(</span><span class="si">%s</span><span class="s">_ptr,</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_ptr = transfer(</span><span class="si">%s</span><span class="s">,</span><span class="si">%s</span><span class="s">_ptr)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                                             <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                                             <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s"> = </span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s"> = </span><span class="si">%s</span><span class="s">_ptr</span><span class="si">%%</span><span class="s">p&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Return/set by value</span>
+            <span class="k">if</span> <span class="s">&#39;pointer&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">:</span>
+                <span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s">&#39;pointer&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">attributes</span> <span class="o">!=</span> <span class="p">[]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">, intent(</span><span class="si">%s</span><span class="s">) :: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="p">,</span>
+                                                         <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">attributes</span><span class="p">),</span>
+                                                         <span class="n">inout</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">, intent(</span><span class="si">%s</span><span class="s">) :: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">inout</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr = transfer(this, this_ptr)&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">getset</span> <span class="o">==</span> <span class="s">&quot;get&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> = this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s"> = </span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ft</span><span class="o">.</span><span class="n">Type</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;this_ptr</span><span class="si">%%</span><span class="s">p</span><span class="si">%%%s</span><span class="s"> = </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">_</span><span class="si">%s</span><span class="s"> = </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;end subroutine </span><span class="si">%s%s</span><span class="s">__</span><span class="si">%s</span><span class="s">__</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">getset</span><span class="p">,</span>
+                                                    <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">f90wrap 0.1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, James Kermode, Steven Murray.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>

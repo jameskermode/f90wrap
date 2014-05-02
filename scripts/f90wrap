@@ -30,7 +30,7 @@ from argparse import RawDescriptionHelpFormatter
 
 from f90wrap import __version__
 
-from f90wrap import parser
+from f90wrap import parser as fparse
 from f90wrap import fortran
 from f90wrap.sizeof_fortran_t import sizeof_fortran_t
 from f90wrap import transform as tf
@@ -104,7 +104,7 @@ USAGE
         #=======================================================================
         # Begin actual wrapping
         #=======================================================================
-        tree = parser.read_files(args.files)
+        tree = fparse.read_files(args.files)
 
         # ## TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
         if not args.callback:

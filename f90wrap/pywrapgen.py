@@ -59,6 +59,65 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         doc.append('')
         doc.append('Defined at %s %s' % (node.filename, _format_line_no(node.lineno)))
 
+        # For procedures, write required parameters and return values in numpydoc format
+        if isinstance(node, ft.Procedure):
+            doc.append('')
+            # Input parameters
+            i = 0
+            for arg in node.arguments:
+                if "real" in arg.type:
+                    pytype = "float"
+                elif "integer" in arg.type:
+                    pytype = "int"
+                elif "character" in arg.type:
+                    pytype = 'str'
+                elif "logical" in arg.type:
+                    pytype = "bool"
+                else:
+                    pytype = "unknown"
+
+                dims = filter(lambda x: x.startswith("dimension"), arg.attributes)
+                if len(dims) > 0:
+                    pytype += " array"
+
+                if "intent(out)" not in arg.attributes:
+                    if i == 0:
+                        doc.append("Parameters")
+                        doc.append("----------")
+                    i += 1
+                    doc.append("%s : %s" % (arg.name, pytype))
+                    for d in arg.doc:
+                        doc.append("\t%s" % d)
+                    doc.append("")
+
+            i = 0
+            for arg in node.arguments:
+                print "DICT FOR ARG: ", arg.__dict__
+                if "real" in arg.type:
+                    pytype = "float"
+                elif "integer" in arg.type:
+                    pytype = "int"
+                elif "character" in arg.type:
+                    pytype = 'str'
+                elif "logical" in arg.type:
+                    pytype = "bool"
+                else:
+                    pytype = "unknown"
+                dims = filter(lambda x: x.startswith("dimension"), arg.attributes)
+                if len(dims) > 0:
+                    pytype += " array"
+
+                if "intent(out)" in arg.attributes:
+                    if i == 0:
+                        doc.append("Returns")
+                        doc.append("-------")
+                    i += 1
+                    doc.append("%s : %s" % (arg.name, pytype))
+                    doc.append("\t%s" % arg.doc)
+                    doc.append("")
+
+
+            print "DICT FOR SUBROUTINE: ", node.__dict__
         return '\n'.join(['"""'] + doc + ['"""'])
 
     def write_imports(self):
