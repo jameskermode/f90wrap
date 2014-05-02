@@ -67,11 +67,13 @@ class Fortran(object):
     def __eq__(self, other):
         # FIXME: could not we use getattr here to simplify all cases?
         if other is None: return False
-        return (self.name == other.name and
-                self.doc == other.doc)
+        attrs = [el for el in self.__dict__ if not el.startswith("_")]
+        ret = True
+        for a in attrs:
+            ret = ret and getattr(self, a) == getattr(other, a)
 
     def __neq__(self, other):
-        return not self.__eq__(self, other)
+        return not self.__eq__(other)
 
 
 class Root(Fortran):
@@ -101,16 +103,6 @@ class Root(Fortran):
             procedures = []
         self.procedures = procedures
 
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.programs == other.programs and
-                self.modules == other.modules and
-                self.doc == other.doc and
-                self.procedures == other.procedures)
-
-    def __neq__(self, other):
-        return not self.__eq__(other)
-
 
 class Program(Fortran):
     """
@@ -126,16 +118,6 @@ class Program(Fortran):
         if procedures is None:
             procedures = []
         self.procedures = procedures
-
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.name == other.name and
-                self.doc == other.doc and
-                self.procedures == other.procedures and
-                self.uses == other.uses)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
 
 class Module(Fortran):
@@ -175,21 +157,6 @@ class Module(Fortran):
             private_symbols = []
         self.private_symbols = private_symbols
 
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.name == other.name and
-                self.types == other.types and
-                self.elements == other.elements and
-                self.procedures == other.procedures and
-                self.doc == other.doc and
-                self.uses == other.uses and
-                self.interfaces == other.interfaces and
-                self.default_access == other.default_access and
-                self.public_symbols == other.public_symbols and
-                self.private_symbols == other.private_symbols)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
 class Procedure(Fortran):
     """
@@ -211,19 +178,6 @@ class Procedure(Fortran):
         self.attributes = attributes
         self.mod_name = mod_name
         self.type_name = type_name
-
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.name == other.name and
-                self.arguments == other.arguments and
-                self.doc == other.doc and
-                self.uses == other.uses and
-                self.attributes == other.attributes and
-                self.mod_name == other.mod_name and
-                self.type_name == other.type_name)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
 class Subroutine(Procedure):
     """
@@ -251,21 +205,6 @@ class Function(Procedure):
         self.ret_val = ret_val
         self.ret_val_doc = ret_val_doc
 
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.name == other.name and
-                self.arguments == other.arguments and
-                self.doc == other.doc and
-                self.uses == other.uses and
-                self.ret_val == other.ret_val and
-                self.ret_val_doc == other.ret_val_doc and
-                self.attributes == other.attributes and
-                self.mod_name == other.mod_name and
-                self.type_name == other.type_name)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
 
 class Prototype(Fortran):
     """
@@ -290,16 +229,6 @@ class Declaration(Fortran):
         self.type = type
         self.value = value
 
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.name == other.name and
-                self.type == other.type and
-                self.attributes == other.attributes and
-                self.doc == other.doc and
-                self.value == other.value)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
 class Element(Declaration):
     pass
@@ -327,17 +256,6 @@ class Type(Fortran):
         self.interfaces = interfaces
         self.mod_name = mod_name
 
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.name == other.name and
-                self.elements == other.elements and
-                self.doc == other.doc and
-                self.procedures == other.procedures and
-                self.mod_name == other.mod_name)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
 
 class Interface(Fortran):
     """
@@ -352,15 +270,6 @@ class Interface(Fortran):
         Fortran.__init__(self, name, filename, doc, lineno)
         if procedures is None: procedures = []
         self.procedures = procedures
-
-    def __eq__(self, other):
-        if other is None: return False
-        return (self.name == other.name and
-                self.procedures == other.procedures and
-                self.doc == other.doc)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
 
 
