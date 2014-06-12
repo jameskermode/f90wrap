@@ -90,16 +90,16 @@
 <span class="sd">    </span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    name : `str`</span>
+<span class="sd">    name : `str`, default ``&quot;&quot;``</span>
 <span class="sd">        Name of the node</span>
 <span class="sd">        </span>
-<span class="sd">    filename : `str`</span>
+<span class="sd">    filename : `str`, default ``&quot;&quot;``</span>
 <span class="sd">        Name of the file in which node is defined</span>
 <span class="sd">        </span>
-<span class="sd">    doc : `list` of `str`</span>
+<span class="sd">    doc : `list` of `str`, default ``None``</span>
 <span class="sd">        Documentation found in the node</span>
 <span class="sd">        </span>
-<span class="sd">    lineno : `int`</span>
+<span class="sd">    lineno : `int`, default ``0``.</span>
 <span class="sd">        Line number at which the node begins.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -120,22 +120,24 @@
     <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="c"># FIXME: could not we use getattr here to simplify all cases?</span>
         <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span><span class="p">)</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="p">[</span><span class="n">el</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">el</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;_&quot;</span><span class="p">)]</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">ret</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">==</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__neq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
 </div>
 <div class="viewcode-block" id="Root"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Root">[docs]</a><span class="k">class</span> <span class="nc">Root</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    programs : `list` of `fortran.Program`s</span>
+<span class="sd">    programs : `list` of `fortran.Program`, default ``None``</span>
 <span class="sd">        A list of Programs within the parse tree.</span>
 <span class="sd">        </span>
-<span class="sd">    modules : `list` of `fortran.Module`s</span>
+<span class="sd">    modules : `list` of `fortran.Module`, default ``None``</span>
 <span class="sd">        A list of modules within the parse tree</span>
 <span class="sd">        </span>
-<span class="sd">    procedures : `list` of `fortran.Procedure`s</span>
+<span class="sd">    procedures : `list` of `fortran.Procedure`, default ``None``</span>
 <span class="sd">        A list of top-level procedures within the parse tree.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;The Root node of a Fortan parse tree&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
@@ -154,23 +156,13 @@
             <span class="n">procedures</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">=</span> <span class="n">procedures</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">programs</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">programs</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">modules</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">modules</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">procedures</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__neq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
-
 </div>
 <div class="viewcode-block" id="Program"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Program">[docs]</a><span class="k">class</span> <span class="nc">Program</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Class to represent a Fortran main program. Has *procedures* attribute</span>
-<span class="sd">    in addition to Fortran base class attributes.</span>
+<span class="sd">    procedures : list of :class:`fortran.Procedure` , default ``None``</span>
+<span class="sd">        A list of procedures within the program&#39;s scope.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Class to represent a Fortran main program.&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
     <span class="n">_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;procedures&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -180,24 +172,36 @@
             <span class="n">procedures</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">=</span> <span class="n">procedures</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">procedures</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">uses</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">uses</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
-
 </div>
 <div class="viewcode-block" id="Module"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Module">[docs]</a><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Represents a Fortran module. Attributes in addition those of Fortran</span>
-<span class="sd">    base class are *types*, *elements*, *procedures*, *interfaces*,</span>
-<span class="sd">    *uses*, *default_access*, *public_symbols* and *private_symbols*.</span>
+<span class="sd">    types : list of :class:`fortran.Type` , default ``None``</span>
+<span class="sd">        Derived-types defined in the module</span>
+<span class="sd">        </span>
+<span class="sd">    elements : list of :class:`fortran.Element` , default ``None``</span>
+<span class="sd">        Module-level variables in the module</span>
+<span class="sd">    </span>
+<span class="sd">    procedures : list of :class:`fortran.Procedure` , default ``None``</span>
+<span class="sd">        A list of procedures defined in the module</span>
+<span class="sd">        </span>
+<span class="sd">    interfaces : list of :class:`fortran.Interface` , default ``None``</span>
+<span class="sd">        A list of interfaces defined in the module</span>
+<span class="sd">        </span>
+<span class="sd">    uses : list of `str` or `tuple` , default ``None``</span>
+<span class="sd">        A list of modules that this module uses. If the entry is a tuple, it </span>
+<span class="sd">        should be in the form (uses,only,[only,..]), where the `only` entries</span>
+<span class="sd">        are subroutines/elements in the used module.</span>
+<span class="sd">    </span>
+<span class="sd">    default_access : `str`, default ``&quot;public&quot;``</span>
+<span class="sd">        The default access to the module (public or private)</span>
+<span class="sd">        </span>
+<span class="sd">    public_symbols : list of `str` , default ``None``</span>
+<span class="sd">        The symbols within the module that are public</span>
+<span class="sd">        </span>
+<span class="sd">    private_symbols : list of `str` , default ``None``</span>
+<span class="sd">        The symbols within the module that are private</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Fortran module.&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
     <span class="n">_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;types&#39;</span><span class="p">,</span> <span class="s">&#39;elements&#39;</span><span class="p">,</span> <span class="s">&#39;procedures&#39;</span><span class="p">,</span> <span class="s">&#39;interfaces&#39;</span><span class="p">,</span> <span class="s">&#39;uses&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -228,28 +232,27 @@
             <span class="n">private_symbols</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">private_symbols</span> <span class="o">=</span> <span class="n">private_symbols</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">types</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">types</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">elements</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">procedures</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">uses</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">uses</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">interfaces</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">interfaces</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">default_access</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">default_access</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">public_symbols</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">public_symbols</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">private_symbols</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">private_symbols</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Procedure"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Procedure">[docs]</a><span class="k">class</span> <span class="nc">Procedure</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Abstract class for representing subroutines and functions.</span>
-<span class="sd">    *arguments* attribute is list of routine arguments.</span>
+<span class="sd">    arguments : list of :class:`fortran.Argument`</span>
+<span class="sd">        A list of arguments to the procedure</span>
+<span class="sd">        </span>
+<span class="sd">    uses : list of `str` or `tuple` , default ``None``</span>
+<span class="sd">        A list of modules that this procedure uses. If the entry is a tuple, it </span>
+<span class="sd">        should be in the form (uses,only,[only,..]), where the `only` entries</span>
+<span class="sd">        are subroutines/elements in the used module.</span>
+<span class="sd">    </span>
+<span class="sd">    attributes : list of `str`, default ``None``</span>
+<span class="sd">        Attributes of the procedure</span>
+<span class="sd">        </span>
+<span class="sd">    mod_name : `str` , default ``None``</span>
+<span class="sd">        The name of the module in which the procedure is found, if any.</span>
+<span class="sd">        </span>
+<span class="sd">    type_name : `str` , default ``None``</span>
+<span class="sd">        The name of the type in which the procedure is defined, if any.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Fortran Function or Subroutine.&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
     <span class="n">_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;arguments&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -264,33 +267,20 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">=</span> <span class="n">attributes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mod_name</span> <span class="o">=</span> <span class="n">mod_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">type_name</span> <span class="o">=</span> <span class="n">type_name</span>
-
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">arguments</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">uses</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">uses</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">attributes</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">mod_name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">mod_name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">type_name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">type_name</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Subroutine"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Subroutine">[docs]</a><span class="k">class</span> <span class="nc">Subroutine</span><span class="p">(</span><span class="n">Procedure</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Subclass of Procedure to represent a Fortran subroutine.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Procedure</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Fortran Subroutine.&quot;</span><span class="p">)</span>
     <span class="k">pass</span>
 </div>
 <div class="viewcode-block" id="Function"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Function">[docs]</a><span class="k">class</span> <span class="nc">Function</span><span class="p">(</span><span class="n">Procedure</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Subclass of Procedure to represent a Fortran function.</span>
-<span class="sd">    Additional attributes *ret_val* and *ret_val_doc*.</span>
+<span class="sd">    ret_val : :class:`fortran.Argument`</span>
+<span class="sd">        The argument which is the returned value</span>
+<span class="sd">        </span>
+<span class="sd">    ret_val_doc : `str`</span>
+<span class="sd">        The documentation of the returned value</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Procedure</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Fortran Function.&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
     <span class="n">_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;arguments&#39;</span><span class="p">,</span> <span class="s">&#39;ret_val&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -304,37 +294,24 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">ret_val</span> <span class="o">=</span> <span class="n">ret_val</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ret_val_doc</span> <span class="o">=</span> <span class="n">ret_val_doc</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">arguments</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">uses</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">uses</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">ret_val</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">ret_val</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">ret_val_doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">ret_val_doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">attributes</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">mod_name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">mod_name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">type_name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">type_name</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
-
 </div>
 <div class="viewcode-block" id="Prototype"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Prototype">[docs]</a><span class="k">class</span> <span class="nc">Prototype</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Procedure prototype. Used to populate Interfaces before subroutines</span>
-<span class="sd">    and functions are added to them.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Fortran Prototype.&quot;</span><span class="p">)</span>
     <span class="k">pass</span>
 </div>
 <div class="viewcode-block" id="Declaration"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Declaration">[docs]</a><span class="k">class</span> <span class="nc">Declaration</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Variable declaration. Parent is either a Module, a Type</span>
-<span class="sd">    or a Procedure. Additional attributes *type*,</span>
-<span class="sd">    *attributes* and *value*.</span>
+<span class="sd">    type : `str` , default ``&quot;&quot;``</span>
+<span class="sd">        The type of the declaration</span>
+<span class="sd">        </span>
+<span class="sd">    attributes : list of `str` , default ``None``</span>
+<span class="sd">        A list of attributes defined in the declaration (eg. intent(in), allocatable)</span>
+<span class="sd">        </span>
+<span class="sd">    value : `str`</span>
+<span class="sd">        A value given to the variable upon definition</span>
+<span class="sd">        (eg. value=8 in ``&quot;integer :: x = 8&quot;``</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Base class representing a declaration statement&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                  <span class="n">attributes</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">):</span>
         <span class="n">Fortran</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
@@ -343,29 +320,24 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="nb">type</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">type</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">attributes</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Element"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Element">[docs]</a><span class="k">class</span> <span class="nc">Element</span><span class="p">(</span><span class="n">Declaration</span><span class="p">):</span>
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Declaration</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Module or Derived-Type Element.&quot;</span><span class="p">)</span>
     <span class="k">pass</span>
 </div>
 <div class="viewcode-block" id="Argument"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Argument">[docs]</a><span class="k">class</span> <span class="nc">Argument</span><span class="p">(</span><span class="n">Declaration</span><span class="p">):</span>
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Declaration</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Procedure Argument.&quot;</span><span class="p">)</span>
     <span class="k">pass</span>
 </div>
 <div class="viewcode-block" id="Type"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Type">[docs]</a><span class="k">class</span> <span class="nc">Type</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Representation of a Fortran derived type. Additional attributes</span>
-<span class="sd">    *elements* and *procedures*.</span>
+<span class="sd">    elements : list of :class:`fortran.Element`</span>
+<span class="sd">        Variables within the type</span>
+<span class="sd">        </span>
+<span class="sd">    procedures : list of :class:`fortran.Procedure`</span>
+<span class="sd">        Procedures defined with the type.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Fortran Derived-type.&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
     <span class="n">_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;elements&#39;</span><span class="p">,</span> <span class="s">&#39;procedures&#39;</span><span class="p">,</span> <span class="s">&#39;interfaces&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
@@ -380,24 +352,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">interfaces</span> <span class="o">=</span> <span class="n">interfaces</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mod_name</span> <span class="o">=</span> <span class="n">mod_name</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">elements</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">procedures</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">mod_name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">mod_name</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
-
 </div>
 <div class="viewcode-block" id="Interface"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.Interface">[docs]</a><span class="k">class</span> <span class="nc">Interface</span><span class="p">(</span><span class="n">Fortran</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Represenation of a Fortran interface. Additional attribute</span>
-<span class="sd">    *procedures*.</span>
+<span class="sd">    procedures : list of :class:`fortran.Procedure`</span>
+<span class="sd">        The procedures listed in the interface.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
+    <span class="n">__doc__</span> <span class="o">=</span> <span class="n">_rep_des</span><span class="p">(</span><span class="n">Fortran</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="s">&quot;Represents a Fortran Interface.&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">__doc__</span>
     <span class="n">_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;procedures&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
@@ -405,15 +366,6 @@
         <span class="n">Fortran</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">lineno</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">procedures</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">procedures</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">=</span> <span class="n">procedures</span>
-
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">procedures</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">procedures</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">doc</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
 
 </div>
@@ -487,6 +439,9 @@
         <span class="k">yield</span> <span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="find"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.find">[docs]</a><span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">pattern</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find a node whose name includes *pattern*</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">walk</span><span class="p">(</span><span class="n">tree</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">pattern</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
             <span class="k">yield</span> <span class="n">node</span>
@@ -676,6 +631,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generic_visit</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
 </div></div>
 <div class="viewcode-block" id="strip_type"><a class="viewcode-back" href="../../apidocs/f90wrap.fortran.html#f90wrap.fortran.strip_type">[docs]</a><span class="k">def</span> <span class="nf">strip_type</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return type name from type declaration&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;type(&#39;</span><span class="p">):</span>
         <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;(&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">t</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;)&#39;</span><span class="p">)]</span>
     <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>

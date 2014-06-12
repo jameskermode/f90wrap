@@ -97,21 +97,132 @@ access; (ii) public and private statements at module level;
 <dt id="f90wrap.fortran.Argument">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Argument</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>attributes=None</em>, <em>type=''</em>, <em>value=''</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Argument"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Declaration" title="f90wrap.fortran.Declaration"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Declaration</span></tt></a></p>
+<p>Represents a Procedure Argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>type</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>The type of the declaration</p>
+</div></blockquote>
+<p><strong>attributes</strong> : list of <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of attributes defined in the declaration (eg. intent(in), allocatable)</p>
+</div></blockquote>
+<p><strong>value</strong> : <cite>str</cite></p>
+<blockquote class="last">
+<div><p>A value given to the variable upon definition
+(eg. value=8 in <tt class="docutils literal"><span class="pre">&quot;integer</span> <span class="pre">::</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">8&quot;</span></tt></p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
 <dt id="f90wrap.fortran.Declaration">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Declaration</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>attributes=None</em>, <em>type=''</em>, <em>value=''</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Declaration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Declaration" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Fortran" title="f90wrap.fortran.Fortran"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Fortran</span></tt></a></p>
-<p>Variable declaration. Parent is either a Module, a Type
-or a Procedure. Additional attributes <em>type</em>,
-<em>attributes</em> and <em>value</em>.</p>
+<p>Base class representing a declaration statement</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>type</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>The type of the declaration</p>
+</div></blockquote>
+<p><strong>attributes</strong> : list of <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of attributes defined in the declaration (eg. intent(in), allocatable)</p>
+</div></blockquote>
+<p><strong>value</strong> : <cite>str</cite></p>
+<blockquote class="last">
+<div><p>A value given to the variable upon definition
+(eg. value=8 in <tt class="docutils literal"><span class="pre">&quot;integer</span> <span class="pre">::</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">8&quot;</span></tt></p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
 <dt id="f90wrap.fortran.Element">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Element</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>attributes=None</em>, <em>type=''</em>, <em>value=''</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Element"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Element" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Declaration" title="f90wrap.fortran.Declaration"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Declaration</span></tt></a></p>
+<p>Represents a Module or Derived-Type Element.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>type</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>The type of the declaration</p>
+</div></blockquote>
+<p><strong>attributes</strong> : list of <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of attributes defined in the declaration (eg. intent(in), allocatable)</p>
+</div></blockquote>
+<p><strong>value</strong> : <cite>str</cite></p>
+<blockquote class="last">
+<div><p>A value given to the variable upon definition
+(eg. value=8 in <tt class="docutils literal"><span class="pre">&quot;integer</span> <span class="pre">::</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">8&quot;</span></tt></p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
@@ -123,19 +234,19 @@ or a Procedure. Additional attributes <em>type</em>,
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite></p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
 <blockquote>
 <div><p>Name of the node</p>
 </div></blockquote>
-<p><strong>filename</strong> : <cite>str</cite></p>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
 <blockquote>
 <div><p>Name of the file in which node is defined</p>
 </div></blockquote>
-<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite></p>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
 <blockquote>
 <div><p>Documentation found in the node</p>
 </div></blockquote>
-<p><strong>lineno</strong> : <cite>int</cite></p>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
 <blockquote class="last">
 <div><p>Line number at which the node begins.</p>
 </div></blockquote>
@@ -243,16 +354,96 @@ found the <cite>generic_visit</cite> visitor is used instead.</p>
 <dt id="f90wrap.fortran.Function">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Function</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>arguments=None</em>, <em>uses=None</em>, <em>attributes=None</em>, <em>ret_val=None</em>, <em>ret_val_doc=None</em>, <em>mod_name=None</em>, <em>type_name=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Function" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Procedure" title="f90wrap.fortran.Procedure"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Procedure</span></tt></a></p>
-<p>Subclass of Procedure to represent a Fortran function.
-Additional attributes <em>ret_val</em> and <em>ret_val_doc</em>.</p>
+<p>Represents a Fortran Function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>arguments</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Argument</span></tt></p>
+<blockquote>
+<div><p>A list of arguments to the procedure</p>
+</div></blockquote>
+<p><strong>uses</strong> : list of <cite>str</cite> or <cite>tuple</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of modules that this procedure uses. If the entry is a tuple, it 
+should be in the form (uses,only,[only,..]), where the <cite>only</cite> entries
+are subroutines/elements in the used module.</p>
+</div></blockquote>
+<p><strong>attributes</strong> : list of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Attributes of the procedure</p>
+</div></blockquote>
+<p><strong>mod_name</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>The name of the module in which the procedure is found, if any.</p>
+</div></blockquote>
+<p><strong>type_name</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>The name of the type in which the procedure is defined, if any.</p>
+</div></blockquote>
+<p><strong>ret_val</strong> : <tt class="xref py py-class docutils literal"><span class="pre">fortran.Argument</span></tt></p>
+<blockquote>
+<div><p>The argument which is the returned value</p>
+</div></blockquote>
+<p><strong>ret_val_doc</strong> : <cite>str</cite></p>
+<blockquote class="last">
+<div><p>The documentation of the returned value</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
 <dt id="f90wrap.fortran.Interface">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Interface</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>procedures=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Interface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Interface" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Fortran" title="f90wrap.fortran.Fortran"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Fortran</span></tt></a></p>
-<p>Represenation of a Fortran interface. Additional attribute
-<em>procedures</em>.</p>
+<p>Represents a Fortran Interface.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>procedures</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Procedure</span></tt></p>
+<blockquote class="last">
+<div><p>The procedures listed in the interface.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
@@ -332,9 +523,65 @@ attribute.</p>
 <dt id="f90wrap.fortran.Module">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Module</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>types=None</em>, <em>elements=None</em>, <em>procedures=None</em>, <em>interfaces=None</em>, <em>uses=None</em>, <em>default_access='public'</em>, <em>public_symbols=None</em>, <em>private_symbols=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Module" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Fortran" title="f90wrap.fortran.Fortran"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Fortran</span></tt></a></p>
-<p>Represents a Fortran module. Attributes in addition those of Fortran
-base class are <em>types</em>, <em>elements</em>, <em>procedures</em>, <em>interfaces</em>,
-<em>uses</em>, <em>default_access</em>, <em>public_symbols</em> and <em>private_symbols</em>.</p>
+<p>Represents a Fortran module.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>types</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Type</span></tt> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Derived-types defined in the module</p>
+</div></blockquote>
+<p><strong>elements</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Element</span></tt> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Module-level variables in the module</p>
+</div></blockquote>
+<p><strong>procedures</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Procedure</span></tt> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of procedures defined in the module</p>
+</div></blockquote>
+<p><strong>interfaces</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Interface</span></tt> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of interfaces defined in the module</p>
+</div></blockquote>
+<p><strong>uses</strong> : list of <cite>str</cite> or <cite>tuple</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of modules that this module uses. If the entry is a tuple, it 
+should be in the form (uses,only,[only,..]), where the <cite>only</cite> entries
+are subroutines/elements in the used module.</p>
+</div></blockquote>
+<p><strong>default_access</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;public&quot;</span></tt></p>
+<blockquote>
+<div><p>The default access to the module (public or private)</p>
+</div></blockquote>
+<p><strong>public_symbols</strong> : list of <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>The symbols within the module that are public</p>
+</div></blockquote>
+<p><strong>private_symbols</strong> : list of <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote class="last">
+<div><p>The symbols within the module that are private</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
@@ -376,24 +623,119 @@ base class are <em>types</em>, <em>elements</em>, <em>procedures</em>, <em>inter
 <dt id="f90wrap.fortran.Procedure">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Procedure</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>arguments=None</em>, <em>uses=None</em>, <em>attributes=None</em>, <em>mod_name=None</em>, <em>type_name=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Procedure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Procedure" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Fortran" title="f90wrap.fortran.Fortran"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Fortran</span></tt></a></p>
-<p>Abstract class for representing subroutines and functions.
-<em>arguments</em> attribute is list of routine arguments.</p>
+<p>Represents a Fortran Function or Subroutine.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>arguments</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Argument</span></tt></p>
+<blockquote>
+<div><p>A list of arguments to the procedure</p>
+</div></blockquote>
+<p><strong>uses</strong> : list of <cite>str</cite> or <cite>tuple</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of modules that this procedure uses. If the entry is a tuple, it 
+should be in the form (uses,only,[only,..]), where the <cite>only</cite> entries
+are subroutines/elements in the used module.</p>
+</div></blockquote>
+<p><strong>attributes</strong> : list of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Attributes of the procedure</p>
+</div></blockquote>
+<p><strong>mod_name</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>The name of the module in which the procedure is found, if any.</p>
+</div></blockquote>
+<p><strong>type_name</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote class="last">
+<div><p>The name of the type in which the procedure is defined, if any.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
 <dt id="f90wrap.fortran.Program">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Program</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>procedures=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Program"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Program" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Fortran" title="f90wrap.fortran.Fortran"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Fortran</span></tt></a></p>
-<p>Class to represent a Fortran main program. Has <em>procedures</em> attribute
-in addition to Fortran base class attributes.</p>
+<p>Class to represent a Fortran main program.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>procedures</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Procedure</span></tt> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote class="last">
+<div><p>A list of procedures within the program&#8217;s scope.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
 <dt id="f90wrap.fortran.Prototype">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Prototype</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Prototype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Prototype" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Fortran" title="f90wrap.fortran.Fortran"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Fortran</span></tt></a></p>
-<p>Procedure prototype. Used to populate Interfaces before subroutines
-and functions are added to them.</p>
+<p>Represents a Fortran Prototype.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote class="last">
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
@@ -405,31 +747,31 @@ and functions are added to them.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite></p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
 <blockquote>
 <div><p>Name of the node</p>
 </div></blockquote>
-<p><strong>filename</strong> : <cite>str</cite></p>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
 <blockquote>
 <div><p>Name of the file in which node is defined</p>
 </div></blockquote>
-<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite></p>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
 <blockquote>
 <div><p>Documentation found in the node</p>
 </div></blockquote>
-<p><strong>lineno</strong> : <cite>int</cite></p>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
 <blockquote>
 <div><p>Line number at which the node begins.</p>
 </div></blockquote>
-<p><strong>programs</strong> : <cite>list</cite> of <a href="#id3"><span class="problematic" id="id4">`</span></a>fortran.Program`s</p>
+<p><strong>programs</strong> : <cite>list</cite> of <cite>fortran.Program</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
 <blockquote>
 <div><p>A list of Programs within the parse tree.</p>
 </div></blockquote>
-<p><strong>modules</strong> : <cite>list</cite> of <a href="#id5"><span class="problematic" id="id6">`</span></a>fortran.Module`s</p>
+<p><strong>modules</strong> : <cite>list</cite> of <cite>fortran.Module</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
 <blockquote>
 <div><p>A list of modules within the parse tree</p>
 </div></blockquote>
-<p><strong>procedures</strong> : <cite>list</cite> of <a href="#id7"><span class="problematic" id="id8">`</span></a>fortran.Procedure`s</p>
+<p><strong>procedures</strong> : <cite>list</cite> of <cite>fortran.Procedure</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
 <blockquote class="last">
 <div><p>A list of top-level procedures within the parse tree.</p>
 </div></blockquote>
@@ -443,15 +785,92 @@ and functions are added to them.</p>
 <dt id="f90wrap.fortran.Subroutine">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Subroutine</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>arguments=None</em>, <em>uses=None</em>, <em>attributes=None</em>, <em>mod_name=None</em>, <em>type_name=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Subroutine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Subroutine" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Procedure" title="f90wrap.fortran.Procedure"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Procedure</span></tt></a></p>
-<p>Subclass of Procedure to represent a Fortran subroutine.</p>
+<p>Represents a Fortran Subroutine.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>arguments</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Argument</span></tt></p>
+<blockquote>
+<div><p>A list of arguments to the procedure</p>
+</div></blockquote>
+<p><strong>uses</strong> : list of <cite>str</cite> or <cite>tuple</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>A list of modules that this procedure uses. If the entry is a tuple, it 
+should be in the form (uses,only,[only,..]), where the <cite>only</cite> entries
+are subroutines/elements in the used module.</p>
+</div></blockquote>
+<p><strong>attributes</strong> : list of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Attributes of the procedure</p>
+</div></blockquote>
+<p><strong>mod_name</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>The name of the module in which the procedure is found, if any.</p>
+</div></blockquote>
+<p><strong>type_name</strong> : <cite>str</cite> , default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote class="last">
+<div><p>The name of the type in which the procedure is defined, if any.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
 <dt id="f90wrap.fortran.Type">
 <em class="property">class </em><tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">Type</tt><big>(</big><em>name=''</em>, <em>filename=''</em>, <em>doc=None</em>, <em>lineno=0</em>, <em>elements=None</em>, <em>procedures=None</em>, <em>interfaces=None</em>, <em>mod_name=None</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#Type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.Type" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#f90wrap.fortran.Fortran" title="f90wrap.fortran.Fortran"><tt class="xref py py-class docutils literal"><span class="pre">f90wrap.fortran.Fortran</span></tt></a></p>
-<p>Representation of a Fortran derived type. Additional attributes
-<em>elements</em> and <em>procedures</em>.</p>
+<p>Represents a Fortran Derived-type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the node</p>
+</div></blockquote>
+<p><strong>filename</strong> : <cite>str</cite>, default <tt class="docutils literal"><span class="pre">&quot;&quot;</span></tt></p>
+<blockquote>
+<div><p>Name of the file in which node is defined</p>
+</div></blockquote>
+<p><strong>doc</strong> : <cite>list</cite> of <cite>str</cite>, default <tt class="docutils literal"><span class="pre">None</span></tt></p>
+<blockquote>
+<div><p>Documentation found in the node</p>
+</div></blockquote>
+<p><strong>lineno</strong> : <cite>int</cite>, default <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<blockquote>
+<div><p>Line number at which the node begins.</p>
+</div></blockquote>
+<p><strong>elements</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Element</span></tt></p>
+<blockquote>
+<div><p>Variables within the type</p>
+</div></blockquote>
+<p><strong>procedures</strong> : list of <tt class="xref py py-class docutils literal"><span class="pre">fortran.Procedure</span></tt></p>
+<blockquote class="last">
+<div><p>Procedures defined with the type.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
@@ -463,7 +882,8 @@ and functions are added to them.</p>
 <dl class="function">
 <dt id="f90wrap.fortran.find">
 <tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">find</tt><big>(</big><em>tree</em>, <em>pattern</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#find"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.find" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Find a node whose name includes <em>pattern</em></p>
+</dd></dl>
 
 <dl class="function">
 <dt id="f90wrap.fortran.find_source">
@@ -521,7 +941,8 @@ attributes.</p>
 <dl class="function">
 <dt id="f90wrap.fortran.strip_type">
 <tt class="descclassname">f90wrap.fortran.</tt><tt class="descname">strip_type</tt><big>(</big><em>t</em><big>)</big><a class="reference internal" href="../_modules/f90wrap/fortran.html#strip_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#f90wrap.fortran.strip_type" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return type name from type declaration</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="f90wrap.fortran.walk">
