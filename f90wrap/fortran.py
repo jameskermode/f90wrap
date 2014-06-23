@@ -69,8 +69,17 @@ class Fortran(object):
         if other is None: return False
         attrs = [el for el in self.__dict__ if not el.startswith("_")]
         ret = True
+        if type(other) != type(self):
+            return False
+        print type(other), type(self)
         for a in attrs:
-            ret = ret and getattr(self, a) == getattr(other, a)
+            try:
+                ret = ret and getattr(self, a) == getattr(other, a)
+            except:
+                return False
+            if not ret:
+                return False
+        return True
 
     def __neq__(self, other):
         return not self.__eq__(other)
