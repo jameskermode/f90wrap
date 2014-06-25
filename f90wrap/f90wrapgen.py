@@ -342,6 +342,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                           'real(dl)':'d',
                           'integer':'i',
                           'logical':'i',
+                          'double precision': 'd',
                           'character*(*)':'S',
                           'complex(dp)':'complex',
                           'real(16)':'float128',
