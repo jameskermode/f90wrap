@@ -95,6 +95,8 @@ USAGE
                             help="""Special initialisation lines used when constructing a particular type.""")
         parser.add_argument('-m', '--mod-name',
                             help="Name of output extension module (without .so extension).")
+        parser.add_argument('-a', '--abort-func', default='f90wrap_error_abort',
+                            help='Name of Fortran subroutine to invoke if a fatal error occurs')
 
         parser.add_argument("--only", nargs="*", help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", help="Subroutines to exclude from wrapper")
@@ -184,7 +186,7 @@ USAGE
                                         sizeof_fortran_t=fsize)
 
         pywrap.PythonWrapperGenerator(args.prefix, args.mod_name, types).visit(py_tree)
-        fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths).visit(f90_tree)
+        fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths, args.abort_func).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:
