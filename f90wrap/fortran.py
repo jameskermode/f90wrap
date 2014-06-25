@@ -37,16 +37,16 @@ class Fortran(object):
     
     Parameters
     ----------
-    name : `str`
+    name : `str`, default ``""``
         Name of the node
         
-    filename : `str`
+    filename : `str`, default ``""``
         Name of the file in which node is defined
         
-    doc : `list` of `str`
+    doc : `list` of `str`, default ``None``
         Documentation found in the node
         
-    lineno : `int`
+    lineno : `int`, default ``0``.
         Line number at which the node begins.
     """
 
@@ -69,8 +69,17 @@ class Fortran(object):
         if other is None: return False
         attrs = [el for el in self.__dict__ if not el.startswith("_")]
         ret = True
+        if type(other) != type(self):
+            return False
+        print type(other), type(self)
         for a in attrs:
-            ret = ret and getattr(self, a) == getattr(other, a)
+            try:
+                ret = ret and getattr(self, a) == getattr(other, a)
+            except:
+                return False
+            if not ret:
+                return False
+        return True
 
     def __neq__(self, other):
         return not self.__eq__(other)
@@ -78,13 +87,13 @@ class Fortran(object):
 
 class Root(Fortran):
     """
-    programs : `list` of `fortran.Program`s
+    programs : `list` of `fortran.Program`, default ``None``
         A list of Programs within the parse tree.
         
-    modules : `list` of `fortran.Module`s
+    modules : `list` of `fortran.Module`, default ``None``
         A list of modules within the parse tree
         
-    procedures : `list` of `fortran.Procedure`s
+    procedures : `list` of `fortran.Procedure`, default ``None``
         A list of top-level procedures within the parse tree.
     """
     __doc__ = _rep_des(Fortran.__doc__, "The Root node of a Fortan parse tree") + __doc__
@@ -106,10 +115,10 @@ class Root(Fortran):
 
 class Program(Fortran):
     """
-    Class to represent a Fortran main program. Has *procedures* attribute
-    in addition to Fortran base class attributes.
+    procedures : list of :class:`fortran.Procedure` , default ``None``
+        A list of procedures within the program's scope.
     """
-
+    __doc__ = _rep_des(Fortran.__doc__, "Class to represent a Fortran main program.") + __doc__
     _fields = ['procedures']
 
     def __init__(self, name='', filename='', doc=None, lineno=0,
@@ -122,11 +131,33 @@ class Program(Fortran):
 
 class Module(Fortran):
     """
-    Represents a Fortran module. Attributes in addition those of Fortran
-    base class are *types*, *elements*, *procedures*, *interfaces*,
-    *uses*, *default_access*, *public_symbols* and *private_symbols*.
+    types : list of :class:`fortran.Type` , default ``None``
+        Derived-types defined in the module
+        
+    elements : list of :class:`fortran.Element` , default ``None``
+        Module-level variables in the module
+    
+    procedures : list of :class:`fortran.Procedure` , default ``None``
+        A list of procedures defined in the module
+        
+    interfaces : list of :class:`fortran.Interface` , default ``None``
+        A list of interfaces defined in the module
+        
+    uses : list of `str` or `tuple` , default ``None``
+        A list of modules that this module uses. If the entry is a tuple, it 
+        should be in the form (uses,only,[only,..]), where the `only` entries
+        are subroutines/elements in the used module.
+    
+    default_access : `str`, default ``"public"``
+        The default access to the module (public or private)
+        
+    public_symbols : list of `str` , default ``None``
+        The symbols within the module that are public
+        
+    private_symbols : list of `str` , default ``None``
+        The symbols within the module that are private
     """
-
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran module.") + __doc__
     _fields = ['types', 'elements', 'procedures', 'interfaces', 'uses']
 
     def __init__(self, name='', filename='', doc=None, lineno=0,
@@ -160,10 +191,24 @@ class Module(Fortran):
 
 class Procedure(Fortran):
     """
-    Abstract class for representing subroutines and functions.
-    *arguments* attribute is list of routine arguments.
+    arguments : list of :class:`fortran.Argument`
+        A list of arguments to the procedure
+        
+    uses : list of `str` or `tuple` , default ``None``
+        A list of modules that this procedure uses. If the entry is a tuple, it 
+        should be in the form (uses,only,[only,..]), where the `only` entries
+        are subroutines/elements in the used module.
+    
+    attributes : list of `str`, default ``None``
+        Attributes of the procedure
+        
+    mod_name : `str` , default ``None``
+        The name of the module in which the procedure is found, if any.
+        
+    type_name : `str` , default ``None``
+        The name of the type in which the procedure is defined, if any.
     """
-
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Function or Subroutine.") + __doc__
     _fields = ['arguments']
 
     def __init__(self, name='', filename='', doc=None, lineno=0,
@@ -180,18 +225,18 @@ class Procedure(Fortran):
         self.type_name = type_name
 
 class Subroutine(Procedure):
-    """
-    Subclass of Procedure to represent a Fortran subroutine.
-    """
-
+    __doc__ = _rep_des(Procedure.__doc__, "Represents a Fortran Subroutine.")
     pass
 
 class Function(Procedure):
     """
-    Subclass of Procedure to represent a Fortran function.
-    Additional attributes *ret_val* and *ret_val_doc*.
+    ret_val : :class:`fortran.Argument`
+        The argument which is the returned value
+        
+    ret_val_doc : `str`
+        The documentation of the returned value
     """
-
+    __doc__ = _rep_des(Procedure.__doc__, "Represents a Fortran Function.") + __doc__
     _fields = ['arguments', 'ret_val']
 
     def __init__(self, name='', filename='', doc=None, lineno=0,
@@ -207,20 +252,22 @@ class Function(Procedure):
 
 
 class Prototype(Fortran):
-    """
-    Procedure prototype. Used to populate Interfaces before subroutines
-    and functions are added to them.
-    """
-
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Prototype.")
     pass
 
 class Declaration(Fortran):
     """
-    Variable declaration. Parent is either a Module, a Type
-    or a Procedure. Additional attributes *type*,
-    *attributes* and *value*.
+    type : `str` , default ``""``
+        The type of the declaration
+        
+    attributes : list of `str` , default ``None``
+        A list of attributes defined in the declaration (eg. intent(in), allocatable)
+        
+    value : `str`
+        A value given to the variable upon definition
+        (eg. value=8 in ``"integer :: x = 8"``
     """
-
+    __doc__ = _rep_des(Fortran.__doc__, "Base class representing a declaration statement") + __doc__
     def __init__(self, name='', filename='', doc=None, lineno=0,
                  attributes=None, type='', value=''):
         Fortran.__init__(self, name, filename, doc, lineno)
@@ -231,17 +278,22 @@ class Declaration(Fortran):
 
 
 class Element(Declaration):
+    __doc__ = _rep_des(Declaration.__doc__, "Represents a Module or Derived-Type Element.")
     pass
 
 class Argument(Declaration):
+    __doc__ = _rep_des(Declaration.__doc__, "Represents a Procedure Argument.")
     pass
 
 class Type(Fortran):
     """
-    Representation of a Fortran derived type. Additional attributes
-    *elements* and *procedures*.
+    elements : list of :class:`fortran.Element`
+        Variables within the type
+        
+    procedures : list of :class:`fortran.Procedure`
+        Procedures defined with the type.
     """
-
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Derived-type.") + __doc__
     _fields = ['elements', 'procedures', 'interfaces']
 
     def __init__(self, name='', filename='', doc=None,
@@ -259,10 +311,10 @@ class Type(Fortran):
 
 class Interface(Fortran):
     """
-    Represenation of a Fortran interface. Additional attribute
-    *procedures*.
+    procedures : list of :class:`fortran.Procedure`
+        The procedures listed in the interface.
     """
-
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Interface.") + __doc__
     _fields = ['procedures']
 
     def __init__(self, name='', filename='', doc=None,
@@ -343,6 +395,9 @@ def walk_procedures(tree, include_ret_val=True):
         yield (mod, node, arguments)
 
 def find(tree, pattern):
+    """
+    Find a node whose name includes *pattern*
+    """
     for node in walk(tree):
         if pattern.search(node.name):
             yield node
@@ -532,6 +587,7 @@ class LowerCaseConverter(FortranTransformer):
         return self.generic_visit(node)
 
 def strip_type(t):
+    """Return type name from type declaration"""
     if t.startswith('type('):
         t = t[t.index('(') + 1:t.index(')')]
     return t.lower()

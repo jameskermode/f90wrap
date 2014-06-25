@@ -98,8 +98,8 @@ USAGE
         parser.add_argument('-a', '--abort-func', default='f90wrap_error_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
 
-        parser.add_argument("--only", nargs="*", help="Subroutines to include in wrapper")
-        parser.add_argument("--skip", nargs="*", help="Subroutines to exclude from wrapper")
+        parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
+        parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude from wrapper")
 
         args = parser.parse_args()
 
@@ -163,7 +163,7 @@ USAGE
                     if mod is not None:
                         kept_mods.add(mod)
 
-        if len(kept_subs) == 0 and len(args.only) > 0:
+        if len(kept_subs) == 0 and args.only:
             warnings.warn("None of the supplied procedures were found")
 
         # Find (recursively) all used modules
