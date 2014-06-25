@@ -588,6 +588,7 @@ class LowerCaseConverter(FortranTransformer):
 
 def strip_type(t):
     """Return type name from type declaration"""
+    t = t.replace(' ', '') # remove blanks
     if t.startswith('type('):
         t = t[t.index('(') + 1:t.index(')')]
     return t.lower()
