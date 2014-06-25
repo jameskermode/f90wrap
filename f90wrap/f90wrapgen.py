@@ -65,9 +65,12 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         
     string_lengths : `dict`
         This is never used...
+
+    abort_func : `str`
+        Name of a Fortran function to be invoked when a fatal error occurs
         
     """
-    def __init__(self, prefix, sizeof_fortran_t, string_lengths):
+    def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&')
@@ -75,6 +78,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.prefix = prefix
         self.sizeof_fortran_t = sizeof_fortran_t
         self.string_lengths = string_lengths
+        self.abort_func = abort_func
 
     def visit_Root(self, node):
         """
@@ -475,41 +479,56 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if getset == "get":
             inout = "out"
 
-        self.write('subroutine %s%s__array_%sitem__%s(this, i, %s)' % (self.prefix, t.name,
-                                                                       getset, el.name,
-                                                                       el.name))
+        if isinstance(t, ft.Type):
+            self.write('subroutine %s%s__array_%sitem__%s(this, i, %s)' % (self.prefix, t.name,
+                                                                           getset, el.name,
+                                                                           el.name))
+        else:
+            self.write('subroutine %s%s__array_%sitem__%s(i, %s)' % (self.prefix, t.name,
+                                                                     getset, el.name,
+                                                                     el.name))
+            
         self.indent()
         self.write()
         self.write_uses_lines(t)
+        if isinstance(t, ft.Module):
+            self.write('use %s, only: %s_%s => %s' % (t.name, t.name, el.name, el.name))
         self.write('implicit none')
         self.write()
-        self.write_type_lines(t.name)
-        self.write_type_lines(el.type.name)
+        if isinstance(t, ft.Type):
+            self.write_type_lines(t.name)
+        self.write_type_lines(el.type)
 
-        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
-        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+        if isinstance(t, ft.Type):
+            self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            array_name = 'this_ptr%%p%%%s' % el.name
+        else:
+            array_name = '%s_%s' % (t.name, el.name)            
         self.write('integer, intent(in) :: i')
         self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
-        self.write('type(%s_ptr_type) :: %s_ptr' % (t.name, el.name))
+        self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
         self.write()
-        self.write('this_ptr = transfer(this, this_ptr)')
+        if isinstance(t, ft.Type):
+            self.write('this_ptr = transfer(this, this_ptr)')
 
         if 'allocatable' in el.attributes:
-            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.write('if (allocated(%s)) then' % array_name)
             self.indent()
 
-        self.write('if (i < 1 .or. i > size(this_ptr%%p%%%s)) then' % el.name)
+        self.write('if (i < 1 .or. i > size(%s)) then' % array_name)
         self.indent()
-        self.write('call system_abort("array index out of range")')
+        self.write('call %s("array index out of range")' % self.abort_func)
         self.dedent()
         self.write('else')
         self.indent()
+
         if getset == "get":
-            self.write('%s_ptr%%p => this_ptr%%p%%%s(i)' % (el.name, el.name))
+            self.write('%s_ptr%%p => %s(i)' % (el.name, array_name))
             self.write('%s = transfer(%s_ptr,%s)' % (el.name, el.name, el.name))
         else:
             self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name, el.name))
-            self.write('this_ptr%%p%%%s(i) = %s_ptr%%p' % (el.name, el.name))
+            self.write('%s(i) = %s_ptr%%p' % (array_name, el.name))
 
         self.dedent()
         self.write('endif')
@@ -518,7 +537,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.dedent()
             self.write('else')
             self.indent()
-            self.write('call system_abort("derived type array not allocated")')
+            self.write('call %s("derived type array not allocated")' % self.abort_func)
             self.dedent()
             self.write('end if')
 
@@ -534,8 +553,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         
         Parameters
         ----------
-        t : `fortran.Type` node
-            Derived-type node of the parse tree.
+        t : `fortran.Type` node or `fortran.Module` node
+            Node of the parse tree which contains this derived-type as an element
             
         el : `fortran.Element` node
             An element of a module which is derived-type array
@@ -543,25 +562,35 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
         """
-        self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
+        if isinstance(t, ft.Type):
+            self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
+        else:
+            self.write('subroutine %s%s__array_len__%s(n)' % (self.prefix, t.name, el.name))
         self.indent()
         self.write()
         self.write_uses_lines(t)
+        if isinstance(t, ft.Module):
+            self.write('use %s, only: %s_%s => %s' % (t.name, t.name, el.name, el.name))
         self.write('implicit none')
         self.write()
-        self.write_type_lines(t.name)
-        self.write_type_lines(el.type.name)
-        self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+        if isinstance(t, ft.Type):
+            self.write_type_lines(t.name)
+        self.write_type_lines(el.type)
         self.write('integer, intent(out) :: n')
-        self.write('type(%s_ptr_type) :: this_ptr' % t.name)
-        self.write()
-        self.write('this_ptr = transfer(this, this_ptr)')
+        if isinstance(t, ft.Type):
+            self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write()
+            self.write('this_ptr = transfer(this, this_ptr)')
+            array_name = 'this_ptr%%p%%%s' % el.name
+        else:
+            array_name = '%s_%s' % (t.name, el.name)
 
         if 'allocatable' in el.attributes:
-            self.write('if (allocated(this_ptr%%p%%%s)) then' % el.name)
+            self.write('if (allocated(%s)) then' % array_name)
             self.indent()
 
-        self.write('n = size(this_ptr%%p%%%s)' % el.name)
+        self.write('n = size(%s)' % array_name)
 
         if 'allocatable' in el.attributes:
             self.dedent()
@@ -582,8 +611,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         
         Parameters
         ----------
-        t : `fortran.Type` node
-            Derived-type node of the parse tree.
+        t : `fortran.Type` node or `fortran.Module` node
+            Node of the parse tree which contains this derived-type as an element
             
         el : `fortran.Element` node
             An element of a module which is derived-type array
