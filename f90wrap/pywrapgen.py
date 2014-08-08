@@ -92,7 +92,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
             i = 0
             for arg in node.arguments:
-                print "DICT FOR ARG: ", arg.__dict__
+                #print "DICT FOR ARG: ", arg.__dict__
                 if "real" in arg.type:
                     pytype = "float"
                 elif "integer" in arg.type:
@@ -117,7 +117,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     doc.append("")
 
 
-            print "DICT FOR SUBROUTINE: ", node.__dict__
+            #print "DICT FOR SUBROUTINE: ", node.__dict__
         return '\n'.join(['"""'] + doc + ['"""'])
 
     def write_imports(self):

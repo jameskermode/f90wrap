@@ -49,11 +49,12 @@ module_end  = re.compile('^end\s*module',re.IGNORECASE)
 program      = re.compile('^program',re.IGNORECASE)
 program_end  = re.compile('^end\s*program',re.IGNORECASE)
 
-type_re   = re.compile(r'^type\s+(?!\()',re.IGNORECASE)
+attribs     = r'allocatable|pointer|save|dimension\(.*?\)|parameter|target|public|private' # jrk33 added target
+
+type_re   = re.compile(r'^type((,\s*('+attribs+r')\s*)*)(::)?\s+(?!\()',re.IGNORECASE)
 type_end  = re.compile('^end\s*type',re.IGNORECASE)
 
 types       = r'recursive|pure|double precision|elemental|(real(\(.*?\))?)|(complex(\(.*?\))?)|(integer(\(.*?\))?)|(logical)|(character(\(.*?\))?)|(type\s*\().*?(\))'
-attribs     = r'allocatable|pointer|save|dimension\(.*?\)|parameter|target|public|private' # jrk33 added target
 a_attribs   = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private'
 
 types_re    = re.compile(types,re.IGNORECASE)
@@ -114,6 +115,7 @@ valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(
 public = re.compile('(^public$)|(^public\s*(\w+)\s*$)|(^public\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 private = re.compile('(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 
+labelled_line = re.compile('^[1-9][0-9]*\w+')
 
 def remove_delimited(line,d1,d2):
 
@@ -217,6 +219,11 @@ class F90File(object):
             cline=self.lines[0].strip()
             if cline.find('_FD')==1:
                 break
+
+            if labelled_line.match(cline):
+                print 'skipping line', cline
+                self.lines = self.lines[1:]
+                continue
 
             # jrk33 - join lines before removing delimiters
 
@@ -589,6 +596,8 @@ def check_subt(cl,file, grab_hold_doc=True):
         cl=subt.sub('',cl)
         out.name=re.search(re.compile('\w+'),cl).group()
 
+        logging.info('parser reading subroutine %s' % out.name)
+
         # Check to see if there are any arguments
 
         has_args=0
@@ -878,8 +887,10 @@ def check_type(cl,file):
 #    global hold_doc
 
     out=Type()
-
-    if re.match(type_re,cl)!=None:
+    m = re.match(type_re, cl)
+    current_access = None
+    
+    if m is not None:
 
         out.filename = file.filename
         out.lineno = file.lineno
@@ -897,7 +908,14 @@ def check_type(cl,file):
 
         # Get type name
         cl=type_re.sub('',cl)
+
+        # Check if there are any type attributes
+        out.attributes = []
+        if m.group(1):
+            out.attributes = split_attribs(m.group(1))
+        
         out.name=re.search(re.compile('\w+'),cl).group()
+        logging.info('parser reading type %s' % out.name)
 
         # Get next line, and check each possibility in turn
 
@@ -913,9 +931,17 @@ def check_type(cl,file):
             check=check_decl(cl,file)
             if check[0]!=None:
                 for a in check[0]:
+                    if current_access is not None:
+                        a.attributes.append(current_access)
                     out.elements.append(a)
                 cl=check[1]
                 continue
+
+            if cl == 'public':
+                current_access = 'public'
+                
+            elif cl == 'private':
+                current_access = 'private'
 
             cl=file.next()
 

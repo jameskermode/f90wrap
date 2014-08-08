@@ -95,7 +95,8 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         if self.mod is None:
             return self.generic_visit(node)
 
-        if node.name in self.mod.private_symbols:
+        if (node.name in self.mod.private_symbols or
+            hasattr(node, 'attributes') and 'private' in node.attributes):
             logging.debug('removing private symbol ' + node.name)
             return None
         else:
@@ -235,10 +236,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
         return node
 
 
-def fix_subroutine_uses_clauses(tree, types, kinds):
+def fix_subroutine_uses_clauses(tree, types, kind_modules):
     """Walk over all nodes in tree, updating subroutine uses
        clauses to include the parent module and all necessary modules
-       from types and kinds."""
+       from types and kind_modules."""
 
     for mod, sub, arguments in ft.walk_procedures(tree):
 
@@ -247,16 +248,16 @@ def fix_subroutine_uses_clauses(tree, types, kinds):
         sub.uses = set()
         sub.mod_name = None
         if mod is not None:
-            sub.uses.add((mod.name, None))
+            sub.uses.add((mod.name, (sub.name,)))
             sub.mod_name = mod.name
 
         for arg in arguments:
             if arg.type.startswith('type') and arg.type in types:
-                sub.uses.add((types[arg.type].mod_name, None))
+                sub.uses.add((types[arg.type].mod_name, (ft.strip_type(arg.type),)))
 
-        for (mod, only) in kinds:
+        for (mod, only) in kind_modules.iteritems():
             if mod not in sub.uses:
-                sub.uses.add((mod, only))
+                sub.uses.add((mod, tuple(only)))
 
     return tree
 
@@ -298,7 +299,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             if typename in init_lines:
                 use, (exe, exe_optional) = init_lines[typename]
                 if use is not None:
-                    sub.uses.add((use, None))
+                    sub.uses.add((use, [typename]))
                 arg.init_lines = (exe_optional, exe)
 
             if 'intent(out)' in arg.attributes:
@@ -711,7 +712,7 @@ class OnlyAndSkip(ft.FortranTransformer):
         return self.generic_visit(node)
 
 
-def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
+def transform_to_generic_wrapper(tree, types, kind_modules, callbacks, constructors,
                                  destructors, short_names, init_lines,
                                  only_subs, only_mods):
     """
@@ -732,10 +733,10 @@ def transform_to_generic_wrapper(tree, types, kinds, callbacks, constructors,
     tree = collapse_single_interfaces(tree)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
-    tree = fix_subroutine_uses_clauses(tree, types, kinds)
+    tree = fix_subroutine_uses_clauses(tree, types, kind_modules)
     return tree
 
-def transform_to_f90_wrapper(tree, types, kinds, callbacks, constructors,
+def transform_to_f90_wrapper(tree, types, kind_modules, callbacks, constructors,
                              destructors, short_names, init_lines,
                              string_lengths, default_string_length,
                              sizeof_fortran_t):

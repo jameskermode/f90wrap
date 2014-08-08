@@ -71,7 +71,6 @@ class Fortran(object):
         ret = True
         if type(other) != type(self):
             return False
-        print type(other), type(self)
         for a in attrs:
             try:
                 ret = ret and getattr(self, a) == getattr(other, a)
@@ -522,7 +521,7 @@ def find_types(tree):
             if isinstance(node, Type):
                 logging.debug('type %s defined in module %s' % (node.name, mod.name))
                 node.mod_name = mod.name  # save module name in Type instance
-                node.uses = set([(mod.name, None)])
+                node.uses = set([(mod.name, (node.name,))])
                 types['type(%s)' % node.name] = types[node.name] = node
 
     return types
