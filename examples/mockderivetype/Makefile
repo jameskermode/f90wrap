@@ -1,8 +1,8 @@
 CC = gcc
 F90 = gfortran
 FPP = gfortran -E
-F90FLAGS = -x f95-cpp-input
-CFLAGS =
+F90FLAGS = -x f95-cpp-input -fPIC
+CFLAGS = -fPIC
 
 LIBSRC_SOURCES = leveltwomod define fwrap
 
@@ -32,7 +32,7 @@ test: mockdt.so
 	${FPP} ${F90FLAGS} $<  -o $@
 
 libsrc.a: ${LIBSRC_OBJECTS}
-	libtool -static -o $@ $?
+	ar src $@ $?
 
 _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -v --only do_stuff top_level
