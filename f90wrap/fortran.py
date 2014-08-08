@@ -684,3 +684,134 @@ def remove_private_symbols(node):
     node = PrivateSymbolsRemover().visit(node)
     return node
 
+def split_type_kind(typename):
+    """
+    type*kind -> (type, kind)
+    type(kind) -> (type, kind)
+    type(kind=kind) -> (type, kind)
+    """
+    if '*' in typename:
+        type = typename[:typename.index('*')]
+        kind = typename[typename.index('*')+1:]
+    elif '(' in typename:
+        type = typename[:typename.index('(')]
+        kind = typename[typename.index('('):]
+    else:
+        type = typename
+        kind = ''
+    kind = kind.replace('kind=', '')
+    return (type.strip(), kind.strip())
+
+
+def f2c_type(typename, kind_map):
+    # default conversion from fortran to C types
+    default_f2c_type = {
+        'character': 'char',
+        'integer': 'int',
+        'real': 'float',
+        'double precison': 'double',
+        'logical': 'int',
+        }
+
+    type, kind = split_type_kind(typename)
+    kind = kind.replace('(', '').replace(')', '')
+
+    if type in kind_map:
+        if kind in kind_map[type]:
+            c_type = kind_map[type][kind]
+        else:
+            raise RuntimeError('Unknown array type, kind (%s, %s)' % (type, kind) +
+                               ' - add to kind map and try again')
+    else:
+        if type in default_f2c_type:
+            c_type = default_f2c_type[type]
+        else:
+            raise RuntimeError('Unknown array type %s - ' % type +
+                               'add to kind map and try again')
+    return c_type
+
+
+def normalise_type(typename, kind_map):
+    """
+    real(kind=dp) -> real*8, etc.
+    """
+    type, kind = split_type_kind(typename)
+    if not kind:
+        return type
+    c_type = f2c_type(typename, kind_map)
+    c_type_to_fortran_kind = {
+        'char' : '',
+        'signed_char' : '',
+        'short' : '*2',
+        'int' : '*4',
+        'long_long' : '*8',
+        'float' :  '*4',
+        'double' : '*8',
+        'long_double' : '*16',
+        'complex_float' : '*4',
+        'complex_double' : '*8',
+        'complex_long_double' : '*16',
+        'string' : '',
+        }
+    kind = c_type_to_fortran_kind.get(c_type, kind)
+    return type+kind
+    
+
+def fortran_array_type(typename, kind_map):
+    c_type = f2c_type(typename, kind_map)
+        
+    # convert from C type names to numpy dtype strings
+    c_type_to_numpy_type = {
+        'char' : 'string',
+        'signed_char' : 'string',
+        'short' : 'int16',
+        'int' : 'int32',
+        'long_long' : 'int64',
+        'float' :  'float',
+        'double' : 'double',
+        'long_double' : 'float128',
+        'complex_float' : 'complex64',
+        'complex_double' : 'complex128',
+        'complex_long_double' : 'complex256',
+        'string' : 'string',
+    }
+
+    if c_type not in c_type_to_numpy_type:
+        raise RuntimeError('Unknown C type %s' % c_type)
+        
+    numpy_type = c_type_to_numpy_type[c_type]
+
+    # finally, convert numpy type code to our internal code
+    # (FIXME: this could be avoidded with minor changes to arraydata
+    #  module).
+
+    # numeric codes for Fortran types.
+    # Those with suffix _A are 1D arrays, _A2 are 2D arrays
+    T_NONE = 0
+    T_INTEGER = 1
+    T_REAL = 2
+    T_COMPLEX = 3
+    T_LOGICAL = 4
+
+    T_INTEGER_A = 5
+    T_REAL_A = 6
+    T_COMPLEX_A = 7
+    T_LOGICAL_A = 8
+    T_CHAR = 9
+
+    T_CHAR_A = 10
+    T_DATA = 11
+    T_INTEGER_A2 = 12
+    T_REAL_A2 = 13
+    
+    fortran_type_code = {'double': T_REAL_A,
+                         'int32': T_INTEGER_A,
+                         'string': T_CHAR_A,
+                         'complex': T_COMPLEX_A}
+
+    if numpy_type not in fortran_type_code:
+        raise RuntimeError('Unsupported numpy array type %s' % numpy_type)
+    
+    array_type = fortran_type_code[numpy_type]
+    return array_type
+

@@ -54,7 +54,7 @@ attribs     = r'allocatable|pointer|save|dimension\(.*?\)|parameter|target|publi
 type_re   = re.compile(r'^type((,\s*('+attribs+r')\s*)*)(::)?\s+(?!\()',re.IGNORECASE)
 type_end  = re.compile('^end\s*type',re.IGNORECASE)
 
-types       = r'recursive|pure|double precision|elemental|(real(\(.*?\))?)|(complex(\(.*?\))?)|(integer(\(.*?\))?)|(logical)|(character(\(.*?\))?)|(type\s*\().*?(\))'
+types       = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))'
 a_attribs   = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private'
 
 types_re    = re.compile(types,re.IGNORECASE)
@@ -83,7 +83,7 @@ contains = re.compile('^contains',re.IGNORECASE)
 uses =  re.compile('^use\s+',re.IGNORECASE)
 only =  re.compile('only\s*:\s*',re.IGNORECASE)
 
-decl        =  re.compile('^('+types+r')\s*(,\s*('+attribs+r')\s*)*(::)?\s*\w+(\s*,\s*\w+)*',re.IGNORECASE)
+decl        = re.compile('^('+types+r')\s*(,\s*('+attribs+r')\s*)*(::)?\s*\w+(\s*,\s*\w+)*',re.IGNORECASE)
 d_colon     = re.compile('::')
 
 attr_re     = re.compile('(,\s*('+attribs+r')\s*)+',re.IGNORECASE)
@@ -221,7 +221,7 @@ class F90File(object):
                 break
 
             if labelled_line.match(cline):
-                print 'skipping line', cline
+                logging.debug('skipping line: %s' % cline)
                 self.lines = self.lines[1:]
                 continue
 
@@ -492,6 +492,7 @@ def check_module(cl,file):
                 if m is not None:
                     line = m.group()
                     if line == 'public':
+                        logging.info('Marking module %s as default public' % out.name)
                         out.default_access = 'public'
                     else:
                         line = line.replace('public', '')
@@ -503,6 +504,7 @@ def check_module(cl,file):
                 if m is not None:
                     line = m.group()
                     if line == 'private':
+                        logging.info('Marking module %s as default private' % out.name)                        
                         out.default_access = 'private'
                     else:
                         line = line.replace('private', '')
@@ -595,8 +597,6 @@ def check_subt(cl,file, grab_hold_doc=True):
 
         cl=subt.sub('',cl)
         out.name=re.search(re.compile('\w+'),cl).group()
-
-        logging.info('parser reading subroutine %s' % out.name)
 
         # Check to see if there are any arguments
 

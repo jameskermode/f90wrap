@@ -92,8 +92,8 @@ USAGE
                             default='f90wrap_')
         parser.add_argument('-c', '--callback', nargs="*",
                             help="""Callback routines.""")
-        parser.add_argument('-k', '--kind', nargs="*",
-                            help="""Fortran kind declarations to use in each wrapper.""")
+        parser.add_argument('-k', '--kind-map', 
+                            help="""File containting Python dictionary in f2py_f2cmap format""")
         parser.add_argument('-i', '--init', nargs='*',
                             help="""Special initialisation lines used when constructing a particular type.""")
         parser.add_argument('-m', '--mod-name',
@@ -106,33 +106,35 @@ USAGE
 
         args = parser.parse_args()
 
+        if args.verbose:
+            logging.root.setLevel(logging.DEBUG)
+        else:
+            logging.root.setLevel(logging.INFO)
+        
         #=======================================================================
         # Begin actual wrapping
         #=======================================================================
+        
         tree = fparse.read_files(args.files)
 
-        # ## TODO -- parse opt.callback, opt.kind, opt.init to populate these lists
+        init_lines = {}  # {'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
+        #                            'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}        
+
+        # ## TODO -- parse opt.callback, opt.init to populate these lists
         if not args.callback:
             callbacks = []
         else:
             callbacks = args.callback
 
-        kind_map = {
-            'real':     {'dp': 'double', 'kind=dp': 'double'},
-            'complex' : {'dp':'complex_double', 'kind=dp': 'complex_double'}
-        }
-        print 'Saving kind map to .f2py_f2cmap.'
+        if args.kind_map:
+            kind_map = eval(open(args.kind_map).read())
+        else:
+            kind_map = {}
+        print 'Kind map: (also saved to .f2py_f2cmap)'
+        pprint.pprint(kind_map)
         f2py_f2cmap = open('.f2py_f2cmap', 'w')
         pprint.pprint(kind_map, f2py_f2cmap)
         f2py_f2cmap.close()
-
-        kind_modules = {'constants': ['dp']}
-        
-        init_lines = {}  # {'atoms': ('atoms_module', ('if (associated(%(PTR)s)) call atoms_repoint(%(PTR)s)',
-        #                            'if (present(%(ARG)s)) call atoms_repoint(%(PTR)s)'))}
-
-        if args.verbose:
-            logging.root.setLevel(logging.DEBUG)
 
         constructors = ('initialise_ptr', 'initialise', 'allocate')
         destructors = ('finalise',)
@@ -154,7 +156,7 @@ USAGE
         }
 
         fsize = sizeof_fortran_t()
-
+        
         types = fortran.find_types(tree)
 
         # Find all modules and subroutines the user wishes to keep
@@ -179,7 +181,7 @@ USAGE
         # Find (recursively) all used modules
         kept_mods = tf.find_referenced_modules(kept_mods, tree)
 
-        tree = tf.transform_to_generic_wrapper(tree, types, kind_modules, callbacks,
+        tree = tf.transform_to_generic_wrapper(tree, types, callbacks,
                                                constructors, destructors, short_names,
                                                init_lines, kept_subs, kept_mods)
 
@@ -188,17 +190,18 @@ USAGE
 
         py_tree = tf.transform_to_py_wrapper(py_tree, argument_name_map)
 
-        f90_tree = tf.transform_to_f90_wrapper(f90_tree, types, kind_modules,
+        f90_tree = tf.transform_to_f90_wrapper(f90_tree, types, 
                                                callbacks,
                                                constructors, destructors,
                                                short_names, init_lines,
                                                string_lengths,
                                                default_string_length,
-                                               sizeof_fortran_t=fsize)
+                                               sizeof_fortran_t=fsize,
+                                               kind_map=kind_map)
 
         pywrap.PythonWrapperGenerator(args.prefix, args.mod_name, types).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
-                                  args.abort_func, kind_modules, kind_map).visit(f90_tree)
+                                  args.abort_func, kind_map).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:
@@ -210,7 +213,7 @@ USAGE
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help\n")
-        if args.verbose:
+        if 'args' in locals() and args.verbose:
             raise
         else:
             return 2

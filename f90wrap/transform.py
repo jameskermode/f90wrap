@@ -35,13 +35,15 @@ class AccessUpdater(ft.FortranTransformer):
     def visit_Module(self, mod):
         # keep track of the current module
         self.mod = mod
-        self.generic_visit(mod)
+        mod = self.generic_visit(mod)
+        print 'public symbols:'
+        print mod.public_symbols
+        print 'private symbols:'
+        print mod.private_symbols
         self.mod = None
+        return mod
 
-    def visit(self, node):
-        if self.mod is None:
-            return self.generic_visit(node)
-
+    def visit_Procedure(self, node):
         if self.mod.default_access == 'public':
             if ('private' not in getattr(node, 'attributes', {}) and
                    node.name not in self.mod.private_symbols):
@@ -74,7 +76,11 @@ class AccessUpdater(ft.FortranTransformer):
             raise ValueError('bad default access %s for module %s' %
                                (self.mod.default_access, self.mod.name))
 
-        return node  # no need to recurse further
+        return self.generic_visit(node)
+
+    visit_Type = visit_Procedure
+    visit_Declaration = visit_Procedure
+    visit_Interface = visit_Procedure  
 
 
 class PrivateSymbolsRemover(ft.FortranTransformer):
@@ -88,25 +94,28 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     def visit_Module(self, mod):
         # keep track of the current module
         self.mod = mod
-        self.generic_visit(mod)
+        mod = self.generic_visit(mod)
         self.mod = None
+        return mod
 
-    def visit(self, node):
-        if self.mod is None:
-            return self.generic_visit(node)
-
+    def visit_Procedure(self, node):
         if (node.name in self.mod.private_symbols or
             hasattr(node, 'attributes') and 'private' in node.attributes):
-            logging.debug('removing private symbol ' + node.name)
+            logging.info('removing private symbol ' + node.name)
             return None
-        else:
-            return node
+    
+        return self.generic_visit(node)
+
+    visit_Type = visit_Procedure
+    visit_Declaration = visit_Procedure
+    visit_Interface = visit_Procedure      
+
 
 def remove_private_symbols(node):
     """
     Walk the tree starting at *node*, removing all private symbols.
 
-    This funciton first applies the AccessUpdater transformer to
+    This function first applies the AccessUpdater transformer to
     ensure module *public_symbols* and *private_symbols* are up to
     date with *default_access* and individual `public` and `private`
     attributes.
@@ -115,6 +124,7 @@ def remove_private_symbols(node):
     node = AccessUpdater().visit(node)
     node = PrivateSymbolsRemover().visit(node)
     return node
+
 
 class UnwrappablesRemover(ft.FortranTransformer):
 
@@ -236,15 +246,12 @@ class UnwrappablesRemover(ft.FortranTransformer):
         return node
 
 
-def fix_subroutine_uses_clauses(tree, types, kind_modules):
+def fix_subroutine_uses_clauses(tree, types):
     """Walk over all nodes in tree, updating subroutine uses
-       clauses to include the parent module and all necessary modules
-       from types and kind_modules."""
+       clauses to include the parent module and all necessary
+       modulesfrom types"""
 
     for mod, sub, arguments in ft.walk_procedures(tree):
-
-        logging.info('fix_subroutine_uses_clauses %s' % sub.name)
-
         sub.uses = set()
         sub.mod_name = None
         if mod is not None:
@@ -254,10 +261,6 @@ def fix_subroutine_uses_clauses(tree, types, kind_modules):
         for arg in arguments:
             if arg.type.startswith('type') and arg.type in types:
                 sub.uses.add((types[arg.type].mod_name, (ft.strip_type(arg.type),)))
-
-        for (mod, only) in kind_modules.iteritems():
-            if mod not in sub.uses:
-                sub.uses.add((mod, tuple(only)))
 
     return tree
 
@@ -712,7 +715,20 @@ class OnlyAndSkip(ft.FortranTransformer):
         return self.generic_visit(node)
 
 
-def transform_to_generic_wrapper(tree, types, kind_modules, callbacks, constructors,
+class NormaliseTypes(ft.FortranVisitor):
+    """
+    Convert all type names to standard form and resolve kind names
+    """
+
+    def __init__(self, kind_map):
+        self.kind_map = kind_map
+
+    def visit_Declaration(self, node):
+        node.type = ft.normalise_type(node.type, self.kind_map)
+        return node
+        
+    
+def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
                                  only_subs, only_mods):
     """
@@ -728,27 +744,29 @@ def transform_to_generic_wrapper(tree, types, kind_modules, callbacks, construct
     """
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
-    tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
-    tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
+    tree= UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
+    tree= MethodFinder(types, constructors, destructors, short_names).visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
-    tree = fix_subroutine_uses_clauses(tree, types, kind_modules)
+    tree = fix_subroutine_uses_clauses(tree, types)
     return tree
 
-def transform_to_f90_wrapper(tree, types, kind_modules, callbacks, constructors,
+def transform_to_f90_wrapper(tree, types, callbacks, constructors,
                              destructors, short_names, init_lines,
                              string_lengths, default_string_length,
-                             sizeof_fortran_t):
+                             sizeof_fortran_t, kind_map):
     """
     Additional Fortran-specific transformations:
      * Conversion of derived type arguments to opaque integer arrays
        via Fortran transfer() intrinsic.
+    * Normalise type declarations
     """
     FunctionToSubroutineConverter().visit(tree)
     tree = convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t)
     StringLengthConverter(string_lengths, default_string_length).visit(tree)
     ArrayDimensionConverter().visit(tree)
+    NormaliseTypes(kind_map).visit(tree)
     return tree
 
 def transform_to_py_wrapper(tree, argument_name_map=None):

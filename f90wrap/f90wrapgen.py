@@ -24,24 +24,6 @@ import numpy as np
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
-# numeric codes for Fortran types.
-# Those with suffix _A are 1D arrays, _A2 are 2D arrays
-T_NONE = 0
-T_INTEGER = 1
-T_REAL = 2
-T_COMPLEX = 3
-T_LOGICAL = 4
-
-T_INTEGER_A = 5
-T_REAL_A = 6
-T_COMPLEX_A = 7
-T_LOGICAL_A = 8
-T_CHAR = 9
-
-T_CHAR_A = 10
-T_DATA = 11
-T_INTEGER_A2 = 12
-T_REAL_A2 = 13
 
 class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     """
@@ -74,7 +56,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         
     """
     def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
-                 kind_modules, kind_map):
+                 kind_map):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&')
@@ -83,7 +65,6 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.sizeof_fortran_t = sizeof_fortran_t
         self.string_lengths = string_lengths
         self.abort_func = abort_func
-        self.kind_modules = kind_modules
         self.kind_map = kind_map
 
     def visit_Root(self, node):
@@ -131,22 +112,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         ----------
         node : Node of parse tree
         """
-        class DuplicateSymbolError:
-            pass
-        
         all_uses = {}
-        for (mod, only) in self.kind_modules.iteritems():
-            try:
-                if extra_uses_dict is not None:
-                    for (new_mod, new_only) in extra_uses_dict.iteritems():
-                        for symbol in only:
-                            if (symbol in new_only or
-                                ('%s_%s => %s' % (mod, symbol, symbol) in new_only)):
-                                raise DuplicateSymbolError
-            except DuplicateSymbolError:
-                continue
-            all_uses[mod] = only[:]
-
         node_uses = []
         if hasattr(node, 'uses'):
             for use in node.uses:
@@ -319,11 +285,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         Writes the code necessary for each propery wrapped subroutine.
         """
         logging.info('F90WrapperGenerator visiting subroutine %s' % node.name)
-        self.write("subroutine %(sub_name)s(%(arg_names)s)" %
+        self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
-                    'arg_names': ', '.join([arg.name for arg in node.arguments])})
+                    'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
+                                                  if node.arguments else ''})
         self.indent()
-        self.write_uses_lines(node)
+        self.write_uses_lines(node) #, {node.mod_name: [node.name]})
         self.write("implicit none")
         self.write()
         for tname in node.types:
@@ -356,6 +323,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         return self.generic_visit(node)
 
+
     def _write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
         """
         Write wrapper for arrays of intrinsic types
@@ -375,26 +343,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             The size, in bytes, of a pointer to a fortran derived type ??
             
         """
-        # The following maps the element type to a numeric code
-        fortran_type_code = {'d': T_REAL_A,
-                             'i': T_INTEGER_A,
-                             'S': T_CHAR_A,
-                             'complex': T_COMPLEX_A}
-
-        numpy_type_map = {'real(8)': 'd',  # FIXME user-provided kind_modules should be included here
-                          'real(dp)':'d',
-                          'real(dl)':'d',
-                          'integer':'i',
-                          'logical':'i',
-                          'double precision': 'd',
-                          'character*(*)':'S',
-                          'complex(dp)':'complex',
-                          'real(16)':'float128',
-                          'real(qp)':'float128',
-                          'real(kind=dp)': 'd'}
-
-        typename = numpy_type_map.get(el.type, el.type)
-
         if isinstance(t, ft.Type):
             this = 'this, '
         else:
@@ -427,7 +375,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
         self.write()
         self.write('nd = %d' % rank)
-        self.write('dtype = %s' % fortran_type_code[typename])
+        self.write('dtype = %s' % ft.fortran_array_type(el.type, self.kind_map))
         if isinstance(t, ft.Type):
             self.write('this_ptr = transfer(this, this_ptr)')
             array_name = 'this_ptr%%p%%%s' % el.name
@@ -701,10 +649,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
 
         # Return/set by value
-        attributes = el.attributes[:]
-        for key in ['pointer', 'allocatable', 'public', 'parameter', 'save']:
-            if key in attributes:
-                attributes.remove(key)
+        attributes = [attr for attr in el.attributes if attr not in
+                      ['pointer', 'allocatable', 'public', 'parameter', 'save'] ]
 
         if el.type.startswith('type'):
             # For derived types elements, treat as opaque reference
