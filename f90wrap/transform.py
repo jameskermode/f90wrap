@@ -44,6 +44,9 @@ class AccessUpdater(ft.FortranTransformer):
         return mod
 
     def visit_Procedure(self, node):
+        if self.mod is None:
+            return self.generic_visit(node)
+        
         if self.mod.default_access == 'public':
             if ('private' not in getattr(node, 'attributes', {}) and
                    node.name not in self.mod.private_symbols):
@@ -79,8 +82,8 @@ class AccessUpdater(ft.FortranTransformer):
         return self.generic_visit(node)
 
     visit_Type = visit_Procedure
-    visit_Declaration = visit_Procedure
-    visit_Interface = visit_Procedure  
+    visit_Interface = visit_Procedure
+    visit_Element = visit_Procedure    
 
 
 class PrivateSymbolsRemover(ft.FortranTransformer):
@@ -99,6 +102,9 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         return mod
 
     def visit_Procedure(self, node):
+        if self.mod is None:
+            return self.generic_visit(node)
+            
         if (node.name in self.mod.private_symbols or
             hasattr(node, 'attributes') and 'private' in node.attributes):
             logging.info('removing private symbol ' + node.name)
@@ -107,9 +113,8 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         return self.generic_visit(node)
 
     visit_Type = visit_Procedure
-    visit_Declaration = visit_Procedure
-    visit_Interface = visit_Procedure      
-
+    visit_Interface = visit_Procedure
+    visit_Element = visit_Procedure
 
 def remove_private_symbols(node):
     """

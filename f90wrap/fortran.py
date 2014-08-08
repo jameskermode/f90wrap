@@ -720,13 +720,15 @@ def f2c_type(typename, kind_map):
         if kind in kind_map[type]:
             c_type = kind_map[type][kind]
         else:
-            raise RuntimeError('Unknown array type, kind (%s, %s)' % (type, kind) +
+            raise RuntimeError('Unknown combination of type "%s" and kind "%s"' % (type, kind) +
                                ' - add to kind map and try again')
     else:
         if type in default_f2c_type:
             c_type = default_f2c_type[type]
+        elif type.startswith('type'):
+            return type
         else:
-            raise RuntimeError('Unknown array type %s - ' % type +
+            raise RuntimeError('Unknown type "%s" - ' % type +
                                'add to kind map and try again')
     return c_type
 
