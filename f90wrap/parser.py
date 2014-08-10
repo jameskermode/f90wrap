@@ -115,7 +115,6 @@ valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(
 public = re.compile('(^public$)|(^public\s*(\w+)\s*$)|(^public\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 private = re.compile('(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 
-labelled_line = re.compile('^[1-9][0-9]*\w+')
 
 def remove_delimited(line,d1,d2):
 
@@ -220,11 +219,6 @@ class F90File(object):
             if cline.find('_FD')==1:
                 break
 
-            if labelled_line.match(cline):
-                logging.debug('skipping line: %s' % cline)
-                self.lines = self.lines[1:]
-                continue
-
             # jrk33 - join lines before removing delimiters
 
             # Join together continuation lines
@@ -236,7 +230,12 @@ class F90File(object):
                 cont_index=cline.find('&')
                 comm_index=cline.find('!')
                 while (cont_index!=-1 and (comm_index==-1 or comm_index>cont_index)):
-                    self.lines=[cline[:cont_index].strip()+self.lines[1]]+self.lines[2:]
+                    cont = cline[:cont_index].strip()
+                    cont2 = self.lines[1].strip()
+                    if cont2.startswith('&'):
+                        cont2 = cont2[1:]
+                    cont = cont + cont2
+                    self.lines= [cont] + self.lines[2:]
                     self._lineno = self._lineno + 1                    
                     cline=self.lines[0].strip()
                     cont_index=cline.find('&')
@@ -380,7 +379,7 @@ def check_program(cl,file):
                 # Subroutine definition
                 check=check_subt(cl,file)
                 if check[0]!=None:
-                    logging.debug('    subroutine '+check[0].name)
+                    logging.debug('    program subroutine '+check[0].name)
                     out.procedures.append(check[0])
                     cl=check[1]
                     continue
@@ -388,7 +387,7 @@ def check_program(cl,file):
                 # Function definition
                 check=check_funct(cl,file)
                 if check[0]!=None:
-                    logging.debug('    function '+check[0].name)
+                    logging.debug('    program function '+check[0].name)
                     out.procedures.append(check[0])
                     cl=check[1]
                     continue
@@ -528,7 +527,7 @@ def check_module(cl,file):
                 check=check_subt(cl,file)
                 if check[0]!=None:
 
-                    logging.debug('    subroutine '+check[0].name)
+                    logging.debug('    module subroutine '+check[0].name)
 
                     for i in out.interfaces:
                         for j,p in enumerate(i.procedures):
@@ -549,7 +548,7 @@ def check_module(cl,file):
                 check=check_funct(cl,file)
                 if check[0]!=None:
 
-                    logging.debug('    function '+check[0].name)
+                    logging.debug('    module function '+check[0].name)
                     for i in out.interfaces:
                         for j,p in enumerate(i.procedures):
                             if check[0].name.lower() == p.name.lower():

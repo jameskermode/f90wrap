@@ -369,6 +369,25 @@ def walk_modules(node):
         if isinstance(child, Module):
             yield child
 
+def find_procedure_module(tree, node):
+    """
+    Find the module in `tree` that contains `node`
+    """
+    for mod in walk_modules(tree):
+        if node in mod.procedures:
+            return mod
+        for intf in mod.interfaces:
+            if node in intf.procedures:
+                return mod
+        for typ in mod.types:
+            if node in typ.procedures:
+                return mod
+            for intf in typ.interfaces:
+                if node in typ.procedures:
+                    return mod
+    return None
+    
+            
 def walk_procedures(tree, include_ret_val=True):
     """
     Walk over all nodes in tree and yield tuples
@@ -385,11 +404,7 @@ def walk_procedures(tree, include_ret_val=True):
         if include_ret_val and isinstance(node, Function):
             arguments.append(node.ret_val)
 
-        for mod in walk_modules(tree):
-            if node in mod.procedures:
-                continue
-        if node not in mod.procedures:
-            mod = None
+        mod = find_procedure_module(tree, node)
 
         yield (mod, node, arguments)
 
@@ -726,7 +741,7 @@ def f2c_type(typename, kind_map):
         if type in default_f2c_type:
             c_type = default_f2c_type[type]
         elif type.startswith('type'):
-            return type
+            return 'type'
         else:
             raise RuntimeError('Unknown type "%s" - ' % type +
                                'add to kind map and try again')
@@ -735,7 +750,7 @@ def f2c_type(typename, kind_map):
 
 def normalise_type(typename, kind_map):
     """
-    real(kind=dp) -> real*8, etc.
+    real(kind=dp) -> real(8), etc.
     """
     type, kind = split_type_kind(typename)
     if not kind:
@@ -744,18 +759,22 @@ def normalise_type(typename, kind_map):
     c_type_to_fortran_kind = {
         'char' : '',
         'signed_char' : '',
-        'short' : '*2',
-        'int' : '*4',
-        'long_long' : '*8',
-        'float' :  '*4',
-        'double' : '*8',
-        'long_double' : '*16',
-        'complex_float' : '*4',
-        'complex_double' : '*8',
-        'complex_long_double' : '*16',
+        'short' : '(2)',
+        'int' : '(4)',
+        'long_long' : '(8)',
+        'float' :  '(4)',
+        'double' : '(8)',
+        'long_double' : '(16)',
+        'complex_float' : '(4)',
+        'complex_double' : '(8)',
+        'complex_long_double' : '(16)',
         'string' : '',
         }
+    orig_kind = kind
     kind = c_type_to_fortran_kind.get(c_type, kind)
+    # special case: preserve string lengths
+    if c_type == 'char':
+        kind = orig_kind
     return type+kind
     
 

@@ -36,10 +36,6 @@ class AccessUpdater(ft.FortranTransformer):
         # keep track of the current module
         self.mod = mod
         mod = self.generic_visit(mod)
-        print 'public symbols:'
-        print mod.public_symbols
-        print 'private symbols:'
-        print mod.private_symbols
         self.mod = None
         return mod
 
@@ -144,7 +140,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
         # they may have pointer arguments
         for suff in self.constructors + self.destructors:
             if node.name.endswith(suff):
-                return node
+                return self.generic_visit(node)
 
         args = node.arguments[:]
         if isinstance(node, ft.Function):
@@ -168,47 +164,65 @@ class UnwrappablesRemover(ft.FortranTransformer):
                     logging.debug('removing routine %s due to allocatable/pointer arguments' % node.name)
                     return None
 
-                # no complex scalars (arrays are OK)
                 dims = [attrib for attrib in arg.attributes if attrib.startswith('dimension')]
+                
+                # no complex scalars (arrays are OK)
                 if arg.type.startswith('complex') and len(dims) == 0:
                     logging.debug('removing routine %s due to complex scalar arguments' % node.name)
                     return None
 
                 # no derived types apart from those in self.types
                 if arg.type.startswith('type') and arg.type not in self.types:
-                    logging.debug('removing routine %s due to unsupported derived type %s' % (node.name, arg.type))
+                    logging.debug('removing routine %s due to unsupported derived type %s' %
+                                  (node.name, arg.type))
+                    return None
+
+                # no arrays of derived types
+                if arg.type.startswith('type') and len(dims) != 0:
+                    logging.debug('removing routine %s due to unsupported derived type array %s' %
+                                  (node.name, arg.type))
                     return None
 
         return self.generic_visit(node)
 
     def visit_Argument(self, node):
         if not hasattr(node, 'attributes'):
-            return node
+            return self.generic_visit(node)
 
         if not 'optional' in node.attributes:
-            return node
+            return self.generic_visit(node)
 
         # remove optional allocatable/pointer arguments
         if 'allocatable' in node.attributes or 'pointer' in node.attributes:
-            logging.debug('removing optional argument %s due to allocatable/pointer attributes' % node.name)
+            logging.debug('removing optional argument %s due to allocatable/pointer attributes' %
+                          node.name)
             return None
 
-        # remove optional complex scalar arguments
         dims = [attrib for attrib in node.attributes if attrib.startswith('dimension')]
+
+        # remove optional complex scalar arguments
         if node.type.startswith('complex') and len(dims) == 0:
             logging.debug('removing optional argument %s as it is a complex scalar' % node.name)
             return None
 
         # remove optional derived types not in self.types
         if node.type.startswith('type') and node.type not in self.types:
-            logging.debug('removing optional argument %s due to unsupported derived type %s' % (node.name, node.type))
+            logging.debug('removing optional argument %s due to unsupported derived type %s' %
+                          (node.name, node.type))
             return None
 
-        return node
+        # remove arrays of derived types
+        if node.type.startswith('type') and len(dims) != 0:
+            logging.debug('removing optional argument %s due to unsupported derived type array %s' %
+                          (node.name, node.type))
+            return None
+
+        return self.generic_visit(node)
+
 
     def visit_Type(self, node):
         """
-        Remove unwrappeble elements inside derived types
+        Remove unwrappable elements inside derived types
         """
         if node.name not in self.types:
             logging.debug('removing type %s' % node.name)
@@ -225,7 +239,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                     continue
                 elements.append(element)
             node.elements = elements
-            return node
+            return self.generic_visit(node)
 
 
     def visit_Module(self, node):
@@ -248,7 +262,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 continue
             elements.append(element)
         node.elements = elements
-        return node
+        return self.generic_visit(node)
 
 
 def fix_subroutine_uses_clauses(tree, types):
@@ -350,12 +364,13 @@ class StringLengthConverter(ft.FortranVisitor):
 
             # Default string length for intent(out) strings
             if string_length == '*' and 'intent(out)' in node.attributes:
-                string_length = 'character*(%s)' % self.default_string_length
+                string_length = self.default_string_length
 
         except ValueError:
             string_length = 1
 
         node.type = 'character*(%s)' % str(string_length)
+
 
 class ArrayDimensionConverter(ft.FortranVisitor):
     """
@@ -398,7 +413,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
 
         n_dummy = 0
         for arg in node.arguments:
-            dims = [attr for attr in arg.attributes if attr.startswith('dimension(') ]
+            dims = [attr for attr in arg.attributes if attr.startswith('dimension') ]
             if dims == []:
                 continue
             if len(dims) != 1:
@@ -427,8 +442,9 @@ class ArrayDimensionConverter(ft.FortranVisitor):
 
             if new_dummy_args != []:
                 logging.debug('adding dummy arguments %r to %s' % (new_dummy_args, node.name))
-                arg.attributes = ([attr for attr in arg.attributes if not attr.startswith('dimension(')] +
+                arg.attributes = ([attr for attr in arg.attributes if not attr.startswith('dimension')] +
                                   ['dimension(%s)' % ','.join(new_ds)])
+                logging.debug('  ds=%r new_ds=%r attr=%s' % (ds, new_ds, arg.attributes))                
                 node.arguments.extend(new_dummy_args)
 
 
@@ -568,7 +584,7 @@ def add_missing_constructors(tree):
                                  node.lineno,
                                  [ft.Argument(name='this',
                                            filename=node.filename,
-                                           doc='Object to be constructed',
+                                           doc=['Object to be constructed'],
                                            lineno=node.lineno,
                                            attributes=['intent(out)'],
                                            type='type(%s)' % node.name)],
@@ -598,7 +614,7 @@ def add_missing_destructors(tree):
                                  node.lineno,
                                  [ft.Argument(name='this',
                                            filename=node.filename,
-                                           doc='Object to be destructed',
+                                           doc=['Object to be destructed'],
                                            lineno=node.lineno,
                                            attributes=['intent(inout)'],
                                            type='type(%s)' % node.name)],
@@ -632,7 +648,8 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
                               node.lineno,
                               arguments,
                               node.uses,
-                              node.attributes)
+                              node.attributes,
+                              mod_name=node.mod_name)
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
 
@@ -683,6 +700,11 @@ class RenameArguments(ft.FortranVisitor):
             name_map = {'this': 'self'}
         self.name_map = name_map
 
+        # rename Python keywords by appending an underscore
+        import keyword
+        self.name_map.update(dict((key,  key+'_') for key in  keyword.kwlist))
+        
+
     def visit_Argument(self, node):
         node.orig_name = node.name
         node.name = self.name_map.get(node.name, node.name)
@@ -730,7 +752,9 @@ class NormaliseTypes(ft.FortranVisitor):
 
     def visit_Declaration(self, node):
         node.type = ft.normalise_type(node.type, self.kind_map)
-        return node
+        return self.generic_visit(node)
+
+    visit_Argument = visit_Declaration
         
     
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
@@ -750,11 +774,11 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree= UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
-    tree= MethodFinder(types, constructors, destructors, short_names).visit(tree)
+    tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
     tree = collapse_single_interfaces(tree)
+    tree = fix_subroutine_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
-    tree = fix_subroutine_uses_clauses(tree, types)
     return tree
 
 def transform_to_f90_wrapper(tree, types, callbacks, constructors,

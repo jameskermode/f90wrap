@@ -230,9 +230,10 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                        prefix=self.prefix,
                        mod_name=self.f90_mod_name,
                        py_arg_names=', '.join(['%s%s' % (arg.name,
-                                                     arg.value is None and '=None' or '')
+                                                     ('optional' in arg.attributes or arg.value is None)
+                                                     and '=None' or '')
                                                      for arg in node.arguments ]),
-                       f90_arg_names=', '.join(['%s=%s' % (arg.orig_name, arg.name) for arg in node.arguments]))
+                       f90_arg_names=', '.join(['%s' % arg.name for arg in node.arguments]))
 
             # module procedures become static methods
             if node.type_name is None and node.mod_name is not None:

@@ -225,7 +225,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 self.write(exe % D)
 
-    def write_call_lines(self, node):
+    def write_call_lines(self, node, func_name):
         """
         Properly write function/subroutine calls
         """
@@ -255,11 +255,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if isinstance(node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
                        {'ret_val': node.ret_val.name,
-                        'func_name': node.name,
+                        'func_name': func_name,
                         'arg_names': ', '.join(arg_names)})
         else:
             self.write('call %(sub_name)s(%(arg_names)s)' %
-                       {'sub_name': node.name,
+                       {'sub_name': func_name,
                         'arg_names': ', '.join(arg_names)})
 
     def write_transfer_out_lines(self, node):
@@ -278,27 +278,34 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         for dealloc in node.deallocate:
             self.write('deallocate(%s_ptr%%p)' % dealloc)  # (self.prefix, dealloc))
 
-    def visit_Subroutine(self, node):
+    def visit_Procedure(self, node):
         """
-        Visit a Subroutine node of the parse tree.
-        
-        Writes the code necessary for each propery wrapped subroutine.
+        Write wrapper code necessary for a Fortran subroutine or function
         """
-        logging.info('F90WrapperGenerator visiting subroutine %s' % node.name)
+        logging.info('F90WrapperGenerator visiting %r (mod_name %s)' % (node, node.mod_name))
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
                                                   if node.arguments else ''})
         self.indent()
-        self.write_uses_lines(node) #, {node.mod_name: [node.name]})
+        self.write_uses_lines(node)
         self.write("implicit none")
+        
+        # FIXME: name-mangling is compiler dependent
+        func_name = node.name
+        if node.mod_name is None:
+            func_name = node.name + '_'
+            self.write('external %s' % func_name)
+            if hasattr(node, 'orig_node') and isinstance(node.orig_node, ft.Function):
+                self.write('%s %s' % (node.orig_node.ret_val.type, func_name))
+
         self.write()
         for tname in node.types:
             self.write_type_lines(tname)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
-        self.write_call_lines(node)
+        self.write_call_lines(node, func_name)
         self.write_transfer_out_lines(node)
         self.write_finalise_lines(node)
         self.dedent()
