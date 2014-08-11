@@ -19,30 +19,13 @@
 #include <Python.h>
 #include <fortranobject.h>
 
-// numeric codes for Fortran types.
-// Those with suffix _A are 1D arrays, _A2 2D are arrays
-#define T_NONE       0
-#define T_INTEGER    1
-#define T_REAL       2
-#define T_COMPLEX    3
-#define T_LOGICAL    4
-#define T_INTEGER_A  5
-#define T_REAL_A     6
-#define T_COMPLEX_A  7
-#define T_LOGICAL_A  8
-#define T_CHAR       9
-#define T_CHAR_A     10
-#define T_DATA       11
-#define T_INTEGER_A2 12
-#define T_REAL_A2    13
-
 static PyObject*
 get_array(PyObject *self, PyObject *args)
 {
   typedef void (*arrayfunc_t)(int*,int*,int*,int*,void*);
   typedef void (*arrayfunc_key_t)(int*,char*,int*,int*,int*,void*,int);
 
-  int nd, i, type, typenum;
+  int nd, i, typenum;
   int dim_temp[10];
   npy_intp *dimensions;
   char *data = NULL;
@@ -96,34 +79,12 @@ get_array(PyObject *self, PyObject *args)
 
   /* Call arrayfunc_capi routine */
   if (key == NULL) 
-    ((arrayfunc_t)(arrayfunc_capi->defs[0].data))(this, &nd, &type, dim_temp, &data);
+    ((arrayfunc_t)(arrayfunc_capi->defs[0].data))(this, &nd, &typenum, dim_temp, &data);
   else
-    ((arrayfunc_key_t)(arrayfunc_capi->defs[0].data))(this, key, &nd, &type, dim_temp, &data, strlen(key));
+    ((arrayfunc_key_t)(arrayfunc_capi->defs[0].data))(this, key, &nd, &typenum, dim_temp, &data, strlen(key));
 
   if (data == NULL) {
     PyErr_SetString(PyExc_ValueError, "array is NULL");
-    goto fail;
-  }
-
-  // Convert from libAtoms type code to numpy typenum
-  switch(type) {
-  case(T_INTEGER_A):
-  case(T_LOGICAL_A):
-  case(T_INTEGER_A2):
-    typenum = NPY_INT32;
-    break;
-  case(T_REAL_A):
-  case(T_REAL_A2):
-    typenum = NPY_DOUBLE;
-    break;
-  case(T_COMPLEX_A):
-    typenum = NPY_COMPLEX128;
-    break;
-  case(T_CHAR_A):
-    typenum = NPY_CHAR;
-    break;
-  default:
-    PyErr_Format(PyExc_TypeError, "Unknown data type %d", type);
     goto fail;
   }
 

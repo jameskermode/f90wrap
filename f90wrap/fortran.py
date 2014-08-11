@@ -20,7 +20,10 @@ This module defines a series of classes which inherit an abstract base class.
 Each represents a node in a Fortran parse tree -- Modules, Subroutines, 
 Arguments etc. A Fortran parse tree will contain only these classes as nodes.
 """
+
 import logging
+
+import numpy as np
 
 def _rep_des(doc, string):
     """
@@ -800,39 +803,7 @@ def fortran_array_type(typename, kind_map):
     if c_type not in c_type_to_numpy_type:
         raise RuntimeError('Unknown C type %s' % c_type)
         
-    numpy_type = c_type_to_numpy_type[c_type]
-
-    # finally, convert numpy type code to our internal code
-    # (FIXME: this could be avoidded with minor changes to arraydata
-    #  module).
-
-    # numeric codes for Fortran types.
-    # Those with suffix _A are 1D arrays, _A2 are 2D arrays
-    T_NONE = 0
-    T_INTEGER = 1
-    T_REAL = 2
-    T_COMPLEX = 3
-    T_LOGICAL = 4
-
-    T_INTEGER_A = 5
-    T_REAL_A = 6
-    T_COMPLEX_A = 7
-    T_LOGICAL_A = 8
-    T_CHAR = 9
-
-    T_CHAR_A = 10
-    T_DATA = 11
-    T_INTEGER_A2 = 12
-    T_REAL_A2 = 13
-    
-    fortran_type_code = {'double': T_REAL_A,
-                         'int32': T_INTEGER_A,
-                         'string': T_CHAR_A,
-                         'complex': T_COMPLEX_A}
-
-    if numpy_type not in fortran_type_code:
-        raise RuntimeError('Unsupported numpy array type %s' % numpy_type)
-    
-    array_type = fortran_type_code[numpy_type]
-    return array_type
+    # find numpy numerical type code
+    numpy_type = np.dtype(c_type_to_numpy_type[c_type]).num
+    return numpy_type
 
