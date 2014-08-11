@@ -94,13 +94,18 @@ USAGE
                             help="""Callback routines.""")
         parser.add_argument('-k', '--kind-map', 
                             help="""File containting Python dictionary in f2py_f2cmap format""")
+        parser.add_argument('-s', '--string-lengths',
+                            help=""""File containing Python dictionary mapping string length names to values""")
+        parser.add_argument('-S', '--default-string-length', default=1024, type=int,
+                            help="""Default length of character strings""")
         parser.add_argument('-i', '--init', nargs='*',
                             help="""Special initialisation lines used when constructing a particular type.""")
         parser.add_argument('-m', '--mod-name',
                             help="Name of output extension module (without .so extension).")
+        parser.add_argument('-P', '--package', action='store_true',
+                            help="Generate a Python package instead of a single module")
         parser.add_argument('-a', '--abort-func', default='f90wrap_error_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
-
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude from wrapper")
 
@@ -137,20 +142,22 @@ USAGE
         f2py_f2cmap.close()
 
         constructors = ('initialise_ptr', 'initialise', 'allocate')
-        destructors = ('finalise',)
-        short_names = {}
+        destructors = ('finalise', 'deallocate')
+        short_names = {'unit_cell': 'cell'}
 
-        string_lengths = {
-            'key_len':256,
-            'value_len':1024,
-            'value_length':1023,
-            'field_length':1023,
-            'string_length':1023,
-            'table_string_length':10,
-            'dict_char_a_len': 10
-        }
-        default_string_length = 1024
-
+        if args.string_lengths:
+            string_lengths = eval(open(args.string_lengths).read())
+        else:
+            string_lengths = {
+                'key_len':256,
+                'value_len':1024,
+                'value_length':1023,
+                'field_length':1023,
+                'string_length':1023,
+                'table_string_length':10,
+                'dict_char_a_len': 10
+            }
+    
         argument_name_map = {
             'this': 'self'
         }
@@ -195,13 +202,14 @@ USAGE
                                                constructors, destructors,
                                                short_names, init_lines,
                                                string_lengths,
-                                               default_string_length,
+                                               args.default_string_length,
                                                sizeof_fortran_t=fsize,
                                                kind_map=kind_map)
 
-        pywrap.PythonWrapperGenerator(args.prefix, args.mod_name, types).visit(py_tree)
+        pywrap.PythonWrapperGenerator(args.prefix, args.mod_name,
+                                      types, make_package=args.package).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
-                                  args.abort_func, kind_map).visit(f90_tree)
+                                  args.abort_func, kind_map, types).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:
