@@ -190,12 +190,13 @@ USAGE
 
         tree = tf.transform_to_generic_wrapper(tree, types, callbacks,
                                                constructors, destructors, short_names,
-                                               init_lines, kept_subs, kept_mods)
+                                               init_lines, kept_subs, kept_mods,
+                                               argument_name_map)
 
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
 
-        py_tree = tf.transform_to_py_wrapper(py_tree, argument_name_map)
+        py_tree = tf.transform_to_py_wrapper(py_tree, types)
 
         f90_tree = tf.transform_to_f90_wrapper(f90_tree, types, 
                                                callbacks,

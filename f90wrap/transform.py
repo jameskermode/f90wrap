@@ -22,7 +22,6 @@ import re
 
 from f90wrap import fortran as ft
 
-
 class AccessUpdater(ft.FortranTransformer):
     """Visit module contents and update public_symbols and
        private_symbols lists to be consistent with (i) default module
@@ -31,6 +30,40 @@ class AccessUpdater(ft.FortranTransformer):
 
     def __init__(self):
         self.mod = None
+        self.type = None
+
+    def update_access(self, node, ref):
+        if ref.default_access == 'public':
+            if ('private' not in getattr(node, 'attributes', {}) and
+                   node.name not in ref.private_symbols):
+
+                # symbol should be marked as public if it's not already
+                if node.name not in ref.public_symbols:
+                    logging.debug('marking public symbol ' + node.name)
+                    ref.public_symbols.append(node.name)
+            else:
+                # symbol should be marked as private if it's not already
+                if node.name not in ref.private_symbols:
+                    logging.debug('marking private symbol ' + node.name)
+                    ref.private_symbols.append(node.name)
+
+        elif ref.default_access == 'private':
+            if ('public' not in getattr(node, 'attributes', {}) and
+                   node.name not in ref.public_symbols):
+
+                # symbol should be marked as private if it's not already
+                if node.name not in ref.private_symbols:
+                    logging.debug('marking private symbol ' + node.name)
+                    ref.private_symbols.append(node.name)
+            else:
+                # symbol should be marked as public if it's not already
+                if node.name not in ref.public_symbols:
+                    logging.debug('marking public symbol ' + node.name)
+                    ref.public_symbols.append(node.name)
+
+        else:
+            raise ValueError('bad default access %s for reference %s' %
+                               (ref.default_access, ref.name))        
 
     def visit_Module(self, mod):
         # keep track of the current module
@@ -42,49 +75,39 @@ class AccessUpdater(ft.FortranTransformer):
     def visit_Procedure(self, node):
         if self.mod is None:
             return self.generic_visit(node)
-        
-        if self.mod.default_access == 'public':
-            if ('private' not in getattr(node, 'attributes', {}) and
-                   node.name not in self.mod.private_symbols):
-
-                # symbol should be marked as public if it's not already
-                if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
-                    self.mod.public_symbols.append(node.name)
-            else:
-                # symbol should be marked as private if it's not already
-                if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
-                    self.mod.private_symbols.append(node.name)
-
-        elif self.mod.default_access == 'private':
-            if ('public' not in getattr(node, 'attributes', {}) and
-                   node.name not in self.mod.public_symbols):
-
-                # symbol should be marked as private if it's not already
-                if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
-                    self.mod.private_symbols.append(node.name)
-            else:
-                # symbol should be marked as public if it's not already
-                if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
-                    self.mod.public_symbols.append(node.name)
-
-        else:
-            raise ValueError('bad default access %s for module %s' %
-                               (self.mod.default_access, self.mod.name))
-
+        self.update_access(node, self.mod)
         return self.generic_visit(node)
 
-    visit_Type = visit_Procedure
     visit_Interface = visit_Procedure
-    visit_Element = visit_Procedure    
+
+    def visit_Type(self, node):
+        if self.mod is None:
+            return self.generic_visit(node)
+        self.type = node
+        self.update_access(node, self.mod)
+        node.default_access = self.mod.default_access
+        if 'public' in node.attributes:
+            node.default_access = 'public'
+        elif 'private' in node.attributes:
+            node.default_access = 'private'
+        node.public_symbols = []
+        node.private_symbols = []
+        node = self.generic_visit(node)
+        self.type = None
+        return node
+
+    def visit_Element(self, node):
+        if self.type is not None:
+            self.update_access(node, self.type)
+        else:
+            self.update_access(node, self.mod)
+        return node
+        
 
 
 class PrivateSymbolsRemover(ft.FortranTransformer):
     """
-    Transform a tree by removing private symbols.
+    Transform a tree by removing private symbols
     """
 
     def __init__(self):
@@ -103,7 +126,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
             
         if (node.name in self.mod.private_symbols or
             hasattr(node, 'attributes') and 'private' in node.attributes):
-            logging.info('removing private symbol ' + node.name)
+            logging.debug('removing private symbol ' + node.name)
             return None
     
         return self.generic_visit(node)
@@ -237,6 +260,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
                     continue
                 if element.type.lower() == 'type(c_ptr)':
                     continue
+                if element.type.startswith('type(') and element.type not in self.types:
+                    continue
                 elements.append(element)
             node.elements = elements
             return self.generic_visit(node)
@@ -253,13 +278,18 @@ class UnwrappablesRemover(ft.FortranTransformer):
         for element in node.elements:
             # Get the number of dimensions of the element (if any)
             dims = filter(lambda x: x.startswith('dimension'), element.attributes)
-            # Skip this if the type is not do-able
             if 'pointer' in element.attributes and dims != []:
                 continue
             if element.type.lower() == 'type(c_ptr)':
                 continue
             if element.type.startswith('type(') and 'target' not in element.attributes:
                 continue
+            if element.type.startswith('type(') and element.type not in self.types:
+                continue
+            # parameter arrays live only in the mind of the compiler
+            if 'parameter' in element.attributes and dims != []:
+                continue
+                
             elements.append(element)
         node.elements = elements
         return self.generic_visit(node)
@@ -268,7 +298,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
 def fix_subroutine_uses_clauses(tree, types):
     """Walk over all nodes in tree, updating subroutine uses
        clauses to include the parent module and all necessary
-       modulesfrom types"""
+       modules from types"""
 
     for mod, sub, arguments in ft.walk_procedures(tree):
         sub.uses = set()
@@ -282,6 +312,19 @@ def fix_subroutine_uses_clauses(tree, types):
                 sub.uses.add((types[arg.type].mod_name, (ft.strip_type(arg.type),)))
 
     return tree
+
+def fix_element_uses_clauses(tree, types):
+    """
+    Add uses clauses to derived type elements in modules
+    """
+    for mod in ft.walk_modules(tree):
+        for el in mod.elements:
+            el.uses = set()
+            if el.type.startswith('type') and el.type in types:
+                el.uses.add((types[el.type].mod_name, (ft.strip_type(el.type),)))
+
+    return tree
+        
 
 def set_intent(attributes, intent):
     """Remove any current "intent" from attributes and replace with intent given"""
@@ -592,6 +635,7 @@ def add_missing_constructors(tree):
                                  ['constructor', 'skip_call'],
                                  mod_name=node.mod_name,
                                  type_name=node.name)
+            new_node.method_name = '__init__'
             node.procedures.append(new_node)
     return tree
 
@@ -622,6 +666,7 @@ def add_missing_destructors(tree):
                                  ['destructor', 'skip_call'],
                                  mod_name=node.mod_name,
                                  type_name=node.name)
+            new_node.method_name = '__del__'
             node.procedures.append(new_node)
     return tree
 
@@ -692,26 +737,52 @@ class IntentOutToReturnValues(ft.FortranTransformer):
                                 mod_name=node.mod_name,
                                 type_name=node.type_name)
             new_node.orig_node = node
+            if hasattr(node, 'method_name'):
+                new_node.method_name = node.method_name
         return new_node
 
-class RenameArguments(ft.FortranVisitor):
-    def __init__(self, name_map=None):
-        if name_map is None:
-            name_map = {'this': 'self'}
-        self.name_map = name_map
+class RenameArgumentsFortran(ft.FortranVisitor):
+    def __init__(self, types, name_map=None):
+        self.types = types
+        self.name_map = {}
+        if name_map is not None:
+            self.name_map.update(name_map)
 
         # rename Python keywords by appending an underscore
         import keyword
         self.name_map.update(dict((key,  key+'_') for key in  keyword.kwlist))
-        
+
+        # apply same renaming as f2py
+        import numpy.f2py.crackfortran
+        self.name_map.update(numpy.f2py.crackfortran.badnames)
 
     def visit_Argument(self, node):
-        node.orig_name = node.name
+        if not hasattr(node, 'orig_name'):
+            node.orig_name = node.name
         node.name = self.name_map.get(node.name, node.name)
+        return node
+    
+
+class RenameArgumentsPython(ft.FortranVisitor):
+    def __init__(self, types):
+        self.types = types
+    
+    def visit_Procedure(self, node):
+        logging.info('RenameArgumentsPython visiting %s' % node.name)
+        if hasattr(node, 'method_name'):
+            if 'constructor' in node.attributes:
+                node.ret_val[0].py_name = 'self'
+            elif len(node.arguments) >= 1 and node.arguments[0].type in self.types:
+                node.arguments[0].py_name = 'self'
+        return self.generic_visit(node)  
+
+    def visit_Argument(self, node):
+        if not hasattr(node, 'py_name'):
+            node.py_name = node.name
         if node.type.startswith('type('):
-            node.value = node.name + '._handle'
+            node.py_value = node.py_name + '._handle'
         else:
-            node.value = node.name
+            node.py_value = node.py_name
         return node
 
 
@@ -759,7 +830,7 @@ class NormaliseTypes(ft.FortranVisitor):
     
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
-                                 only_subs, only_mods):
+                                 only_subs, only_mods, argument_name_map):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
@@ -773,12 +844,14 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     """
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
-    tree= UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
+    tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
+    tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
+    RenameArgumentsFortran(types, argument_name_map).visit(tree)
     return tree
 
 def transform_to_f90_wrapper(tree, types, callbacks, constructors,
@@ -798,15 +871,17 @@ def transform_to_f90_wrapper(tree, types, callbacks, constructors,
     NormaliseTypes(kind_map).visit(tree)
     return tree
 
-def transform_to_py_wrapper(tree, argument_name_map=None):
+
+def transform_to_py_wrapper(tree, types):
     """
     Additional Python-specific transformations:
       * Convert intent(out) arguments to additional return values
       * Rename arguments (e.g. this -> self)
     """
     IntentOutToReturnValues().visit(tree)
-    RenameArguments(argument_name_map).visit(tree)
+    RenameArgumentsPython(types).visit(tree)
     return tree
+
 
 def find_referenced_modules(mods, tree):
     """

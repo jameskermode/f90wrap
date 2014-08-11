@@ -53,19 +53,26 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
     abort_func : `str`
         Name of a Fortran function to be invoked when a fatal error occurs
-        
+
+    kind_map : `dict`
+        Dictionary mapping Fortran types and kinds to C-types
+
+    types: `dict`
+        Dictionary mapping type names to Fortran modules where they are defined
     """
     def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
-                 kind_map):
+                 kind_map, types):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
-                               continuation='&')
+                               continuation='&',
+                               comment='!')
         ft.FortranVisitor.__init__(self)
         self.prefix = prefix
         self.sizeof_fortran_t = sizeof_fortran_t
         self.string_lengths = string_lengths
         self.abort_func = abort_func
         self.kind_map = kind_map
+        self.types = types
 
     def visit_Root(self, node):
         """
@@ -91,9 +98,9 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
-                self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
+                self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
             elif el.type.startswith('type'):  # array of derived types
-                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
+                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)
             else:
                 if 'parameter' not in el.attributes:
                     self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
@@ -227,16 +234,19 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
     def write_call_lines(self, node, func_name):
         """
-        Properly write function/subroutine calls
+        Write line that calls a single wrapped Fortran routine
         """
         if 'skip_call' in node.attributes:
             return
 
+        orig_node = node
+        arg_node = node
         if hasattr(node, 'orig_node'):
-            node = node.orig_node
+            orig_node = node.orig_node
+            arg_node = orig_node # get arguemnt list from original node
 
         def dummy_arg_name(arg):
-            return arg.name
+            return arg.orig_name
 
         def actual_arg_name(arg):
             if ((hasattr(node, 'transfer_in') and arg.name in node.transfer_in) or
@@ -247,14 +257,16 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         if node.mod_name is not None:
             # use keyword arguments if subroutine is in a module and we have an explicit interface
-            arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg)) for arg in node.arguments
-                        if 'intent(hide)' not in arg.attributes]
+            arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg))
+                         for arg in arg_node.arguments
+                         if 'intent(hide)' not in arg.attributes]
         else:
-            arg_names = [actual_arg_name(arg) for arg in node.arguments if 'intent(hide)' not in arg.attributes]
+            arg_names = [actual_arg_name(arg) for arg in arg_node.arguments
+                         if 'intent(hide)' not in arg.attributes]
 
-        if isinstance(node, ft.Function):
+        if isinstance(orig_node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
-                       {'ret_val': node.ret_val.name,
+                       {'ret_val': orig_node.ret_val.name,
                         'func_name': func_name,
                         'arg_names': ', '.join(arg_names)})
         else:
@@ -264,7 +276,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
     def write_transfer_out_lines(self, node):
         """
-        WRite transfer from opaque reference.
+        Write transfer from opaque reference.
         """
         for arg in node.arguments:
             if arg.name in node.transfer_out:
@@ -322,14 +334,13 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
-                self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)  # where to get sizeof_fortran_t from??
+                self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
             elif el.type.startswith('type'):  # array of derived types
-                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)  # where to get dims from?
+                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)
             else:
                 self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
 
         return self.generic_visit(node)
-
 
     def _write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
         """
@@ -489,10 +500,13 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             
         self.indent()
         self.write()
+        extra_uses = {}
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
-        else:
-            self.write_uses_lines(t)
+            extra_uses[t.name ] = ['%s_%s => %s' % (t.name, el.name, el.name)]
+        elif isinstance(t, ft.Type):
+            extra_uses[self.types[t.name].mod_name] = [t.name]
+            
+        self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
         self.write()
         if isinstance(t, ft.Type):
@@ -568,10 +582,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('subroutine %s%s__array_len__%s(n)' % (self.prefix, t.name, el.name))
         self.indent()
         self.write()
+        extra_uses = {}
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
-        else:
-            self.write_uses_lines(t)
+            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
+        elif isinstance(t, ft.Type):
+            extra_uses[self.types[t.name].mod_name] = [t.name]
+        self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
         self.write()
         if isinstance(t, ft.Type):
@@ -624,6 +640,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         getset : `str` {``"get"``,``"set"``}
             String indicating whether to write a get routine, or a set routine.
         """
+
+        logging.debug('writing %s wrapper for %s.%s' % (getset, t.name, el.name))
+        
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -639,10 +658,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
                                                     getset, el.name, this, el.name))
         self.indent()
+        extra_uses = {}
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
-        else:
-            self.write_uses_lines(t)
+            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
+        elif isinstance(t, ft.Type):
+            extra_uses[self.types[t.name].mod_name] = [t.name]
+        self.write_uses_lines(el, extra_uses)
 
         self.write('implicit none')
         if isinstance(t, ft.Type):
