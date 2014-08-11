@@ -34,12 +34,16 @@ class CodeGenerator(object):
     continuation : `str`
         Symbol to represent continuation in the desired language (eg. '&' in 
         Fortran)
+
+    comment : `str`
+        Character used to define comments (e.g. '!' in Fortran, '#' in Python)
     """
 
-    def __init__(self, indent, max_length, continuation):
+    def __init__(self, indent, max_length, continuation, comment):
         self._indent = indent
         self.max_length = max_length
         self.continuation = continuation
+        self.comment = comment
         self.level = 0
         self.code = []
 
@@ -79,10 +83,14 @@ class CodeGenerator(object):
         self.code.extend([self._indent * self.level + line for line in lines])
 
     def split_long_lines(self):
-        """Split lines longer than `max_length` using `continuation`"""
+        """
+        Split lines longer than `max_length` using `continuation`
+
+        Ignores lines starting with comment marker
+        """
         out = []
         for line in self.code:
-            if len(line) > self.max_length:
+            if len(line) > self.max_length and not line.strip().startswith(self.comment):
                 indent = line[:len(line) - len(line.lstrip())]
                 tokens = line.split()
                 split_lines = [[]]
