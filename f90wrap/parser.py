@@ -664,7 +664,6 @@ def check_subt(cl,file, grab_hold_doc=True):
                     cl = check[1]
                     continue
 
-
             m = subt_end.match(cl)
 
             if m == None:
@@ -678,7 +677,7 @@ def check_subt(cl,file, grab_hold_doc=True):
 
 
 
-        # Select only those declarations that match entries
+        # Select only first declaration that matches entries
         # in argument list
         
         if has_args:
@@ -690,7 +689,8 @@ def check_subt(cl,file, grab_hold_doc=True):
             #t_re=re.compile(t_re_str,re.IGNORECASE)
 
             for i in out.arguments:
-                if i.name.lower() in argl:
+                if (i.name.lower() in argl and 
+                    len([a for a in ag_temp if a.name.lower() == i.name.lower()]) == 0):
                     ag_temp.append(i)
 
             out.arguments=ag_temp
@@ -839,7 +839,7 @@ def check_funct(cl,file,grab_hold_doc=True):
 
             cl = file.next()
 
-        # Select only those declarations that match entries
+        # Select only first declaration that matches entries
         # in argument list
 
         ag_temp=[]
