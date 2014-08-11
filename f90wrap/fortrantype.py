@@ -11,7 +11,7 @@ class FortranModule(object):
     """
     Baseclass for Fortran modules
 
-    Metaclass is set to Singleton, so only one instane of each subclass of
+    Metaclass is set to Singleton, so only one instance of each subclass of
     FortranModule can be created.
     """
     __metaclass__ = Singleton
