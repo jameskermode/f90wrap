@@ -26,44 +26,47 @@ class AccessUpdater(ft.FortranTransformer):
     """Visit module contents and update public_symbols and
        private_symbols lists to be consistent with (i) default module
        access; (ii) public and private statements at module level;
-       (iii) public and private attibutes."""
+       (iii) public and private statement in types; (iv) public
+       and private attributes of individual elements."""
 
     def __init__(self):
         self.mod = None
         self.type = None
 
-    def update_access(self, node, ref):
-        if ref.default_access == 'public':
-            if ('private' not in getattr(node, 'attributes', {}) and
-                   node.name not in ref.private_symbols):
+    def update_access(self, node, mod, default_access):
+        if default_access == 'public':
+            if ('private' not in getattr(node, 'attributes', []) and
+                   node.name not in mod.private_symbols):
 
                 # symbol should be marked as public if it's not already
-                if node.name not in ref.public_symbols:
+                if node.name not in mod.public_symbols:
                     logging.debug('marking public symbol ' + node.name)
-                    ref.public_symbols.append(node.name)
+                    mod.public_symbols.append(node.name)
             else:
                 # symbol should be marked as private if it's not already
-                if node.name not in ref.private_symbols:
+                if (node.name not in mod.private_symbols and
+                    'callback' not in getattr(node, 'attributes', [])):
                     logging.debug('marking private symbol ' + node.name)
-                    ref.private_symbols.append(node.name)
+                    mod.private_symbols.append(node.name)
 
-        elif ref.default_access == 'private':
-            if ('public' not in getattr(node, 'attributes', {}) and
-                   node.name not in ref.public_symbols):
+        elif default_access == 'private':
+            if ('public' not in getattr(node, 'attributes', []) and
+                   node.name not in mod.public_symbols):
 
                 # symbol should be marked as private if it's not already
-                if node.name not in ref.private_symbols:
+                if (node.name not in mod.private_symbols and
+                    'callback' not in getattr(node, 'attributes', [])):
                     logging.debug('marking private symbol ' + node.name)
-                    ref.private_symbols.append(node.name)
+                    mod.private_symbols.append(node.name)
             else:
                 # symbol should be marked as public if it's not already
-                if node.name not in ref.public_symbols:
+                if node.name not in mod.public_symbols:
                     logging.debug('marking public symbol ' + node.name)
-                    ref.public_symbols.append(node.name)
+                    mod.public_symbols.append(node.name)
 
         else:
             raise ValueError('bad default access %s for reference %s' %
-                               (ref.default_access, ref.name))        
+                               (mod.default_access, mod.name))        
 
     def visit_Module(self, mod):
         # keep track of the current module
@@ -75,7 +78,7 @@ class AccessUpdater(ft.FortranTransformer):
     def visit_Procedure(self, node):
         if self.mod is None:
             return self.generic_visit(node)
-        self.update_access(node, self.mod)
+        self.update_access(node, self.mod, self.mod.default_access)
         return self.generic_visit(node)
 
     visit_Interface = visit_Procedure
@@ -84,23 +87,21 @@ class AccessUpdater(ft.FortranTransformer):
         if self.mod is None:
             return self.generic_visit(node)
         self.type = node
-        self.update_access(node, self.mod)
+        self.update_access(node, self.mod, self.mod.default_access)
         node.default_access = self.mod.default_access
         if 'public' in node.attributes:
             node.default_access = 'public'
         elif 'private' in node.attributes:
             node.default_access = 'private'
-        node.public_symbols = []
-        node.private_symbols = []
         node = self.generic_visit(node)
         self.type = None
         return node
 
     def visit_Element(self, node):
         if self.type is not None:
-            self.update_access(node, self.type)
+            self.update_access(node, self.mod, self.type.default_access)
         else:
-            self.update_access(node, self.mod)
+            self.update_access(node, self.mod, self.mod.default_access)
         return node
         
 
@@ -123,11 +124,9 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     def visit_Procedure(self, node):
         if self.mod is None:
             return self.generic_visit(node)
-            
-        if (hasattr(node, 'attributes') and
-            'private' in node.attributes and
-            'callback' not in node.attributes):
-            logging.debug('removing private symbol %s %s %s' % (node.name, node.type, node.attributes))
+
+        if node.name in self.mod.private_symbols:
+            logging.debug('removing private symbol %s' % node.name)
             return None
     
         return self.generic_visit(node)
@@ -169,8 +168,6 @@ class UnwrappablesRemover(ft.FortranTransformer):
         args = node.arguments[:]
         if isinstance(node, ft.Function):
             args.append(node.ret_val)
-
-        logging.debug('UnwrappablesRemover checking %s args %s' % (node.name, args))            
 
         for arg in args:
             # only callback functions in self.callbacks
