@@ -92,6 +92,8 @@ def format_doc_string(node):
                 pytype = 'str'
             elif "logical" in arg.type:
                 pytype = "bool"
+            elif "complex" in arg.type:
+                pytype = 'complex'
             elif arg.type.startswith("type"):
                 pytype = ft.strip_type(arg.type).title()
             else:
@@ -122,6 +124,8 @@ def format_doc_string(node):
                 pytype = 'str'
             elif "logical" in arg.type:
                 pytype = "bool"
+            elif "complex" in arg.type:
+                pytype = 'complex'
             elif arg.type.startswith("type"):
                 pytype = ft.strip_type(arg.type).title()
             else:
