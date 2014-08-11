@@ -551,10 +551,10 @@ def fix_argument_attributes(node):
     """
     for mod, sub, arguments in walk_procedures(node):
         for arg in arguments:
-            if not hasattr(arg, 'attributes'):
-                arg.attributes = ['callback']
             if not hasattr(arg, 'type'):
-                arg.type = None
+                arg.type = 'callback'
+                arg.attributes.append('callback')
+
     return node
 
 

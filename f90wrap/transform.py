@@ -124,9 +124,10 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         if self.mod is None:
             return self.generic_visit(node)
             
-        if (node.name in self.mod.private_symbols or
-            hasattr(node, 'attributes') and 'private' in node.attributes):
-            logging.debug('removing private symbol ' + node.name)
+        if (hasattr(node, 'attributes') and
+            'private' in node.attributes and
+            'callback' not in node.attributes):
+            logging.debug('removing private symbol %s %s %s' % (node.name, node.type, node.attributes))
             return None
     
         return self.generic_visit(node)
@@ -169,6 +170,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
         if isinstance(node, ft.Function):
             args.append(node.ret_val)
 
+        logging.debug('UnwrappablesRemover checking %s args %s' % (node.name, args))            
+
         for arg in args:
             # only callback functions in self.callbacks
             if 'callback' in arg.attributes:
@@ -189,10 +192,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
                 dims = [attrib for attrib in arg.attributes if attrib.startswith('dimension')]
                 
-                # no complex scalars (arrays are OK)
-                if arg.type.startswith('complex') and len(dims) == 0:
-                    logging.debug('removing routine %s due to complex scalar arguments' % node.name)
-                    return None
+                ## no complex scalars (arrays are OK)
+                #if arg.type.startswith('complex') and len(dims) == 0:
+                #    logging.debug('removing routine %s due to complex scalar arguments' % node.name)
+                #    return None
 
                 # no derived types apart from those in self.types
                 if arg.type.startswith('type') and arg.type not in self.types:
@@ -348,7 +351,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             sub.deallocate.append(sub.arguments[0].name)
 
         for arg in arguments:
-            if not arg.type.startswith('type'):
+            if not hasattr(arg, 'type') or not arg.type.startswith('type'):
                 continue
 
             # save original Fortran intent since we'll be overwriting it
@@ -768,7 +771,6 @@ class RenameArgumentsPython(ft.FortranVisitor):
         self.types = types
     
     def visit_Procedure(self, node):
-        logging.info('RenameArgumentsPython visiting %s' % node.name)
         if hasattr(node, 'method_name'):
             if 'constructor' in node.attributes:
                 node.ret_val[0].py_name = 'self'

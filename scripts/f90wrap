@@ -100,7 +100,7 @@ USAGE
                             help="""Default length of character strings""")
         parser.add_argument('-i', '--init', nargs='*',
                             help="""Special initialisation lines used when constructing a particular type.""")
-        parser.add_argument('-m', '--mod-name',
+        parser.add_argument('-m', '--mod-name', default='f90wrap',
                             help="Name of output extension module (without .so extension).")
         parser.add_argument('-P', '--package', action='store_true',
                             help="Generate a Python package instead of a single module")
