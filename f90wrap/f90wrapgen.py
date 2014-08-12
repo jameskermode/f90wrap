@@ -508,7 +508,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         elif isinstance(t, ft.Type):
             mod = self.types[t.name].mod_name
             extra_uses[mod] = [t.name]
-            
+        mod = self.types[el.type].mod_name
+        el_tname = ft.strip_type(el.type)
+        if mod in extra_uses:
+            extra_uses[mod].append(el_tname)
+        else:
+            extra_uses[mod] = [el_tname]            
         self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
         self.write()
@@ -590,6 +595,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
             extra_uses[self.types[t.name].mod_name] = [t.name]
+        mod = self.types[el.type].mod_name
+        el_tname = ft.strip_type(el.type)
+        if mod in extra_uses:
+            extra_uses[mod].append(el_tname)
+        else:
+            extra_uses[mod] = [el_tname]
         self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
         self.write()
