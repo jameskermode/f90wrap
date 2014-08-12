@@ -491,7 +491,7 @@ def check_module(cl,file):
                 if m is not None:
                     line = m.group()
                     if line == 'public':
-                        logging.info('Marking module %s as default public' % out.name)
+                        logging.info('marking module %s as default public' % out.name)
                         out.default_access = 'public'
                     else:
                         line = line.replace('public', '')
@@ -503,7 +503,7 @@ def check_module(cl,file):
                 if m is not None:
                     line = m.group()
                     if line == 'private':
-                        logging.info('Marking module %s as default private' % out.name)                        
+                        logging.info('marking module %s as default private' % out.name)
                         out.default_access = 'private'
                     else:
                         line = line.replace('private', '')
