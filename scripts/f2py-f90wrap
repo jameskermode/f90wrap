@@ -58,8 +58,8 @@ numpy.f2py.rules.module_rules['modulebody'] = numpy.f2py.rules.module_rules['mod
 #include <setjmp.h>
 extern jmp_buf environment_buffer;
 extern char abort_message[1024];
-void quippy_error_abort_(char *message, int len);
-void quippy_error_abort_int_handler(int signum);
+void f90wrap_abort_(char *message, int len);
+void f90wrap_abort_int_handler(int signum);
 
 #include <setjmp.h>
 #include <stdlib.h>
@@ -78,7 +78,7 @@ void f90wrap_abort_(char *message, int len_message)
 void f90wrap_abort_int_handler(int signum)
 {
   char message[] = "Interrupt occured";
-  io_abort_(message, NULL, strlen(message), 0);
+  f90wrap_abort_(message, strlen(message));
 }
 
 /* end of custom abort handler  */
