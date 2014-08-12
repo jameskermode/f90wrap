@@ -44,7 +44,7 @@ arraydata_ext = Extension(name='f90wrap.arraydata',
 
 setup(name='f90wrap',
       packages=['f90wrap'],
-      scripts=['scripts/f90doc', 'scripts/f90wrap'],
+      scripts=['scripts/f90doc', 'scripts/f90wrap', 'scripts/f2py-f90wrap'],
       version=__version__,
       description='Fortran to Python interface generator with derived type support',
       author='James Kermode',

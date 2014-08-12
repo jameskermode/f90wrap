@@ -114,7 +114,7 @@ USAGE
                             help="Convert routines with derived type instance as first agument into class methods")
         parser.add_argument('-P', '--package', action='store_true',
                             help="Generate a Python package instead of a single module")
-        parser.add_argument('-a', '--abort-func', default='f90wrap_error_abort',
+        parser.add_argument('-a', '--abort-func', default='f90wrap_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
         parser.add_argument('-u', '--underscore-externals', action='store_true',
                             help="Append an underscore to the name of external symbols outside of modules")

@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+
+"""
+# HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# HF X
+# HF X   f90wrap: F90 to Python interface generator with derived type support
+# HF X
+# HF X   Copyright James Kermode 2011-2014
+# HF X
+# HF X   These portions of the source code are released under the GNU General
+# HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
+# HF X
+# HF X   If you would like to license the source code under different terms,
+# HF X   please contact James Kermode, james.kermode@gmail.com
+# HF X
+# HF X   When using this software, please cite the following reference:
+# HF X
+# HF X   http://www.jrkermode.co.uk/f90wrap
+# HF X
+# HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+This script patches :mod:`numpy.f2py` at runtime, to customise the C code that
+is generated. We make several changes to f2py:
+
+  1. Allow the Fortran :c:func:`present` function to work correctly with optional arguments.
+     If an argument to an f2py wrapped function is optional and is not given, replace it
+     with ``NULL``.
+     
+  2. Allow Fortran routines to raise a :exc:`RuntimeError` exception
+     with a message by calling an external function
+     :c:func:`f90wrap_abort`. This is implemented using a
+     :c:func:`setjmp`/ :c:func:`longjmp` trap.
+
+  3. Allow Fortran routines to be interrupted with :kbd:`Ctrl+C` by installing a custom
+     interrupt handler before the call into Fortran is made. After the Fortran routine
+     returns, the previous interrupt handler is restored.
+
+"""
+
+__all__ = []
+
+import numpy
+if not tuple([int(x) for x in numpy.__version__.split('.')[0:3]]) >= (1,2,1):
+   raise ImportError('f2py-f90wrap tested with numpy version 1.2.1 or later, found version %s' % numpy.__version__)
+
+
+import numpy.f2py.auxfuncs
+
+import numpy.f2py.capi_maps
+numpy.f2py.capi_maps.cformat_map['long_long'] = '%Ld'
+
+import numpy.f2py.rules, numpy.f2py.cb_rules
+
+numpy.f2py.rules.module_rules['modulebody'] = numpy.f2py.rules.module_rules['modulebody'].replace('#includes0#\n', """#includes0#
+
+/* custom abort handler - James Kermode <james.kermode@gmail.com> */
+
+#include <setjmp.h>
+extern jmp_buf environment_buffer;
+extern char abort_message[1024];
+void quippy_error_abort_(char *message, int len);
+void quippy_error_abort_int_handler(int signum);
+
+#include <setjmp.h>
+#include <stdlib.h>
+#include <string.h>
+
+jmp_buf environment_buffer;
+char abort_message[1024];
+
+void f90wrap_abort_(char *message, int len_message)
+{
+  strncpy(abort_message, message, len_message);
+  abort_message[len_message] = '\0';
+  longjmp(environment_buffer, 0);
+}
+
+void f90wrap_abort_int_handler(int signum)
+{
+  char message[] = "Interrupt occured";
+  io_abort_(message, NULL, strlen(message), 0);
+}
+
+/* end of custom abort handler  */
+""")
+
+numpy.f2py.rules.routine_rules['body'] = numpy.f2py.rules.routine_rules['body'].replace('\tvolatile int f2py_success = 1;\n', """\tvolatile int f2py_success = 1;
+\tint setjmpvalue; /* James Kermode - for setjmp */
+""")
+
+numpy.f2py.rules.routine_rules['body'] = numpy.f2py.rules.routine_rules['body'].replace('#callfortranroutine#\n', """/* setjmp() exception handling added by James Kermode */
+PyOS_sighandler_t _npy_sig_save;
+_npy_sig_save = PyOS_setsig(SIGINT, f90wrap_abort_int_handler);
+setjmpvalue = setjmp(environment_buffer);
+if (setjmpvalue != 0) {
+  PyOS_setsig(SIGINT, _npy_sig_save);
+  PyErr_SetString(PyExc_RuntimeError, abort_message);
+} else {
+ #callfortranroutine#
+ PyOS_setsig(SIGINT, _npy_sig_save);
+}
+/* End addition */
+""")
+
+from numpy.f2py.auxfuncs import *
+
+numpy.f2py.auxfuncs.options['persistant_callbacks'] = True
+
+# Disable callback argument cleanup so that callbacks can be called after function returns.
+# This will lead to a small memory leak every time a function with callback arguments is called.
+def persistant_callbacks(var):
+   return True
+
+numpy.f2py.cb_rules.cb_routine_rules['body'] = numpy.f2py.cb_rules.cb_routine_rules['body'].replace('capi_longjmp_ok = 1', 'capi_longjmp_ok = 0')
+
+numpy.f2py.rules.arg_rules[7]['cleanupfrompyobj'] = {l_not(persistant_callbacks): numpy.f2py.rules.arg_rules[7]['cleanupfrompyobj'],
+                                                     persistant_callbacks: '}'}
+
+numpy.f2py.rules.arg_rules[8]['callfortran'] = {isintent_c:'#varname#,',
+                                                l_and(isoptional,l_not(isintent_c)):'#varname#_capi == Py_None ? NULL : &#varname#,',
+                                                l_and(l_not(isoptional),l_not(isintent_c)):'&#varname#,'}
+
+
+numpy.f2py.rules.arg_rules[14]['callfortran'] = {isintent_c:'#varname#,',l_and(isoptional,l_not(isintent_c)):'#varname#_capi == Py_None ? NULL : &#varname#,',
+                                                 l_and(l_not(isoptional),l_not(isintent_c)):'&#varname#,'}
+
+numpy.f2py.rules.arg_rules[21]['callfortran'] = {isintent_out:'#varname#,', l_and(isoptional, l_not(isintent_out)):'#varname#_capi == Py_None ? NULL : #varname#,',
+                                                 l_and(l_not(isoptional), l_not(isintent_out)): '#varname#,'}
+
+
+numpy.f2py.rules.arg_rules[26]['callfortran'] = {isintent_out:'#varname#,', l_and(isoptional, l_not(isintent_out)):'#varname#_capi == Py_None ? NULL : #varname#,',
+                                                 l_and(l_not(isoptional), l_not(isintent_out)): '#varname#,'}
+
+numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(2, {isoptional: 'if (#varname#_capi != Py_None) {'})
+numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(5, {isoptional: '}'})
+
+del numpy.f2py.rules.arg_rules[33]['frompyobj'][6]
+numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(6, {l_not(isoptional): """\
+\tif (capi_#varname#_tmp == NULL) {
+\t\tif (!PyErr_Occurred())
+\t\t\tPyErr_SetString(#modulename#_error,\"failed in converting #nth# `#varname#\' of #pyname# to C/Fortran array\" );
+\t} else {
+\t\t#varname# = (#ctype# *)(capi_#varname#_tmp->data);
+"""})
+
+numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(7, {isoptional:"""\
+\tif (#varname#_capi != Py_None && capi_#varname#_tmp == NULL) {
+\t\tif (!PyErr_Occurred())
+\t\t\tPyErr_SetString(#modulename#_error,\"failed in converting #nth# `#varname#\' of #pyname# to C/Fortran array\" );
+\t} else {
+\t\tif (#varname#_capi != Py_None) #varname# = (#ctype# *)(capi_#varname#_tmp->data);
+"""})
+
+# now call the main function
+print
+print '!! f90wrap patched version of f2py - James Kermode <james.kermode@gmail.com> !!'
+print
+numpy.f2py.main()
