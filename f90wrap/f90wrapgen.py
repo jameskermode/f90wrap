@@ -294,7 +294,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
-        logging.info('F90WrapperGenerator visiting %r (mod_name %s)' % (node, node.mod_name))
+        logging.info('F90WrapperGenerator visiting routine %s' % node.name)
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
