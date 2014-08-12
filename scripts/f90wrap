@@ -27,7 +27,6 @@ import logging
 import pprint
 import warnings
 
-
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
@@ -147,7 +146,7 @@ USAGE
         short_names = {}
         if args.short_names:
             short_names = eval(open(args.short_names).read())
-        print 'Short names for derived types read from file "%r"' % args.short_names
+        print 'Short names for derived types read from file "%s"' % args.short_names
         pprint.pprint(short_names)
         print
 
@@ -161,7 +160,7 @@ USAGE
         init_lines = {}
         if args.init_lines:
             init_lines = eval(open(args.init_lines).read())
-        print 'Initialisation lines for derived types read from file "%r":' % args.init_lines
+        print 'Initialisation lines for derived types read from file "%s":' % args.init_lines
         pprint.pprint(init_lines)
         print        
     
@@ -173,7 +172,7 @@ USAGE
         print
 
         fsize = sizeof_fortran_t()
-        print 'Detected size of Fortran derived type pointers to be %d bytes.' % fsize
+        print 'Size of Fortran derived type pointers is %d bytes.' % fsize
         print
 
         # parse input Fortran source files
@@ -238,7 +237,8 @@ USAGE
                                                kind_map=kind_map)
 
         pywrap.PythonWrapperGenerator(args.prefix, args.mod_name,
-                                      types, make_package=args.package).visit(py_tree)
+                                      types, make_package=args.package,
+                                      kind_map=kind_map).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
                                   args.abort_func, kind_map, types).visit(f90_tree)
         return 0

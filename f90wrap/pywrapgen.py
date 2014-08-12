@@ -116,7 +116,8 @@ def format_doc_string(node):
 
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
-    def __init__(self, prefix, mod_name, types, imports=None, f90_mod_name=None, make_package=False):
+    def __init__(self, prefix, mod_name, types, imports=None,
+                 f90_mod_name=None, make_package=False, kind_map=None):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\',
@@ -135,6 +136,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                        ('f90wrap.fortrantype', 'fortrantype')]
         self.imports = imports
         self.make_package = make_package
+        if kind_map is None:
+            kind_map = {}
+        self.kind_map = kind_map
 
     def write_imports(self):
         for (mod, alias) in self.imports:
@@ -145,6 +149,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write()
         self.write('_sizeof_fortran_t = sizeof_fortran_t.sizeof_fortran_t()')
         self.write('_empty_fortran_t = [0]*_sizeof_fortran_t')
+        self.write('_empty_type = fortrantype.FortranDerivedType.from_handle(_empty_fortran_t)')
         self.write()
 
     def visit_Root(self, node):
@@ -462,4 +467,23 @@ return %(el_name)s""" % dct)
 
 
     def write_dt_array_wrapper(self, node, el, dims):
-        pass
+        dct = dict(el_name=el.name,
+                   type_name=ft.strip_type(el.type).lower(),
+                   mod_name=self.f90_mod_name,
+                   prefix=self.prefix,
+                   parent='self',
+                   doc=format_doc_string(el),
+                   arraytype=ft.f2py_type(el.type))
+
+        if isinstance(node, ft.Module):
+            dct['parent'] = '_empty_type'
+
+        # FIXME - for a class instance, this code should be called by __init__
+        #       - for a module, it may not be possible to call it at import time
+        
+        #self.write('''%(el_name)s = fortrantype.FortranDerivedTypeArray(%(parent)s,
+        #                        %(mod_name)s.%(prefix)s%(type_name)s__array_getitem__%(el_name)s,
+        #                        %(mod_name)s.%(prefix)s%(type_name)s__array_setitem__%(el_name)s,
+        #                        %(mod_name)s.%(prefix)s%(type_name)s__array_len__%(el_name)s,
+        #                        %(doc)s,
+        #                        %(arraytype)s)''' % dct)
