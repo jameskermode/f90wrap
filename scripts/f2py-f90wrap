@@ -75,6 +75,16 @@ void f90wrap_abort_(char *message, int len_message)
   longjmp(environment_buffer, 0);
 }
 
+// copy of f90wrap_abort_ with a second underscore
+// void (*f90wrap_abort__)(char *, int) = &f90wrap_abort_;
+void f90wrap_abort__(char *message, int len_message)
+{
+  strncpy(abort_message, message, len_message);
+  abort_message[len_message] = '\0';
+  longjmp(environment_buffer, 0);
+}
+
+
 void f90wrap_abort_int_handler(int signum)
 {
   char message[] = "Interrupt occured";
