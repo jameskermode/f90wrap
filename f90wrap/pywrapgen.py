@@ -325,9 +325,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                    el_name_get=el.name, el_name_set=el.name,
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
-                   self=isinstance(node, ft.Type) and 'self' or '',                   
-                   selfdot=isinstance(node, ft.Type) and 'self.' or '',
-                   selfcomma=isinstance(node, ft.Type) and 'self, ' or '',
+                   self='self',
+                   selfdot='self.',
+                   selfcomma='self, ',
                    handle=isinstance(node, ft.Type) and 'self._handle' or '')
         if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name_get)s' % dct
@@ -339,6 +339,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         else:
             dct['el_name_get'] = 'get_'+el.name
             dct['el_name_set'] = 'set_'+el.name
+            dct['self'] = ''
+            dct['selfdot'] = ''
+            dct['selfcomma'] = ''
             
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
@@ -369,9 +372,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                    prefix=self.prefix, type_name=node.name,
                    cls_name=cls_name,
                    cls_mod_name=cls_mod_name+'.',
-                   self=isinstance(node, ft.Type) and 'self' or '',
-                   selfdot=isinstance(node, ft.Type) and 'self.' or '',
-                   selfcomma=isinstance(node, ft.Type) and 'self, ' or '',
+                   self='self',
+                   selfdot='self.',
+                   selfcomma='self, ',
                    handle=isinstance(node, ft.Type) and 'self._handle' or '')
         if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name)s' % dct
@@ -385,6 +388,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         else:
             dct['el_name_get'] = 'get_'+el.name
             dct['el_name_set'] = 'set_'+el.name
+            dct['self'] = ''
+            dct['selfdot'] = ''
+            dct['selfcomma'] = ''
                         
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
@@ -417,9 +423,9 @@ return %(el_name)s''' % dct)
                    el_name_set=el.name,
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
-                   self=isinstance(node, ft.Type) and 'self' or '',
-                   selfdot=isinstance(node, ft.Type) and 'self.' or '',
-                   selfcomma=isinstance(node, ft.Type) and 'self, ' or '',
+                   self='self',
+                   selfdot='self.',
+                   selfcomma='self, ',
                    doc=format_doc_string(el),
                    handle=isinstance(node, ft.Type) and 'self._handle, ' or '_empty_fortran_t, ')
 
@@ -428,6 +434,9 @@ return %(el_name)s''' % dct)
         else:
             dct['el_name_get'] = 'get_array_'+el.name
             dct['el_name_set'] = 'set_array_'+el.name
+            dct['self'] = ''
+            dct['selfdot'] = ''
+            dct['selfcomma'] = ''
 
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()

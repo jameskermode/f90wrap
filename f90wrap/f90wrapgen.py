@@ -61,7 +61,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         Dictionary mapping type names to Fortran modules where they are defined
     """
     def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
-                 kind_map, types):
+                 kind_map, types, underscore_externals=False):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&',
@@ -73,6 +73,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.abort_func = abort_func
         self.kind_map = kind_map
         self.types = types
+        self.underscore_externals = underscore_externals
 
     def visit_Root(self, node):
         """
@@ -303,10 +304,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_uses_lines(node)
         self.write("implicit none")
         
-        # FIXME: name-mangling is compiler dependent
         func_name = node.name
-        if node.mod_name is None:
+        if self.underscore_externals and node.mod_name is None:
             func_name = node.name + '_'
+
+        if node.mod_name is None:
             self.write('external %s' % func_name)
             if hasattr(node, 'orig_node') and isinstance(node.orig_node, ft.Function):
                 self.write('%s %s' % (node.orig_node.ret_val.type, func_name))
@@ -502,9 +504,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name ] = ['%s_%s => %s' % (t.name, el.name, el.name)]
+            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
-            extra_uses[self.types[t.name].mod_name] = [t.name]
+            mod = self.types[t.name].mod_name
+            extra_uses[mod] = [t.name]
             
         self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
@@ -663,6 +666,13 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
             extra_uses[self.types[t.name].mod_name] = [t.name]
+        if el.type.startswith('type'):
+            mod = self.types[el.type].mod_name
+            el_tname = ft.strip_type(el.type)
+            if mod in extra_uses:
+                extra_uses[mod].append(el_tname)
+            else:
+                extra_uses[mod] = [el_tname]
         self.write_uses_lines(el, extra_uses)
 
         self.write('implicit none')

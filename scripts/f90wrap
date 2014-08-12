@@ -116,6 +116,8 @@ USAGE
                             help="Generate a Python package instead of a single module")
         parser.add_argument('-a', '--abort-func', default='f90wrap_error_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
+        parser.add_argument('-u', '--underscore-externals', action='store_true',
+                            help="Append an underscore to the name of external symbols outside of modules")
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude from wrapper")
 
@@ -240,7 +242,8 @@ USAGE
         pywrap.PythonWrapperGenerator(args.prefix, args.mod_name,
                                       types, make_package=args.package).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
-                                  args.abort_func, kind_map, types).visit(f90_tree)
+                                  args.abort_func, kind_map, types,
+                                  args.underscore_externals).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:

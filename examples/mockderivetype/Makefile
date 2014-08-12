@@ -22,7 +22,7 @@ clean:
 test: mockdt.so
 	python test.py
 
-.f90.o:	
+.f90.o:
 	${F90} ${F90FLAGS} -c $< -o $@
 
 .c.o:
@@ -35,7 +35,5 @@ libsrc.a: ${LIBSRC_OBJECTS}
 	ar src $@ $?
 
 _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
-	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -v --only do_stuff top_level
+	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -k kind_map -v --only do_stuff top_level
 	f2py -c -m _mockdt -L. -lsrc f90wrap*.f90
-
-
