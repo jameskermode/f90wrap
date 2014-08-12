@@ -62,7 +62,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         Dictionary mapping type names to Fortran modules where they are defined
     """
     def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
-                 kind_map, types, underscore_externals=False):
+                 kind_map, types):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&',
@@ -74,7 +74,6 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.abort_func = abort_func
         self.kind_map = kind_map
         self.types = types
-        self.underscore_externals = underscore_externals
 
     def visit_Root(self, node):
         """
@@ -306,14 +305,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_uses_lines(node)
         self.write("implicit none")
         
-        func_name = node.name
-        if self.underscore_externals and node.mod_name is None:
-            func_name = node.name + '_'
-
         if node.mod_name is None:
-            self.write('external %s' % func_name)
+            self.write('external %s' % node.name)
             if hasattr(node, 'orig_node') and isinstance(node.orig_node, ft.Function):
-                self.write('%s %s' % (node.orig_node.ret_val.type, func_name))
+                self.write('%s %s' % (node.orig_node.ret_val.type, node.name))
 
         self.write()
         for tname in node.types:
@@ -321,7 +316,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
-        self.write_call_lines(node, func_name)
+        self.write_call_lines(node, node.name)
         self.write_transfer_out_lines(node)
         self.write_finalise_lines(node)
         self.dedent()
