@@ -354,7 +354,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             if not isinstance(node, ft.Module) or not self.make_package:
                 self.write('@%(el_name_get)s.setter' % dct)
             self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-        %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
+    %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
     ''' % dct)
             self.write()
 
@@ -405,8 +405,8 @@ return %(el_name)s''' % dct)
             if not isinstance(node, ft.Module) or not self.make_package:
                 self.write('@%(el_name_set)s.setter' % dct)
             self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-        %(el_name)s = %(el_name)s._handle
-        %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
+    %(el_name)s = %(el_name)s._handle
+    %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
     ''' % dct)
             self.write()
 

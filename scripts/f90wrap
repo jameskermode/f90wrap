@@ -108,8 +108,10 @@ USAGE
                             help="""File containing Python dictionary to rename Fortran arguments""")
         parser.add_argument('--short-names',
                             help="""File containing Python dictionary mapping full type names to abbreviations""")
-        parser.add_argument('-m', '--mod-name', default='f90wrap',
+        parser.add_argument('-m', '--mod-name', default='mod',
                             help="Name of output extension module (without .so extension).")
+        parser.add_argument('-M', '--move-methods', action='store_true',
+                            help="Convert routines with derived type instance as first agument into class methods")
         parser.add_argument('-P', '--package', action='store_true',
                             help="Generate a Python package instead of a single module")
         parser.add_argument('-a', '--abort-func', default='f90wrap_error_abort',
@@ -179,7 +181,7 @@ USAGE
         tree = fparse.read_files(args.files)
         print 'done parsing source.'
         print
-        
+
         types = fortran.find_types(tree)
         print 'Derived types detected in Fortran source files:'
         pprint.pprint(types)
@@ -216,7 +218,8 @@ USAGE
                                                init_lines,
                                                kept_subs,
                                                kept_mods,
-                                               argument_name_map)
+                                               argument_name_map,
+                                               args.move_methods)
 
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
