@@ -18,6 +18,7 @@
 
 import copy
 import logging
+import os
 
 import numpy as np
 
@@ -107,8 +108,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
 
         if len(self.code) > 0:
-            f90_wrapper_file = open('%s%s.f90' % (self.prefix,
-                                                  os.path.basename(node.filename)), 'w')
+            f90_wrapper_file = open('%s%s' % (self.prefix,
+                                              os.path.basename(node.filename)), 'w')
             f90_wrapper_file.write(str(self))
             f90_wrapper_file.close()
         self.code = []
