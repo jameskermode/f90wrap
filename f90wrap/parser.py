@@ -51,7 +51,7 @@ program_end  = re.compile('^end\s*program',re.IGNORECASE)
 
 attribs     = r'allocatable|pointer|save|dimension\(.*?\)|parameter|target|public|private' # jrk33 added target
 
-type_re   = re.compile(r'^type((,\s*('+attribs+r')\s*)*)(::)?\s+(?!\()',re.IGNORECASE)
+type_re   = re.compile(r'^type((,\s*('+attribs+r')\s*)*)(::)?\s*(?!\()',re.IGNORECASE)
 type_end  = re.compile('^end\s*type',re.IGNORECASE)
 
 types       = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))'
@@ -429,7 +429,7 @@ def check_module(cl,file):
         # Get module name
         cl=module.sub('',cl)
         out.name=re.search(re.compile('\w+'),cl).group()
-        
+
         # Get next line, and check each possibility in turn
 
         cl=file.next()
@@ -451,7 +451,7 @@ def check_module(cl,file):
                     out.uses.append(check[0])
                     cl=check[1]
                     continue
-                
+
                 # Doc comment
                 check=check_doc(cl,file)
                 if check[0]!=None:
@@ -603,6 +603,9 @@ def check_subt(cl,file, grab_hold_doc=True):
         if re.search(r'\(.+',cl)!=None:
             has_args=1
 
+        in_block_doc = False
+        had_block_doc = False
+
         # get argument list
             
         if has_args:
@@ -639,13 +642,28 @@ def check_subt(cl,file, grab_hold_doc=True):
             ##    cl=check[1]
             ##    continue
 
+            # Look for block comments starting with a line of ======= or -------
+            if cl is not None and not in_block_doc and not had_block_doc:
+               if cl.startswith('_COMMENT=====') or cl.startswith('_COMMENT-----'):
+                    in_block_doc = True
+
+            if cl is not None and in_block_doc:
+                if not cl.startswith('_COMMENT'):
+                    in_block_doc = False
+                    had_block_doc = True
+                else:
+                    rep = cl.strip().replace('_COMMENT', '')
+                    if rep:
+                        out.doc.append(rep)
+                    cl = file.next()
+                    continue
+
             # Doc comment
             check=check_doc(cl,file)
             if check[0]!=None:
                 out.doc.append(check[0])
                 cl=check[1]
-                continue
-
+                continue                  
 
             if has_args:
                 # Argument
@@ -787,6 +805,9 @@ def check_funct(cl,file,grab_hold_doc=True):
 
         # Get next line, and check each possibility in turn
 
+        in_block_doc = False
+        had_block_doc = False        
+
         cl=file.next()
 
         while True:
@@ -797,6 +818,22 @@ def check_funct(cl,file,grab_hold_doc=True):
             ##    out.uses.append(check[0])
             ##    cl=check[1]
             ##    continue
+
+            # Look for block comments starting with a line of ======= or -------
+            if cl is not None and not in_block_doc and not had_block_doc:
+               if cl.startswith('_COMMENT=====') or cl.startswith('_COMMENT-----'):
+                    in_block_doc = True
+
+            if cl is not None and in_block_doc:
+                if not cl.startswith('_COMMENT'):
+                    in_block_doc = False
+                    had_block_doc = True
+                else:
+                    rep = cl.strip().replace('_COMMENT', '')
+                    if rep:
+                        out.doc.append(rep)
+                    cl = file.next()
+                    continue
 
             # Doc comment - return value
             check=check_doc_rv(cl,file)

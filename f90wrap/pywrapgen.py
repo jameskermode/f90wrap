@@ -54,7 +54,9 @@ def format_call_signature(node):
     elif isinstance(node, ft.Module):
         return 'Module %s' % node.name
     elif isinstance(node, ft.Element):
-        return 'Module element %s type %s' % (node.name, node.type)
+        return ('Element %s ftype=%s pytype=%s' %
+                  (node.name, node.type,
+                   ft.f2py_type(node.type)))
     else:
         return str(node)
 
@@ -74,7 +76,7 @@ def format_doc_string(node):
         else:
             return 'line %d' % lineno
 
-    doc = [format_call_signature(node), ''] + node.doc[:]  # incoming docstring from Fortran source
+    doc = [format_call_signature(node), '']
     doc.append('')
     doc.append('Defined at %s %s' % (node.filename, _format_line_no(node.lineno)))
 
@@ -84,25 +86,7 @@ def format_doc_string(node):
         # Input parameters
         i = 0
         for arg in node.arguments:
-            if "real" in arg.type:
-                pytype = "float"
-            elif "integer" in arg.type:
-                pytype = "int"
-            elif "character" in arg.type:
-                pytype = 'str'
-            elif "logical" in arg.type:
-                pytype = "bool"
-            elif "complex" in arg.type:
-                pytype = 'complex'
-            elif arg.type.startswith("type"):
-                pytype = ft.strip_type(arg.type).title()
-            else:
-                pytype = "unknown"
-
-            dims = filter(lambda x: x.startswith("dimension"), arg.attributes)
-            if len(dims) > 0:
-                pytype += " array"
-
+            pytype = ft.f2py_type(arg.type, arg.attributes)
             if "intent(out)" not in arg.attributes:
                 if i == 0:
                     doc.append("Parameters")
@@ -116,24 +100,7 @@ def format_doc_string(node):
 
         i = 0
         for arg in node.arguments:
-            if "real" in arg.type:
-                pytype = "float"
-            elif "integer" in arg.type:
-                pytype = "int"
-            elif "character" in arg.type:
-                pytype = 'str'
-            elif "logical" in arg.type:
-                pytype = "bool"
-            elif "complex" in arg.type:
-                pytype = 'complex'
-            elif arg.type.startswith("type"):
-                pytype = ft.strip_type(arg.type).title()
-            else:
-                pytype = "unknown"
-            dims = filter(lambda x: x.startswith("dimension"), arg.attributes)
-            if len(dims) > 0:
-                pytype += " array"
-
+            pytype = ft.f2py_type(arg.type, arg.attributes)
             if "intent(out)" in arg.attributes:
                 if i == 0:
                     doc.append("Returns")
@@ -142,6 +109,8 @@ def format_doc_string(node):
                 doc.append("%s : %s" % (arg.name, pytype))
                 doc.append("\t%s" % arg.doc)
                 doc.append("")
+
+    doc += node.doc[:]  # incoming docstring from Fortran source
 
     return '\n'.join(['"""'] + doc + ['"""'])
 
@@ -208,8 +177,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             self.code = []
             self.write(format_doc_string(node))
             self.write_imports()
-            self.write('_arrays = {}')
-            self.write('_objs = {}')
+            #self.write('_arrays = {}')
+            #self.write('_objs = {}')
             self.write()                      
         else:
             self.write('class %s(fortrantype.FortranModule):' % cls_name)
@@ -393,8 +362,6 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         cls_name = ft.strip_type(el.type).title()
         cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
         dct = dict(el_name=el.name,
-                   el_name_get=el.name,
-                   el_name_set=el.name,
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    cls_name=cls_name,
@@ -404,49 +371,43 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                    selfcomma=isinstance(node, ft.Type) and 'self, ' or '',
                    handle=isinstance(node, ft.Type) and 'self._handle' or '')
         if isinstance(node, ft.Type):
-            dct['set_args'] = '%(handle)s, %(el_name_get)s' % dct
+            dct['set_args'] = '%(handle)s, %(el_name)s' % dct
         else:
-            dct['set_args'] = '%(el_name_get)s' % dct
-        if not isinstance(node, ft.Module) or not self.make_package:
-            self.write('@property')
-        else:
-            dct['el_name_get'] = 'get_'+el.name
-            dct['el_name_set'] = 'set_'+el.name
-
+            dct['set_args'] = '%(el_name)s' % dct
         if self.make_package:
             dct['cls_mod_name'] = ''
 
-        self.write('def %(el_name_get)s(%(self)s):' % dct)
-        self.indent()
-        self.write(format_doc_string(el))
-        self.write('''%(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)
-if tuple(%(el_name)s_handle) in %(selfdot)s_objs:
-    %(el_name)s = %(selfdot)s_objs[tuple(%(el_name)s_handle)]
-else:
-    %(el_name)s = %(cls_mod_name)s%(cls_name)s.from_handle(%(el_name)s_handle)
-    %(selfdot)s_objs[tuple(%(el_name)s_handle)] = %(el_name)s
-return %(el_name)s''' % dct)
-        self.dedent()
-        self.write()
-
-        if isinstance(node, ft.Module) and self.make_package:
-            self.write('%(el_name)s = %(el_name_get)s()' % dct)
+        if not isinstance(node, ft.Module) or not self.make_package:
+            self.write('@property')
+            self.write('def %(el_name)s(%(self)s):' % dct)
+            self.indent()
+            self.write(format_doc_string(el))
+            self.write('''%(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)
+    if tuple(%(el_name)s_handle) in %(selfdot)s_objs:
+        %(el_name)s = %(selfdot)s_objs[tuple(%(el_name)s_handle)]
+    else:
+        %(el_name)s = %(cls_mod_name)s%(cls_name)s.from_handle(%(el_name)s_handle)
+        %(selfdot)s_objs[tuple(%(el_name)s_handle)] = %(el_name)s
+    return %(el_name)s''' % dct)
+            self.dedent()
             self.write()
 
-        if 'parameter' not in el.attributes:
-            if not isinstance(node, ft.Module) or not self.make_package:
-                self.write('@%(el_name_set)s.setter' % dct)
-            self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-        %(el_name)s = %(el_name)s._handle
-        %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
-    ''' % dct)
+            if 'parameter' not in el.attributes:
+                if not isinstance(node, ft.Module) or not self.make_package:
+                    self.write('@%(el_name)s.setter' % dct)
+                self.write('''def %(el_name)s(%(selfcomma)s%(el_name)s):
+            %(el_name)s = %(el_name)s._handle
+            %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
+        ''' % dct)
+                self.write()
+        else:
+            self.write('_%(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s' % dct)
+            self.write('%(el_name)s = %(cls_mod_name)s%(cls_name)s.from_handle(_%(el_name)s_handle)' % dct)
             self.write()
 
-
+            
     def write_sc_array_wrapper(self, node, el, dims):
         dct = dict(el_name=el.name,
-                   el_name_get=el.name,
-                   el_name_set=el.name,
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    self=isinstance(node, ft.Type) and 'self' or '',
@@ -454,30 +415,34 @@ return %(el_name)s''' % dct)
                    selfcomma=isinstance(node, ft.Type) and 'self, ' or '',
                    doc=format_doc_string(el),
                    handle=isinstance(node, ft.Type) and 'self._handle, ' or '[0]*_sizeof_fortran_t, ')
+
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
+            self.write('def %(el_name)s(%(self)s):' % dct)
+            self.indent()
+            self.write(format_doc_string(el))
+            self.write("""if '%(el_name)s' in %(selfdot)s_arrays:
+        %(el_name)s = %(selfdot)s_arrays['%(el_name)s']
+    else:
+        %(el_name)s = arraydata.get_array(_sizeof_fortran_t,
+                                    %(handle)s
+                                    %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s)
+        %(selfdot)s_arrays['%(el_name)s'] = %(el_name)s
+    return %(el_name)s""" % dct)
+            self.dedent()
+            self.write()
+            if not isinstance(node, ft.Module) or not self.make_package:
+                self.write("@%(el_name)s.setter" % dct)
+            self.write("""def %(el_name)s(%(selfcomma)s%(el_name)s):
+        %(selfdot)s%(el_name)s[...] = %(el_name)s
+    """ % dct)
+            self.write()
+            
         else:
-            dct['el_name_get'] = 'get_'+el.name            
-            dct['el_name_set'] = 'set_'+el.name
-        self.write('def %(el_name)s(%(self)s):' % dct)
-        self.indent()
-        self.write(format_doc_string(el))
-        self.write("""if '%(el_name_get)s' in %(selfdot)s_arrays:
-    %(el_name)s = %(selfdot)s_arrays['%(el_name)s']
-else:
-    %(el_name)s = arraydata.get_array(_sizeof_fortran_t,
-                                      %(handle)s
-                                      %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s)
-    %(selfdot)s_arrays['%(el_name)s'] = %(el_name)s
-return %(el_name)s""" % dct)
-        self.dedent()
-        self.write()
-        if not isinstance(node, ft.Module) or not self.make_package:
-            self.write("@%(el_name)s.setter" % dct)
-        self.write("""def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-    %(selfdot)s%(el_name)s[...] = %(el_name)s
-""" % dct)
-        self.write()
+            self.write('''%(el_name)s = arraydata.get_array(_sizeof_fortran_t,
+                                          %(handle)s
+                                          %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s)''' % dct)
+            self.write()
 
 
     def write_dt_array_wrapper(self, node, el, dims):
