@@ -14,21 +14,34 @@ class FortranModule(object):
     Metaclass is set to Singleton, so only one instance of each subclass of
     FortranModule can be created.
     """
+
+    _dt_array_initialisers = []
+
     __metaclass__ = Singleton
     def __init__(self):
         self._arrays = {}
-        self._objs = {}        
+        self._objs = {}
+
+        # initialise any derived type arrays
+        for init_array in self._dt_array_initialisers:
+            init_array(self)
 
 class FortranDerivedType(object):
     """
     Base class for Fortran derived types
     """
+
+    _dt_array_initialisers = []
         
     def __init__(self):
         self._handle = None
         self._arrays = {}
         self._objs = {}
         self._alloc = True
+
+        # initialise any derived type arrays
+        for init_array in self._dt_array_initialisers:
+            init_array(self)
 
     @classmethod
     def from_handle(cls, handle):
