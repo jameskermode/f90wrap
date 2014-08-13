@@ -537,7 +537,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
-            self.write('type(%s_ptr_type) :: %s_ptr' % (this, t.name))
+            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
             array_name = 'this_ptr%%p%%%s' % el.name
         else:
             array_name = '%s_%s' % (t.name, el.name)            

@@ -556,7 +556,10 @@ class MethodFinder(ft.FortranTransformer):
         elif node.method_name in self.destructor_names:
             node.attributes.append('destructor')
 
-        if self.move_methods:
+        if (self.move_methods or
+            'constructor' in node.attributes or
+            'destructor' in node.attributes):
+
             node.attributes.append('method')
             node.type_name = typ.name
 
