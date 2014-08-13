@@ -80,35 +80,32 @@ def format_doc_string(node):
     doc.append('')
     doc.append('Defined at %s %s' % (node.filename, _format_line_no(node.lineno)))
 
-    # For procedures, write required parameters and return values in numpydoc format
+    # For procedures, write parameters and return values in numpydoc format
     if isinstance(node, ft.Procedure):
         doc.append('')
         # Input parameters
-        i = 0
-        for arg in node.arguments:
+        for i, arg in enumerate(node.arguments):
             pytype = ft.f2py_type(arg.type, arg.attributes)
-            if "intent(out)" not in arg.attributes:
+            if i == 0:
+                doc.append("Parameters")
+                doc.append("----------")
+            doc.append("%s : %s" % (arg.name, pytype))
+            if arg.doc:
+                for d in arg.doc:
+                    doc.append("\t%s" % d)
+                doc.append("")
+
+        if isinstance(node, ft.Function):
+            for i, arg in enumerate(node.ret_val):
+                pytype = ft.f2py_type(arg.type, arg.attributes)
                 if i == 0:
-                    doc.append("Parameters")
-                    doc.append("----------")
-                i += 1
+                    doc.append("Returns")
+                    doc.append("-------")
                 doc.append("%s : %s" % (arg.name, pytype))
                 if arg.doc:
                     for d in arg.doc:
                         doc.append("\t%s" % d)
                     doc.append("")
-
-        i = 0
-        for arg in node.arguments:
-            pytype = ft.f2py_type(arg.type, arg.attributes)
-            if "intent(out)" in arg.attributes:
-                if i == 0:
-                    doc.append("Returns")
-                    doc.append("-------")
-                i += 1
-                doc.append("%s : %s" % (arg.name, pytype))
-                doc.append("\t%s" % arg.doc)
-                doc.append("")
 
     doc += [''] + node.doc[:]  # incoming docstring from Fortran source
 
@@ -133,7 +130,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             imports = [(self.f90_mod_name, None),
                        ('f90wrap.sizeof_fortran_t', None),
                        ('f90wrap.arraydata', 'get_array'),
-                       ('f90wrap.fortrantype', ('FortranDerivedType', 'FortranDerivedTypeArray'))]
+                       ('f90wrap.fortrantype', ('FortranDerivedType', 'FortranDerivedTypeArray', 'FortranModule'))]
         self.imports = set(imports)
         self.make_package = make_package
         if kind_map is None:
@@ -303,8 +300,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 dct['result'] = ', '.join([ret_val.name for ret_val in node.ret_val])
                 dct['call'] = '%(result)s = ' % dct
 
-            if not self.make_package and (node.type_name is None and node.mod_name is not None):
-                # module procedures become static methods
+            if not self.make_package and node.mod_name is not None and node.type_name is None:
+                # procedures outside of derived types become static methods
                 self.write('@staticmethod')
             self.write("def %(method_name)s(%(py_arg_names)s):" % dct)
             self.indent()
@@ -502,8 +499,9 @@ return %(el_name)s""" % dct)
 
         dct = dict(el_name=el.name,
                    func_name=func_name,
+                   mod_name=node.name,
                    type_name=ft.strip_type(el.type).lower(),
-                   mod_name=self.f90_mod_name,
+                   f90_mod_name=self.f90_mod_name,
                    prefix=self.prefix,
                    self='self',
                    selfdot='self.',
@@ -514,19 +512,21 @@ return %(el_name)s""" % dct)
 
         if isinstance(node, ft.Module):
             dct['parent'] = '_empty_type'
-            dct['selfdot'] = ''
-            dct['cls_mod_name'] = ''
+            if self.make_package:
+                dct['selfdot'] = ''
         if self.make_package:
+            dct['cls_mod_name'] = ''            
             self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
 
         self.write('def %(func_name)s(%(self)s):' % dct)
         self.indent()
-        if isinstance(node, ft.Module):
+        if isinstance(node, ft.Module) and self.make_package:
             self.write('global %(el_name)s'% dct)
         self.write('''%(selfdot)s%(el_name)s = FortranDerivedTypeArray(%(parent)s,
-                                %(mod_name)s.%(prefix)s%(type_name)s__array_getitem__%(el_name)s,
-                                %(mod_name)s.%(prefix)s%(type_name)s__array_setitem__%(el_name)s,
-                                %(mod_name)s.%(prefix)s%(type_name)s__array_len__%(el_name)s,
+                                %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_getitem__%(el_name)s,
+                                %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_setitem__%(el_name)s,
+                                %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_len__%(el_name)s,
                                 %(doc)s, %(cls_mod_name)s%(cls_name)s)''' % dct)
         self.write('return %(selfdot)s%(el_name)s' % dct)
         self.dedent()
+        self.write()

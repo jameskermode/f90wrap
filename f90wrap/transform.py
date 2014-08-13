@@ -349,7 +349,7 @@ def set_intent(attributes, intent):
     return attributes
 
 def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
-    for mod, sub, arguments in ft.walk_procedures(tree):
+    for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
         sub.types = set()
         sub.transfer_in = []
         sub.transfer_out = []
@@ -540,11 +540,8 @@ class MethodFinder(ft.FortranTransformer):
             # procedure is not a method, so leave it alone
             return node
 
-        node.attributes.append('method')
-        typ = self.types[node.arguments[0].type]
-        node.type_name = typ.name
-
         # remove prefix from subroutine name to get method name
+        typ = self.types[node.arguments[0].type]
         node.method_name = node.name
         prefices = [typ.name + '_']
         if typ.name in self.short_names:
@@ -560,6 +557,9 @@ class MethodFinder(ft.FortranTransformer):
             node.attributes.append('destructor')
 
         if self.move_methods:
+            node.attributes.append('method')
+            node.type_name = typ.name
+
             if interface is None:
                 # just a regular method - move into typ.procedures
                 typ.procedures.append(node)
@@ -743,7 +743,6 @@ class IntentOutToReturnValues(ft.FortranTransformer):
         if ret_val == []:
             new_node = node  # no changes needed
         else:
-
             new_node = ft.Function(node.name,
                                 node.filename,
                                 node.doc,

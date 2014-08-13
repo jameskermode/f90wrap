@@ -18,6 +18,7 @@
 
 import copy
 import logging
+import warnings
 import os
 
 import numpy as np
@@ -79,10 +80,20 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         """
         Write a wrapper for top-level procedures. 
         """
+        # clean up any previous wrapper files
+        top_level_wrapper_file = '%s%s.f90' % (self.prefix, 'toplevel')
+        f90_wrapper_files = (['%s%s.f90' % (self.prefix,
+                                           os.path.splitext(os.path.basename(mod.filename))[0])
+                                           for mod in node.modules ] +
+                             [top_level_wrapper_file])
+
+        for f90_wrapper_file in f90_wrapper_files:
+            if os.path.exists(f90_wrapper_file):
+                os.unlink(f90_wrapper_file)
         self.code = []
         self.generic_visit(node)
         if len(self.code) > 0:
-            f90_wrapper_file = open('%s%s.f90' % (self.prefix, 'toplevel'), 'w')
+            f90_wrapper_file = open(top_level_wrapper_file, 'w')
             f90_wrapper_file.write(str(self))
             f90_wrapper_file.close()
 
@@ -94,6 +105,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         """
         logging.info('F90WrapperGenerator visiting module %s' % node.name)
         self.code = []
+        self.write('! Module %s defined in file %s' % (node.name, node.filename))
+        self.write()
         self.generic_visit(node)
 
         for el in node.elements:
@@ -106,9 +119,13 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 if 'parameter' not in el.attributes:
                     self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
 
+        self.write('! End of module %s defined in file %s' % (node.name, node.filename))
+        self.write()
         if len(self.code) > 0:
-            f90_wrapper_file = open('%s%s' % (self.prefix,
-                                              os.path.basename(node.filename)), 'w')
+            f90_wrapper_name = '%s%s.f90' % (self.prefix, os.path.splitext(os.path.basename(node.filename))[0])
+            if os.path.exists(f90_wrapper_name):
+                warnings.warn('Source file %s contains code for more than one module!' % node.filename)
+            f90_wrapper_file = open(f90_wrapper_name, 'a')
             f90_wrapper_file.write(str(self))
             f90_wrapper_file.close()
         self.code = []
@@ -268,7 +285,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         if isinstance(orig_node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
-                       {'ret_val': orig_node.ret_val.name,
+                       {'ret_val':  actual_arg_name(orig_node.ret_val),
                         'func_name': func_name,
                         'arg_names': ', '.join(arg_names)})
         else:
@@ -489,14 +506,14 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             inout = "out"
 
         if isinstance(t, ft.Type):
-            self.write('subroutine %s%s__array_%sitem__%s(this, i, %s)' % (self.prefix, t.name,
-                                                                           getset, el.name,
-                                                                           el.name))
+            this = 'this'
         else:
-            self.write('subroutine %s%s__array_%sitem__%s(i, %s)' % (self.prefix, t.name,
+            this = 'dummy_this'
+        
+        self.write('subroutine %s%s__array_%sitem__%s(%s, i, %s)' % (self.prefix, t.name,
                                                                      getset, el.name,
+                                                                     this,
                                                                      el.name))
-            
         self.indent()
         self.write()
         extra_uses = {}
@@ -518,9 +535,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write_type_lines(t.name)
         self.write_type_lines(el.type)
 
+        self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
-            self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write('type(%s_ptr_type) :: %s_ptr' % (this, t.name))
             array_name = 'this_ptr%%p%%%s' % el.name
         else:
             array_name = '%s_%s' % (t.name, el.name)            
@@ -582,9 +599,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             The size, in bytes, of a pointer to a fortran derived type ??
         """
         if isinstance(t, ft.Type):
-            self.write('subroutine %s%s__array_len__%s(this, n)' % (self.prefix, t.name, el.name))
+            this = 'this'
         else:
-            self.write('subroutine %s%s__array_len__%s(n)' % (self.prefix, t.name, el.name))
+            this = 'dummy_this'
+
+        self.write('subroutine %s%s__array_len__%s(%s, n)' % (self.prefix, t.name, el.name, this))
         self.indent()
         self.write()
         extra_uses = {}
@@ -605,8 +624,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write_type_lines(t.name)
         self.write_type_lines(el.type)
         self.write('integer, intent(out) :: n')
+        self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
-            self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
             self.write()
             self.write('this_ptr = transfer(this, this_ptr)')
