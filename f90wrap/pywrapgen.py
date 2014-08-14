@@ -221,14 +221,14 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write('_dt_array_initialisers = [%s]' % (', '.join(node.dt_array_initialisers)))
         self.write()
 
+        # FIXME - make this less ugly, e.g. by generating code for each array
         if self.make_package:
-            self.write('''for func in _array_initialisers:
-    try:
+            self.write('''try:
+    for func in _array_initialisers:
         func()
-    except ValueError:
-        print('WARNING: array "%s" not allocated on import of module "%s"' %
-               (func.func_name.replace('get_array_', ''))
-            ''')
+except ValueError:
+    print('WARNING: unallocated array(s) detected on import of module "%s".')
+''' % node.name)
             self.write()
             self.write('''for func in _dt_array_initialisers:
     func()
