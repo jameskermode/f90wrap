@@ -450,7 +450,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
         end subroutine foo
     """
 
-    valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$')
+    valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/,]*\))|(len\(.*\)))$')
 
     @staticmethod
     def split_dimensions(dim):
