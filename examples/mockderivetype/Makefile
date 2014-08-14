@@ -22,10 +22,10 @@ LIBSRC_FPP_FILES = $(addsuffix .fpp,${LIBSRC_SOURCES})
 
 .PHONY: all clean test
 
-all: _mockdt.so
+all: test
 
 clean:
-	-rm ${LIBSRC_OBJECTS} libsrc.a _mockdt.so *.mod f90wrap*.f90 *.fpp
+	-rm ${LIBSRC_OBJECTS} libsrc.a _mockdt.so _mockdtpkg.so *.mod f90wrap*.f90 *.fpp
 
 .f90.o:
 	${F90} ${F90FLAGS} -c $< -o $@
@@ -43,6 +43,10 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -k kind_map -v 
 	f2py-f90wrap --build-dir . -c -m _mockdt -L. -lsrc f90wrap*.f90
 
-test: _mockdt.so
+_mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
+	f90wrap -m mockdtpkg ${LIBSRC_FPP_FILES} -k kind_map -v -P
+	f2py-f90wrap --build-dir . -c -m _mockdtpkg -L. -lsrc f90wrap*.f90
+
+test: _mockdt.so _mockdtpkg.so
 	python test.py
 

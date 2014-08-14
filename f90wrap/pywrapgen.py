@@ -99,6 +99,7 @@ def format_doc_string(node):
             for i, arg in enumerate(node.ret_val):
                 pytype = ft.f2py_type(arg.type, arg.attributes)
                 if i == 0:
+                    doc.append("")
                     doc.append("Returns")
                     doc.append("-------")
                 doc.append("%s : %s" % (arg.name, pytype))
@@ -113,8 +114,8 @@ def format_doc_string(node):
 
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
-    def __init__(self, prefix, mod_name, types, imports=None,
-                 f90_mod_name=None, make_package=False, kind_map=None):
+    def __init__(self, prefix, mod_name, types, f90_mod_name=None,
+                 make_package=False, kind_map=None):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\',
@@ -126,30 +127,27 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             f90_mod_name = '_' + mod_name
         self.f90_mod_name = f90_mod_name
         self.types = types
-        if imports is None:
-            imports = [(self.f90_mod_name, None),
-                       ('f90wrap.sizeof_fortran_t', None),
-                       ('f90wrap.arraydata', 'get_array'),
-                       ('f90wrap.fortrantype', ('FortranDerivedType', 'FortranDerivedTypeArray', 'FortranModule'))]
-        self.imports = set(imports)
+        self.imports = set()
         self.make_package = make_package
         if kind_map is None:
             kind_map = {}
         self.kind_map = kind_map
 
-    def write_imports(self):
-        for (mod, symbol) in self.imports:
+    def write_imports(self, insert=0):
+        default_imports = [(self.f90_mod_name, None),
+                           ('f90wrap.runtime', None)]
+        imp_lines = []
+        for (mod, symbol) in default_imports + list(self.imports):
             if symbol is None:
-                self.write('import %s' % mod)
+                imp_lines.append('import %s' % mod)
             elif isinstance(symbol, tuple):
-                self.write('from %s import %s' % (mod, ', '.join(symbol)))
+                imp_lines.append('from %s import %s' % (mod, ', '.join(symbol)))
             else:
-                self.write('from %s import %s' % (mod, symbol))
-        self.write()
-        self.write('_sizeof_fortran_t = f90wrap.sizeof_fortran_t.sizeof_fortran_t()')
-        self.write('_empty_fortran_t = [0]*_sizeof_fortran_t')
-        self.write('_empty_type = FortranDerivedType.from_handle(_empty_fortran_t)')
-        self.write()
+                imp_lines.append('from %s import %s' % (mod, symbol))
+        imp_lines += ['\n']
+        self.imports = set()
+        return self.writelines(imp_lines, insert=insert, level=0)
+
 
     def visit_Root(self, node):
         """
@@ -158,16 +156,19 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         if self.make_package:
             if not os.path.exists(self.py_mod_name):
                 os.mkdir(self.py_mod_name)
-                        
+
         self.code = []
         self.py_mods = []
-        self.write_imports()            
+        self.current_module = None
 
         self.generic_visit(node)
 
         if self.make_package:
             for py_mod in self.py_mods:
-                self.write('import %s.%s' % (self.py_mod_name, py_mod))
+                self.imports.add((self.py_mod_name+'.'+py_mod, None))
+        self.write_imports(0)
+
+        if self.make_package:
             py_wrapper_file = open(os.path.join(self.py_mod_name, '__init__.py'), 'w')
         else:
             py_wrapper_file = open('%s.py' % self.py_mod_name, 'w')
@@ -177,22 +178,22 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def visit_Module(self, node):
         logging.info('PythonWrapperGenerator visiting module %s' % node.name)
         cls_name = node.name.title()
+        node.array_initialisers = []
         node.dt_array_initialisers = []
+        self.current_module = node.name
 
         if self.make_package:
             self.code = []
             self.write(format_doc_string(node))
-            self.write_imports()
-            self.write('_arrays = {}')
-            self.write('_objs = {}')
-            self.write()                      
         else:
-            self.write('class %s(FortranModule):' % cls_name)
+            self.write('class %s(f90wrap.runtime.FortranModule):' % cls_name)
             self.indent()
             self.write(format_doc_string(node))
 
             if len(node.elements) == 0 and len(node.types) == 0 and len(node.procedures) == 0:
                 self.write('pass')
+
+        index = len(self.code) # save position to insert import lines
 
         self.generic_visit(node)
 
@@ -208,12 +209,29 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             else:
                 self.write_sc_array_wrapper(node, el, dims)
 
+        # insert import statements at the beginning of module
+        if self.make_package:
+            index = self.write_imports(index)
+            self.writelines(['_arrays = {}', '_objs = {}', '\n'],
+                            insert=index)
+            self.write()
+
+        if self.make_package:
+            self.write('_array_initialisers = [%s]' % (', '.join(node.array_initialisers)))
         self.write('_dt_array_initialisers = [%s]' % (', '.join(node.dt_array_initialisers)))
         self.write()
 
         if self.make_package:
-            self.write('''for init_array in _dt_array_initialisers:
-    init_array()
+            self.write('''for func in _array_initialisers:
+    try:
+        func()
+    except ValueError:
+        print('WARNING: array "%s" not allocated on import of module "%s"' %
+               (func.func_name.replace('get_array_', ''))
+            ''')
+            self.write()
+            self.write('''for func in _dt_array_initialisers:
+    func()
             ''')
             if len(self.code) > 0:
                 py_wrapper_file = open(os.path.join(self.py_mod_name, node.name+'.py'), 'w')
@@ -227,6 +245,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             # instantise the module class
             self.write('%s = %s()' % (node.name, node.name.title()))
             self.write()
+
+        self.current_module = None
 
 
     def write_constructor(self, node):
@@ -253,12 +273,12 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("def __init__(%(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
-        self.write('FortranDerivedType.__init__(self)')
+        self.write('f90wrap.runtime.FortranDerivedType.__init__(self)')
         self.write('self._handle = %(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct)
         self.dedent()
         self.write()
 
-        
+
     def write_destructor(self, node):
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
@@ -314,9 +334,14 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 for ret_val in node.ret_val:
                     if ret_val.type.startswith('type'):
                         cls_name = ft.strip_type(ret_val.type).title()
-                        cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name + '.'
-                        self.write('%s = %s%s.from_handle(%s)' %
-                                   (ret_val.name, cls_mod_name, cls_name, ret_val.name))
+                        cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name
+                        if self.make_package:
+                            if cls_mod_name != self.current_module:
+                                self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
+                        else:
+                            cls_name = cls_mod_name + '.' + cls_name
+                        self.write('%s = %s.from_handle(%s)' %
+                                   (ret_val.name, cls_name, ret_val.name))
                 self.write('return %(result)s' % dct)
 
             self.dedent()
@@ -327,7 +352,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         logging.info('PythonWrapperGenerator visiting type %s' % node.name)
         node.dt_array_initialisers = []
         cls_name = node.name.title()
-        self.write('class %s(FortranDerivedType):' % cls_name)
+        self.write('class %s(f90wrap.runtime.FortranDerivedType):' % cls_name)
         self.indent()
         self.write(format_doc_string(node))
         self.generic_visit(node)
@@ -371,7 +396,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             dct['self'] = ''
             dct['selfdot'] = ''
             dct['selfcomma'] = ''
-            
+
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
         self.write(format_doc_string(el))
@@ -381,7 +406,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         if 'parameter' in el.attributes and isinstance(node, ft.Module) and self.make_package:
             self.write('%(el_name)s = %(el_name_get)s()' % dct)
             self.write()
-        
+
         if 'parameter' not in el.attributes:
             if not isinstance(node, ft.Module) or not self.make_package:
                 self.write('@%(el_name_get)s.setter' % dct)
@@ -396,7 +421,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
         dct = dict(el_name=el.name,
                    el_name_get=el.name,
-                   el_name_set=el.name,                   
+                   el_name_set=el.name,
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    cls_name=cls_name,
@@ -411,7 +436,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             dct['set_args'] = '%(el_name)s' % dct
         if self.make_package:
             dct['cls_mod_name'] = ''
-            self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
+            if cls_mod_name != self.current_module:
+                self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
@@ -421,12 +447,12 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             dct['self'] = ''
             dct['selfdot'] = ''
             dct['selfcomma'] = ''
-                        
+
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
         self.write(format_doc_string(el))
         if isinstance(node, ft.Module) and self.make_package:
-            self.write('global %(el_name)s' % dct)        
+            self.write('global %(el_name)s' % dct)
         self.write('''%(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)
 if tuple(%(el_name)s_handle) in %(selfdot)s_objs:
     %(el_name)s = %(selfdot)s_objs[tuple(%(el_name)s_handle)]
@@ -446,7 +472,7 @@ return %(el_name)s''' % dct)
     ''' % dct)
             self.write()
 
-            
+
     def write_sc_array_wrapper(self, node, el, dims):
         dct = dict(el_name=el.name,
                    el_name_get=el.name,
@@ -457,7 +483,7 @@ return %(el_name)s''' % dct)
                    selfdot='self.',
                    selfcomma='self, ',
                    doc=format_doc_string(el),
-                   handle=isinstance(node, ft.Type) and 'self._handle, ' or '_empty_fortran_t, ')
+                   handle=isinstance(node, ft.Type) and 'self._handle, ' or 'f90wrap.runtime.empty_handle, ')
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
@@ -472,11 +498,13 @@ return %(el_name)s''' % dct)
         self.indent()
         self.write(format_doc_string(el))
         if isinstance(node, ft.Module) and self.make_package:
-            self.write('global %(el_name)s' % dct)        
+            self.write('global %(el_name)s' % dct)
+            node.array_initialisers.append(dct['el_name_get'])
+
         self.write("""if '%(el_name_get)s' in %(selfdot)s_arrays:
     %(el_name)s = %(selfdot)s_arrays['%(el_name)s']
 else:
-    %(el_name)s = get_array(_sizeof_fortran_t,
+    %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
                             %(handle)s
                             %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s)
     %(selfdot)s_arrays['%(el_name_set)s'] = %(el_name)s
@@ -511,18 +539,20 @@ return %(el_name)s""" % dct)
                    cls_mod_name = cls_mod_name+'.')
 
         if isinstance(node, ft.Module):
-            dct['parent'] = '_empty_type'
+            dct['parent'] = 'f90wrap.runtime.empty_type'
             if self.make_package:
                 dct['selfdot'] = ''
+                dct['self'] = ''
         if self.make_package:
-            dct['cls_mod_name'] = ''            
-            self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
+            dct['cls_mod_name'] = ''
+            if cls_mod_name != self.current_module:
+                self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
 
         self.write('def %(func_name)s(%(self)s):' % dct)
         self.indent()
         if isinstance(node, ft.Module) and self.make_package:
             self.write('global %(el_name)s'% dct)
-        self.write('''%(selfdot)s%(el_name)s = FortranDerivedTypeArray(%(parent)s,
+        self.write('''%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
                                 %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_getitem__%(el_name)s,
                                 %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_setitem__%(el_name)s,
                                 %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_len__%(el_name)s,
