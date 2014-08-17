@@ -96,7 +96,7 @@ get_array(PyObject *self, PyObject *args)
   /* Construct array */
   descr = PyArray_DescrNewFromType(typenum);
   array = (PyArrayObject*) PyArray_NewFromDescr(&PyArray_Type, descr, nd, dimensions, NULL, 
-                                                data, NPY_FORTRAN | NPY_WRITEABLE, NULL);
+                                                data, NPY_FORTRAN | NPY_WRITEABLE | NPY_ALIGNED, NULL);
   free(dimensions);
   if((PyObject *)capi_this_tmp!=this_capi) {
     Py_XDECREF(capi_this_tmp);

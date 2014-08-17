@@ -1,6 +1,6 @@
 import numpy as np
 
-from mockdt import (define_a_type,
+from mockdtpkg import (define_a_type,
                     leveltwomod,
                     use_a_type,
                     top_level)
@@ -22,6 +22,7 @@ a.dtype = my_l2 # calls set()
 assert(a.dtype.rl == my_l2.rl)
 
 # access the module-level variables in use_a_type
+use_a_type.get_p()
 use_a_type.p.rl = 1.0
 use_a_type.p.bool = True
 use_a_type.p.integ = 10
@@ -30,6 +31,7 @@ use_a_type.p.integ = 10
 result = use_a_type.do_stuff(8)
 assert(result == 1073741824.0)
 
+use_a_type.get_array_vector()
 use_a_type.vector[:] = 1.0
 assert(np.all(use_a_type.vector == 1.0))
 

@@ -4,25 +4,30 @@ FPP = gfortran -E
 F90FLAGS = -x f95-cpp-input -fPIC
 CFLAGS = -fPIC
 
+UNAME = $(shell uname)
+
+ifeq (${UNAME}, Darwin)
+  LIBTOOL = libtool -static -o
+else
+  LIBTOOL = ar src
+endif
+
 LIBSRC_SOURCES = leveltwomod define fwrap
 
-LIBSRC_FILES = $(addsuffix .f90,${LIBSRC_SOURCES}) cstub.c
-LIBSRC_OBJECTS = $(addsuffix .o,${LIBSRC_SOURCES}) cstub.o
+LIBSRC_FILES = $(addsuffix .f90,${LIBSRC_SOURCES})
+LIBSRC_OBJECTS = $(addsuffix .o,${LIBSRC_SOURCES})
 LIBSRC_FPP_FILES = $(addsuffix .fpp,${LIBSRC_SOURCES})
 
 .SUFFIXES: .f90 .fpp
 
 .PHONY: all clean test
 
-all: _mockdt.so
+all: test
 
 clean:
-	-rm ${LIBSRC_OBJECTS} libsrc.a _mockdt.so *.mod f90wrap*.f90 *.fpp
+	-rm ${LIBSRC_OBJECTS} libsrc.a _mockdt.so _mockdtpkg.so *.mod f90wrap*.f90 *.fpp
 
-test: mockdt.so
-	python test.py
-
-.f90.o:	
+.f90.o:
 	${F90} ${F90FLAGS} -c $< -o $@
 
 .c.o:
@@ -32,10 +37,16 @@ test: mockdt.so
 	${FPP} ${F90FLAGS} $<  -o $@
 
 libsrc.a: ${LIBSRC_OBJECTS}
-	ar src $@ $?
+	${LIBTOOL} $@ $?
 
 _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
-	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -v --only do_stuff top_level
-	f2py -c -m _mockdt -L. -lsrc f90wrap*.f90
+	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -k kind_map -v 
+	f2py-f90wrap --build-dir . -c -m _mockdt -L. -lsrc f90wrap*.f90
 
+_mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
+	f90wrap -m mockdtpkg ${LIBSRC_FPP_FILES} -k kind_map -v -P
+	f2py-f90wrap --build-dir . -c -m _mockdtpkg -L. -lsrc f90wrap*.f90
+
+test: _mockdt.so _mockdtpkg.so
+	python test.py
 

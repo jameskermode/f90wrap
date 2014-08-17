@@ -257,10 +257,16 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 dims = filter(lambda x: x.startswith('dimension'), element.attributes)
                 # Skip this if the type is not do-able
                 if 'pointer' in element.attributes and dims != []:
+                    logging.debug('removing %s.%s due to pointer attribute' %
+                                  (node.name, element.name))
                     continue
                 if element.type.lower() == 'type(c_ptr)':
+                    logging.debug('removing %s.%s as type(c_ptr) unsupported' %
+                                  (node.name, element.name))
                     continue
-                if element.type.startswith('type(') and element.type not in self.types:
+                if element.type.startswith('type') and element.type not in self.types:
+                    logging.debug('removing %s.%s as type %s unsupported' %
+                                  (node.name, element.name, element.type))
                     continue
                 elements.append(element)
             node.elements = elements
@@ -279,15 +285,25 @@ class UnwrappablesRemover(ft.FortranTransformer):
             # Get the number of dimensions of the element (if any)
             dims = filter(lambda x: x.startswith('dimension'), element.attributes)
             if 'pointer' in element.attributes and dims != []:
+                logging.debug('removing %s.%s due to pointer attribute' %
+                             (node.name, element.name))
                 continue
             if element.type.lower() == 'type(c_ptr)':
+                logging.debug('removing %s.%s as type(c_ptr) unsupported' %
+                                (node.name, element.name))
                 continue
-            if element.type.startswith('type(') and 'target' not in element.attributes:
+            if element.type.startswith('type') and 'target' not in element.attributes:
+                logging.debug('removing %s.%s as missing "target" attribute' %
+                                (node.name, element.name))
                 continue
-            if element.type.startswith('type(') and element.type not in self.types:
+            if element.type.startswith('type') and element.type not in self.types:
+                logging.debug('removing %s.%s as type %s unsupported' %
+                              (node.name, element.name, element.type))
                 continue
-            # parameter arrays live only in the mind of the compiler
+            # parameter arrays in modules live only in the mind of the compiler
             if 'parameter' in element.attributes and dims != []:
+                logging.debug('removing %s.%s as it has "parameter" attribute' %
+                              (node.name, element.name))
                 continue
                 
             elements.append(element)
@@ -333,7 +349,7 @@ def set_intent(attributes, intent):
     return attributes
 
 def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
-    for mod, sub, arguments in ft.walk_procedures(tree):
+    for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
         sub.types = set()
         sub.transfer_in = []
         sub.transfer_out = []
@@ -434,7 +450,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
         end subroutine foo
     """
 
-    valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$')
+    valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/,]*\))|(len\(.*\)))$')
 
     @staticmethod
     def split_dimensions(dim):
@@ -487,17 +503,17 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                 logging.debug('adding dummy arguments %r to %s' % (new_dummy_args, node.name))
                 arg.attributes = ([attr for attr in arg.attributes if not attr.startswith('dimension')] +
                                   ['dimension(%s)' % ','.join(new_ds)])
-                logging.debug('  ds=%r new_ds=%r attr=%s' % (ds, new_ds, arg.attributes))                
                 node.arguments.extend(new_dummy_args)
 
 
 class MethodFinder(ft.FortranTransformer):
 
-    def __init__(self, types, constructor_names, destructor_names, short_names):
+    def __init__(self, types, constructor_names, destructor_names, short_names, move_methods):
         self.types = types
         self.constructor_names = constructor_names
         self.destructor_names = destructor_names
         self.short_names = short_names
+        self.move_methods = move_methods
 
     def visit_Interface(self, node):
         new_procs = []
@@ -524,11 +540,8 @@ class MethodFinder(ft.FortranTransformer):
             # procedure is not a method, so leave it alone
             return node
 
-        node.attributes.append('method')
-        typ = self.types[node.arguments[0].type]
-        node.type_name = typ.name
-
         # remove prefix from subroutine name to get method name
+        typ = self.types[node.arguments[0].type]
         node.method_name = node.name
         prefices = [typ.name + '_']
         if typ.name in self.short_names:
@@ -543,32 +556,41 @@ class MethodFinder(ft.FortranTransformer):
         elif node.method_name in self.destructor_names:
             node.attributes.append('destructor')
 
-        if interface is None:
-            # just a regular method - move into typ.procedures
-            typ.procedures.append(node)
-            logging.debug('added method %s to type %s' %
-                          (node.method_name, typ.name))
-        else:
-            # this method was originally inside an interface,
-            # so we need to replicate Interface inside the Type
-            for intf in typ.interfaces:
-                if intf.name == interface.name:
-                    intf.procedures.append(node)
+        if (self.move_methods or
+            'constructor' in node.attributes or
+            'destructor' in node.attributes):
+
+            node.attributes.append('method')
+            node.type_name = typ.name
+
+            if interface is None:
+                # just a regular method - move into typ.procedures
+                typ.procedures.append(node)
+                logging.debug('added method %s to type %s' %
+                              (node.method_name, typ.name))
+            else:
+                # this method was originally inside an interface,
+                # so we need to replicate Interface inside the Type
+                for intf in typ.interfaces:
+                    if intf.name == interface.name:
+                        intf.procedures.append(node)
+                        logging.debug('added method %s to interface %s in type %s' %
+                                      (node.method_name, intf.name, typ.name))
+                        break
+                else:
+                    intf = ft.Interface(interface.name,
+                                     interface.filename,
+                                     interface.doc,
+                                     interface.lineno,
+                                     [node])
+                    typ.interfaces.append(intf)
                     logging.debug('added method %s to interface %s in type %s' %
                                   (node.method_name, intf.name, typ.name))
-                    break
-            else:
-                intf = ft.Interface(interface.name,
-                                 interface.filename,
-                                 interface.doc,
-                                 interface.lineno,
-                                 [node])
-                typ.interfaces.append(intf)
-                logging.debug('added method %s to interface %s in type %s' %
-                              (node.method_name, intf.name, typ.name))
 
-        # remove method from parent since we've added it to Type
-        return None
+            # remove method from parent since we've added it to Type
+            return None
+        else:
+            return node
 
 def collapse_single_interfaces(tree):
     """Collapse interfaces which contain only a single procedure."""
@@ -724,7 +746,6 @@ class IntentOutToReturnValues(ft.FortranTransformer):
         if ret_val == []:
             new_node = node  # no changes needed
         else:
-
             new_node = ft.Function(node.name,
                                 node.filename,
                                 node.doc,
@@ -778,7 +799,7 @@ class RenameArgumentsPython(ft.FortranVisitor):
     def visit_Argument(self, node):
         if not hasattr(node, 'py_name'):
             node.py_name = node.name
-        if node.type.startswith('type('):
+        if node.type.startswith('type'):
             node.py_value = node.py_name + '._handle'
         else:
             node.py_value = node.py_name
@@ -829,7 +850,8 @@ class NormaliseTypes(ft.FortranVisitor):
     
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
-                                 only_subs, only_mods, argument_name_map):
+                                 only_subs, only_mods, argument_name_map,
+                                 move_methods):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
@@ -844,7 +866,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
-    tree = MethodFinder(types, constructors, destructors, short_names).visit(tree)
+    tree = MethodFinder(types, constructors, destructors, short_names, move_methods).visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
     tree = fix_element_uses_clauses(tree, types)

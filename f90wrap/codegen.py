@@ -66,7 +66,7 @@ class CodeGenerator(object):
         lines = args.splitlines(True)
         self.code.extend([self._indent * self.level + line for line in lines])
 
-    def writelines(self, items):
+    def writelines(self, items, insert=None, level=None):
         """
         Write the given code lines to the instance's code. 
         
@@ -76,11 +76,32 @@ class CodeGenerator(object):
             A list of code lines to be appended to the instance's code.
             Newline characters with strings will automatically be propagated
             into the code.
+        insert : integer or None
+            If present, insert lines after index `insert` rather than appending
+        level : integer or None
+            If present, override the current indent level
+
+        Returns
+        -------
+        index : index for next line to be added (equal to len(code) if insert=None)
         """
+        if level is None:
+            level = self.level
+
         lines = []
         for item in items:
-            lines.extend(item.splitlines(True))
-        self.code.extend([self._indent * self.level + line for line in lines])
+            item_lines = item.splitlines(True)
+            if not item_lines[-1].endswith('\n'):
+                item_lines[-1] += '\n'
+            lines.extend(item_lines)
+            
+        lines = [self._indent * level + line for line in lines]
+        if insert is not None:
+            self.code = self.code[:insert] + lines + self.code[insert:]
+            return insert + len(lines)
+        else:
+            self.code.extend(lines)
+            return len(self.code)
 
     def split_long_lines(self):
         """

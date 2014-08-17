@@ -7,14 +7,12 @@ module use_a_type
     use define_a_type !% This is the module which defines the type 'atype'
     type(atype) :: P  !% A variable with this type. NB: target attribute needed to allow access from Python
     type(atype), allocatable :: P_array(:) !% An array of derived types (not yet wrapped, but will be soon)
-    real(8),allocatable :: vector(:) !% It also contains allocatable arrays
+    real(8), allocatable :: vector(:) !% It also contains allocatable arrays
 
     !% For simplicity, P has a variable of each of several base types.
-    !% That is, a logical, real, integer, real array (not allocatable!), and a
+    !% That is, a logical, real, integer, real array, and a
     !% derived type from a different module.
 
-    !% I make a mock subroutine that uses all these bits in some way to make
-    !% sure they all work.
     contains
 
     !% Here's a routine that does something
@@ -48,6 +46,13 @@ module use_a_type
         !This construct uses the array and derived type vars of P
         do i=1,size(P%vec)
             P%vec(i) = P%dtype%rl*i
+        end do
+
+        ! allocate P_array and copy data into it from P
+        if (allocated(P_array)) deallocate(P_array)
+        allocate(P_array(3))
+        do i=1,3
+           P_array(i) = P
         end do
 
         call use_set_vars()
