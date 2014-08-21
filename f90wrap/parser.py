@@ -101,7 +101,7 @@ fdoc_comm_mid = re.compile(r'!\s*\*FD')
 fdoc_mark = re.compile('_FD\s*')
 fdoc_rv_mark = re.compile('_FDRV\s*')
 
-result_re = re.compile(r'result\s*\((.*?)\)')
+result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
 
 arg_split = re.compile(r'\s*(\w*)\s*(\(.+?\))?\s*(=\s*[\w\.]+\s*)?,?\s*')
 
@@ -766,6 +766,7 @@ def check_funct(cl, file, grab_hold_doc=True):
         if re.search(result_re, cl) != None:
             ret_var = re.search(result_re, cl).group(1)
             cl = result_re.sub('', cl)
+            print "STEVEN: %s: %s" % (out.name, ret_var)
 
         # Get func name
 
@@ -813,7 +814,7 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         cl = file.next()
 
-        print "STEVEN: %s" % out.name
+
         while True:
 
             # Use statement
@@ -867,7 +868,6 @@ def check_funct(cl, file, grab_hold_doc=True):
                 for a in check[0]:
                     out.arguments.append(a)
                     cl = check[1]
-                    print "\t%s: %s" % (a.name, a.type)
                 continue
 
             m = re.match(funct_end, cl)
@@ -901,7 +901,7 @@ def check_funct(cl, file, grab_hold_doc=True):
                 ag_temp.append(i)
             if re.search(name_re, i.name) != None:
                 out.ret_val = i
-            if ret_var != None and i.name.lower() == ret_var.lower():
+            if ret_var != None and i.name.lower().strip() == ret_var.lower().strip():
                 out.ret_val = i
 
         out.arguments = ag_temp
