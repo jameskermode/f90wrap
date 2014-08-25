@@ -389,8 +389,8 @@ def find_procedure_module(tree, node):
                 if node in typ.procedures:
                     return mod
     return None
-    
-            
+
+
 def walk_procedures(tree, include_ret_val=True):
     """
     Walk over all nodes in tree and yield tuples
@@ -605,7 +605,7 @@ class LowerCaseConverter(FortranTransformer):
 
 def strip_type(t):
     """Return type name from type declaration"""
-    t = t.replace(' ', '') # remove blanks
+    t = t.replace(' ', '')  # remove blanks
     if t.startswith('type('):
         t = t[t.index('(') + 1:t.index(')')]
     return t.lower()
@@ -710,7 +710,7 @@ def split_type_kind(typename):
     """
     if '*' in typename:
         type = typename[:typename.index('*')]
-        kind = typename[typename.index('*')+1:]
+        kind = typename[typename.index('*') + 1:]
     elif '(' in typename:
         type = typename[:typename.index('(')]
         kind = typename[typename.index('('):]
@@ -728,7 +728,7 @@ def f2c_type(typename, kind_map):
     Kind constants defined in `kind_map` are expanded, and a RuntimeError
     is raised if a undefined (type, kind) combination is encountered.
     """
-    
+
     # default conversion from fortran to C types
     default_f2c_type = {
         'character': 'char',
@@ -740,6 +740,7 @@ def f2c_type(typename, kind_map):
 
     type, kind = split_type_kind(typename)
     kind = kind.replace('(', '').replace(')', '')
+
 
     if type in kind_map:
         if kind in kind_map[type]:
@@ -787,15 +788,15 @@ def normalise_type(typename, kind_map):
     # special case: preserve string lengths
     if c_type == 'char':
         kind = orig_kind
-    return type+kind
-    
+    return type + kind
+
 
 def fortran_array_type(typename, kind_map):
     """
     Convert string repr of Fortran type to equivalent numpy array typenum
-    """    
+    """
     c_type = f2c_type(typename, kind_map)
-        
+
     # convert from C type names to numpy dtype strings
     c_type_to_numpy_type = {
         'char' : 'string',
@@ -814,7 +815,7 @@ def fortran_array_type(typename, kind_map):
 
     if c_type not in c_type_to_numpy_type:
         raise RuntimeError('Unknown C type %s' % c_type)
-        
+
     # find numpy numerical type code
     numpy_type = np.dtype(c_type_to_numpy_type[c_type]).num
     return numpy_type

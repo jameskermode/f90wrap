@@ -66,7 +66,7 @@ class AccessUpdater(ft.FortranTransformer):
 
         else:
             raise ValueError('bad default access %s for reference %s' %
-                               (mod.default_access, mod.name))        
+                               (mod.default_access, mod.name))
 
     def visit_Module(self, mod):
         # keep track of the current module
@@ -103,7 +103,7 @@ class AccessUpdater(ft.FortranTransformer):
         else:
             self.update_access(node, self.mod, self.mod.default_access)
         return node
-        
+
 
 
 class PrivateSymbolsRemover(ft.FortranTransformer):
@@ -128,7 +128,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         if node.name in self.mod.private_symbols:
             logging.debug('removing private symbol %s' % node.name)
             return None
-    
+
         return self.generic_visit(node)
 
     visit_Type = visit_Procedure
@@ -188,9 +188,9 @@ class UnwrappablesRemover(ft.FortranTransformer):
                     return None
 
                 dims = [attrib for attrib in arg.attributes if attrib.startswith('dimension')]
-                
-                ## no complex scalars (arrays are OK)
-                #if arg.type.startswith('complex') and len(dims) == 0:
+
+                # # no complex scalars (arrays are OK)
+                # if arg.type.startswith('complex') and len(dims) == 0:
                 #    logging.debug('removing routine %s due to complex scalar arguments' % node.name)
                 #    return None
 
@@ -305,7 +305,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 logging.debug('removing %s.%s as it has "parameter" attribute' %
                               (node.name, element.name))
                 continue
-                
+
             elements.append(element)
         node.elements = elements
         return self.generic_visit(node)
@@ -340,7 +340,7 @@ def fix_element_uses_clauses(tree, types):
                 el.uses.add((types[el.type].mod_name, (ft.strip_type(el.type),)))
 
     return tree
-        
+
 
 def set_intent(attributes, intent):
     """Remove any current "intent" from attributes and replace with intent given"""
@@ -771,7 +771,7 @@ class RenameArgumentsFortran(ft.FortranVisitor):
 
         # rename Python keywords by appending an underscore
         import keyword
-        self.name_map.update(dict((key,  key+'_') for key in  keyword.kwlist))
+        self.name_map.update(dict((key, key + '_') for key in  keyword.kwlist))
 
         # apply same renaming as f2py
         import numpy.f2py.crackfortran
@@ -782,19 +782,19 @@ class RenameArgumentsFortran(ft.FortranVisitor):
             node.orig_name = node.name
         node.name = self.name_map.get(node.name, node.name)
         return node
-    
+
 
 class RenameArgumentsPython(ft.FortranVisitor):
     def __init__(self, types):
         self.types = types
-    
+
     def visit_Procedure(self, node):
         if hasattr(node, 'method_name'):
             if 'constructor' in node.attributes:
                 node.ret_val[0].py_name = 'self'
             elif len(node.arguments) >= 1 and node.arguments[0].type in self.types:
                 node.arguments[0].py_name = 'self'
-        return self.generic_visit(node)  
+        return self.generic_visit(node)
 
     def visit_Argument(self, node):
         if not hasattr(node, 'py_name'):
@@ -842,12 +842,13 @@ class NormaliseTypes(ft.FortranVisitor):
         self.kind_map = kind_map
 
     def visit_Declaration(self, node):
+        print "STEVEN: ", self.kind_map
         node.type = ft.normalise_type(node.type, self.kind_map)
         return self.generic_visit(node)
 
     visit_Argument = visit_Declaration
-        
-    
+
+
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
                                  only_subs, only_mods, argument_name_map,
