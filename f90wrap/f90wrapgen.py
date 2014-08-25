@@ -146,7 +146,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     node_uses.append((use, None))
                 else:
                     node_uses.append(use)
-                                
+
         if extra_uses_dict is not None:
             for (mod, only) in extra_uses_dict.iteritems():
                 node_uses.append((mod, only))
@@ -163,7 +163,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     all_uses[mod] = list(only)
                 else:
                     all_uses[mod] = None
-        
+
         for mod, only in all_uses.iteritems():
             if only is not None:
                 self.write('use %s, only: %s' % (mod, ', '.join(only)))
@@ -262,7 +262,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         arg_node = node
         if hasattr(node, 'orig_node'):
             orig_node = node.orig_node
-            arg_node = orig_node # get arguemnt list from original node
+            arg_node = orig_node  # get arguemnt list from original node
 
         def dummy_arg_name(arg):
             return arg.orig_name
@@ -321,7 +321,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.indent()
         self.write_uses_lines(node)
         self.write("implicit none")
-        
+
         if node.mod_name is None:
             self.write('external %s' % node.name)
             if hasattr(node, 'orig_node') and isinstance(node.orig_node, ft.Function):
@@ -389,7 +389,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
         else:
             self.write_uses_lines(t)
-            
+
         self.write('implicit none')
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
@@ -509,7 +509,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             this = 'this'
         else:
             this = 'dummy_this'
-        
+
         self.write('subroutine %s%s__array_%sitem__%s(%s, i, %s)' % (self.prefix, t.name,
                                                                      getset, el.name,
                                                                      this,
@@ -527,7 +527,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if mod in extra_uses:
             extra_uses[mod].append(el_tname)
         else:
-            extra_uses[mod] = [el_tname]            
+            extra_uses[mod] = [el_tname]
         self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
         self.write()
@@ -540,7 +540,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
             array_name = 'this_ptr%%p%%%s' % el.name
         else:
-            array_name = '%s_%s' % (t.name, el.name)            
+            array_name = '%s_%s' % (t.name, el.name)
         self.write('integer, intent(in) :: i')
         self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
         self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
@@ -672,7 +672,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         """
 
         logging.debug('writing %s wrapper for %s.%s' % (getset, t.name, el.name))
-        
+
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
         if getset == "get":
@@ -685,9 +685,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         else:
             raise ValueError("Don't know how to write scalar wrappers for %s type %s" (t, type(t)))
 
-        self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
-                                                    getset, el.name, this, el.name))
-        self.indent()
+        # Get appropriate use statements
         extra_uses = {}
         if isinstance(t, ft.Module):
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
@@ -700,6 +698,16 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 extra_uses[mod].append(el_tname)
             else:
                 extra_uses[mod] = [el_tname]
+
+        # If the var that is get/set has the same name as something in uses, then append _
+        localvar = el.name
+        if localvar in getattr(el, "uses", []) or localvar in extra_uses:
+            localvar += "_"
+
+        self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
+                                                    getset, el.name, this, localvar))
+        self.indent()
+
         self.write_uses_lines(el, extra_uses)
 
         self.write('implicit none')
@@ -719,7 +727,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         if el.type.startswith('type'):
             # For derived types elements, treat as opaque reference
-            self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
+            self.write('integer, intent(%s) :: %s(%d)' % (inout, localvar, sizeof_fortran_t))
 
             self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
             self.write()
@@ -730,10 +738,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                     self.write('%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
                 else:
                     self.write('%s_ptr%%p => %s_%s' % (el.name, t.name, el.name))
-                self.write('%s = transfer(%s_ptr,%s)' % (el.name, el.name, el.name))
+                self.write('%s = transfer(%s_ptr,%s)' % (localvar, el.name, localvar))
             else:
                 self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name,
-                                                             el.name,
+                                                             localvar,
                                                              el.name))
                 if isinstance(t, ft.Type):
                     self.write('this_ptr%%p%%%s = %s_ptr%%p' % (el.name, el.name))
@@ -743,22 +751,22 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             if attributes != []:
                 self.write('%s, %s, intent(%s) :: %s' % (el.type,
                                                          ','.join(attributes),
-                                                         inout, el.name))
+                                                         inout, localvar))
             else:
-                self.write('%s, intent(%s) :: %s' % (el.type, inout, el.name))
+                self.write('%s, intent(%s) :: %s' % (el.type, inout, localvar))
             self.write()
             if isinstance(t, ft.Type):
                 self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write('%s = this_ptr%%p%%%s' % (el.name, el.name))
+                    self.write('%s = this_ptr%%p%%%s' % (localvar, el.name))
                 else:
-                    self.write('%s = %s_%s' % (el.name, t.name, el.name))
+                    self.write('%s = %s_%s' % (localvar, t.name, el.name))
             else:
                 if isinstance(t, ft.Type):
-                    self.write('this_ptr%%p%%%s = %s' % (el.name, el.name))
+                    self.write('this_ptr%%p%%%s = %s' % (el.name, localvar))
                 else:
-                    self.write('%s_%s = %s' % (t.name, el.name, el.name))
+                    self.write('%s_%s = %s' % (t.name, el.name, localvar))
         self.dedent()
         self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
                                                     el.name))
