@@ -483,7 +483,7 @@ return %(el_name)s''' % dct)
                    selfdot='self.',
                    selfcomma='self, ',
                    doc=format_doc_string(el),
-                   handle=isinstance(node, ft.Type) and 'self._handle, ' or 'f90wrap.runtime.empty_handle, ')
+                   handle=isinstance(node, ft.Type) and 'self._handle' or 'f90wrap.runtime.empty_handle')
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
@@ -501,13 +501,15 @@ return %(el_name)s''' % dct)
             self.write('global %(el_name)s' % dct)
             node.array_initialisers.append(dct['el_name_get'])
 
-        self.write("""if '%(el_name_get)s' in %(selfdot)s_arrays:
-    %(el_name)s = %(selfdot)s_arrays['%(el_name)s']
+        self.write("""array_ndim, array_type, array_shape, array_handle = \
+    %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s(%(handle)s)
+if array_handle in %(selfdot)s_arrays:
+    %(el_name)s = %(selfdot)s_arrays[array_handle]
 else:
     %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
-                            %(handle)s
+                            %(handle)s,
                             %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s)
-    %(selfdot)s_arrays['%(el_name_set)s'] = %(el_name)s
+    %(selfdot)s_arrays[array_handle] = %(el_name)s
 return %(el_name)s""" % dct)
         self.dedent()
         self.write()
