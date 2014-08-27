@@ -842,7 +842,6 @@ class NormaliseTypes(ft.FortranVisitor):
         self.kind_map = kind_map
 
     def visit_Declaration(self, node):
-        print "STEVEN: ", self.kind_map
         node.type = ft.normalise_type(node.type, self.kind_map)
         return self.generic_visit(node)
 
