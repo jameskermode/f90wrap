@@ -376,13 +376,19 @@ except ValueError:
 
     def write_scalar_wrappers(self, node, el):
         dct = dict(el_name=el.name,
-                   el_name_get=el.py_name, el_name_set=el.py_name,
+                   el_name_get=el.name,
+                   el_name_set=el.name,
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    self='self',
                    selfdot='self.',
                    selfcomma='self, ',
                    handle=isinstance(node, ft.Type) and 'self._handle' or '')
+
+        if hasattr(el, 'py_name'):
+            dct['el_name_get'] = el.py_name
+            dct['el_name_set'] = el.py_name
+
         if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name_get)s' % dct
         else:

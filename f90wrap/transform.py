@@ -780,7 +780,7 @@ class RenameArgumentsFortran(ft.FortranVisitor):
         if not hasattr(node, 'orig_name'):
             node.orig_name = node.name
         node.name = self.name_map.get(node.name, node.name)
-        return node
+        return self.generic_visit(node)
 
     visit_Procedure = visit_Argument
     visit_Element = visit_Argument
@@ -788,7 +788,6 @@ class RenameArgumentsFortran(ft.FortranVisitor):
     visit_Type = visit_Argument
 
 class RenameArgumentsPython(ft.FortranVisitor):
-
 
     def __init__(self, types):
         self.types = types
@@ -799,7 +798,6 @@ class RenameArgumentsPython(ft.FortranVisitor):
                 node.ret_val[0].py_name = 'self'
             elif len(node.arguments) >= 1 and node.arguments[0].type in self.types:
                 node.arguments[0].py_name = 'self'
-
         return self.generic_visit(node)
 
     def visit_Argument(self, node):
@@ -810,6 +808,7 @@ class RenameArgumentsPython(ft.FortranVisitor):
         else:
             node.py_value = node.py_name
         return node
+
 
 class OnlyAndSkip(ft.FortranTransformer):
     """
