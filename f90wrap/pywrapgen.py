@@ -165,7 +165,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         if self.make_package:
             for py_mod in self.py_mods:
-                self.imports.add((self.py_mod_name+'.'+py_mod, None))
+                self.imports.add((self.py_mod_name + '.' + py_mod, None))
         self.write_imports(0)
 
         if self.make_package:
@@ -193,7 +193,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             if len(node.elements) == 0 and len(node.types) == 0 and len(node.procedures) == 0:
                 self.write('pass')
 
-        index = len(self.code) # save position to insert import lines
+        index = len(self.code)  # save position to insert import lines
 
         self.generic_visit(node)
 
@@ -234,7 +234,7 @@ except ValueError:
     func()
             ''')
             if len(self.code) > 0:
-                py_wrapper_file = open(os.path.join(self.py_mod_name, node.name+'.py'), 'w')
+                py_wrapper_file = open(os.path.join(self.py_mod_name, node.name + '.py'), 'w')
                 py_wrapper_file.write(str(self))
                 py_wrapper_file.close()
                 self.py_mods.append(node.name)
@@ -337,7 +337,7 @@ except ValueError:
                         cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name
                         if self.make_package:
                             if cls_mod_name != self.current_module:
-                                self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
+                                self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
                         else:
                             cls_name = cls_mod_name + '.' + cls_name
                         self.write('%s = %s.from_handle(%s)' %
@@ -376,7 +376,7 @@ except ValueError:
 
     def write_scalar_wrappers(self, node, el):
         dct = dict(el_name=el.name,
-                   el_name_get=el.name, el_name_set=el.name,
+                   el_name_get=el.py_name, el_name_set=el.py_name,
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    self='self',
@@ -386,13 +386,13 @@ except ValueError:
         if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name_get)s' % dct
         else:
-            dct['set_args'] = '%(el_name)s' % dct
+            dct['set_args'] = '%(el_name_get)s' % dct
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
         else:
-            dct['el_name_get'] = 'get_'+el.name
-            dct['el_name_set'] = 'set_'+el.name
+            dct['el_name_get'] = 'get_' + el.name
+            dct['el_name_set'] = 'set_' + el.name
             dct['self'] = ''
             dct['selfdot'] = ''
             dct['selfcomma'] = ''
@@ -410,7 +410,7 @@ except ValueError:
         if 'parameter' not in el.attributes:
             if not isinstance(node, ft.Module) or not self.make_package:
                 self.write('@%(el_name_get)s.setter' % dct)
-            self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
+            self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name_get)s):
     %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
     ''' % dct)
             self.write()
@@ -425,7 +425,7 @@ except ValueError:
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    cls_name=cls_name,
-                   cls_mod_name=cls_mod_name+'.',
+                   cls_mod_name=cls_mod_name + '.',
                    self='self',
                    selfdot='self.',
                    selfcomma='self, ',
@@ -437,13 +437,13 @@ except ValueError:
         if self.make_package:
             dct['cls_mod_name'] = ''
             if cls_mod_name != self.current_module:
-                self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
+                self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
         else:
-            dct['el_name_get'] = 'get_'+el.name
-            dct['el_name_set'] = 'set_'+el.name
+            dct['el_name_get'] = 'get_' + el.name
+            dct['el_name_set'] = 'set_' + el.name
             dct['self'] = ''
             dct['selfdot'] = ''
             dct['selfcomma'] = ''
@@ -488,8 +488,8 @@ return %(el_name)s''' % dct)
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
         else:
-            dct['el_name_get'] = 'get_array_'+el.name
-            dct['el_name_set'] = 'set_array_'+el.name
+            dct['el_name_get'] = 'get_array_' + el.name
+            dct['el_name_set'] = 'set_array_' + el.name
             dct['self'] = ''
             dct['selfdot'] = ''
             dct['selfcomma'] = ''
@@ -536,7 +536,7 @@ return %(el_name)s""" % dct)
                    parent='self',
                    doc=format_doc_string(el),
                    cls_name=cls_name,
-                   cls_mod_name = cls_mod_name+'.')
+                   cls_mod_name=cls_mod_name + '.')
 
         if isinstance(node, ft.Module):
             dct['parent'] = 'f90wrap.runtime.empty_type'
@@ -546,12 +546,12 @@ return %(el_name)s""" % dct)
         if self.make_package:
             dct['cls_mod_name'] = ''
             if cls_mod_name != self.current_module:
-                self.imports.add((self.py_mod_name+'.'+cls_mod_name, cls_name))
+                self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
 
         self.write('def %(func_name)s(%(self)s):' % dct)
         self.indent()
         if isinstance(node, ft.Module) and self.make_package:
-            self.write('global %(el_name)s'% dct)
+            self.write('global %(el_name)s' % dct)
         self.write('''%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
                                 %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_getitem__%(el_name)s,
                                 %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_setitem__%(el_name)s,

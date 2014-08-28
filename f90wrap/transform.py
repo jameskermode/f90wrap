@@ -19,7 +19,6 @@
 import copy
 import logging
 import re
-
 from f90wrap import fortran as ft
 
 class AccessUpdater(ft.FortranTransformer):
@@ -783,8 +782,14 @@ class RenameArgumentsFortran(ft.FortranVisitor):
         node.name = self.name_map.get(node.name, node.name)
         return node
 
+    visit_Procedure = visit_Argument
+    visit_Element = visit_Argument
+    visit_Module = visit_Argument
+    visit_Type = visit_Argument
 
 class RenameArgumentsPython(ft.FortranVisitor):
+
+
     def __init__(self, types):
         self.types = types
 
@@ -794,6 +799,7 @@ class RenameArgumentsPython(ft.FortranVisitor):
                 node.ret_val[0].py_name = 'self'
             elif len(node.arguments) >= 1 and node.arguments[0].type in self.types:
                 node.arguments[0].py_name = 'self'
+
         return self.generic_visit(node)
 
     def visit_Argument(self, node):
@@ -804,7 +810,6 @@ class RenameArgumentsPython(ft.FortranVisitor):
         else:
             node.py_value = node.py_name
         return node
-
 
 class OnlyAndSkip(ft.FortranTransformer):
     """
@@ -842,7 +847,6 @@ class NormaliseTypes(ft.FortranVisitor):
         self.kind_map = kind_map
 
     def visit_Declaration(self, node):
-        print "STEVEN: ", self.kind_map
         node.type = ft.normalise_type(node.type, self.kind_map)
         return self.generic_visit(node)
 
