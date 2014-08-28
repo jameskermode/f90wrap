@@ -766,7 +766,6 @@ def check_funct(cl, file, grab_hold_doc=True):
         if re.search(result_re, cl) != None:
             ret_var = re.search(result_re, cl).group(1)
             cl = result_re.sub('', cl)
-            print "STEVEN: %s: %s" % (out.name, ret_var)
 
         # Get func name
 
