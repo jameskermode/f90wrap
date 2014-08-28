@@ -761,7 +761,7 @@ class IntentOutToReturnValues(ft.FortranTransformer):
                 new_node.method_name = node.method_name
         return new_node
 
-class RenameArgumentsFortran(ft.FortranVisitor):
+class RenameReservedWords(ft.FortranVisitor):
     def __init__(self, types, name_map=None):
         self.types = types
         self.name_map = {}
@@ -876,7 +876,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
-    RenameArgumentsFortran(types, argument_name_map).visit(tree)
+    RenameReservedWords(types, argument_name_map).visit(tree)
     return tree
 
 def transform_to_f90_wrapper(tree, types, callbacks, constructors,
