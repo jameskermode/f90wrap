@@ -6,7 +6,7 @@
 module use_a_type
     use define_a_type !% This is the module which defines the type 'atype'
     type(atype) :: P  !% A variable with this type. NB: target attribute needed to allow access from Python
-    type(atype), allocatable :: P_array(:) !% An array of derived types (not yet wrapped, but will be soon)
+    type(atype), allocatable :: P_array(:) !% Array of derived types, also wrapped
     real(8), allocatable :: vector(:) !% It also contains allocatable arrays
 
     !% For simplicity, P has a variable of each of several base types.

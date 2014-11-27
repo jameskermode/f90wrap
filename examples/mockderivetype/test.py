@@ -30,6 +30,12 @@ use_a_type.p.integ = 10
 result = use_a_type.do_stuff(8)
 assert(result == 1073741824.0)
 
+# now we can access the array of derived types in use_a_type
+assert(len(use_a_type.p_array) == 3)
+assert(use_a_type.p.rl == use_a_type.p_array[0].rl)
+assert(use_a_type.p.rl == use_a_type.p_array[1].rl)
+assert(use_a_type.p.rl == use_a_type.p_array[2].rl)
+
 use_a_type.vector[:] = 1.0
 assert(np.all(use_a_type.vector == 1.0))
 
