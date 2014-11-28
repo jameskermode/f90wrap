@@ -57,6 +57,6 @@ assert(a.bool == 1 or a.bool == -1) # ifort uses -1 for logical true
 assert(a.integ == 42)
     
 # test subroutine with intent(out) derived type argument
-a = define_a_type.return_a_type_sub(
+a = define_a_type.return_a_type_sub()
 assert(a.bool == 1 or a.bool == -1) # ifort uses -1 for logical true
 assert(a.integ == 42)
