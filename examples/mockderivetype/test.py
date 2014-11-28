@@ -53,10 +53,10 @@ for i in range(len(use_a_type.p_array)):
 
 # test function with derived type return type
 a = define_a_type.return_a_type_func()
-assert(a.bool == 1)
+assert(a.bool == 1 or a.bool == -1) # ifort uses -1 for logical true
 assert(a.integ == 42)
     
 # test subroutine with intent(out) derived type argument
-a = define_a_type.return_a_type_sub()
-assert(a.bool == 1)
+a = define_a_type.return_a_type_sub(
+assert(a.bool == 1 or a.bool == -1) # ifort uses -1 for logical true
 assert(a.integ == 42)
