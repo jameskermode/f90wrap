@@ -1,0 +1,134 @@
+#=======================================================================
+#     Makefile for f90wrap-f2py. Originally written by James Kermode, 
+#  modified by Ananth Sridharan to use multiple directories/compilers
+#=======================================================================
+
+#=======================================================================
+#     Define names of C, Fortran compilers and archive tools/options
+#=======================================================================
+
+CC       = gcc
+#F90      = gfortran
+F90      = ifort
+FPP      = gfortran -E        #preprocess files with gfortran always
+
+#=======================================================================
+#     Directory definitions
+#=======================================================================
+
+moddir   = ../Source/modules
+wrap_dir = f90wrap
+
+#=======================================================================
+#     f2py compilation flags
+#=======================================================================
+
+ifeq ($(F90),ifort)
+	FCOMP    =  intelem           # compiler name for f2py
+	PAR_FLAG = -openmp            # openMP flags
+      OMP_LINK = -liomp5            # link openMP libraries when creating shared obj
+else
+	FCOMP    =  gfortran 
+	PAR_FLAG = -fopenmp# -cpp -Dopenmp # preprocessing done in other Makefiles
+	OMP_LINK = -lgomp
+endif
+
+SOFLAGS  = -fPIC       #     ==> universal for ifort, gfortran, pgi
+
+#=======================================================================
+#                 List all source files
+#=======================================================================
+#  Note: give python access to only SELECT source files 
+#        (e.g. top level subroutines) and leave the rest of the 
+#        fortran code as "hidden" from python, since low-level
+#        routines should generally not be accessed from top management
+#=======================================================================
+
+py1              = ../Source/pyint_modules
+py2              = ../Source/pyint_files
+
+#file names: basic definitions
+LIBSRC1_FILES    = $(wildcard $(py1)/*.F90)
+
+#file names: helicopter dynamics
+LIBSRC2_FILES    = $(wildcard $(py2)/*.F90)
+
+#all source files
+LIBSRC_FILES     = $(LIBSRC1_FILES) $(LIBSRC2_FILES)
+
+#same files, except with fpp extension
+LIBSRC_FPP_FILES = $(LIBSRC_FILES:.F90=.fpp)
+
+#fpp files : address with respect to f90wrap directory
+SRC2_FILES       = $(addprefix '../',$(LIBSRC_FPP_FILES))
+
+kmap_file        = ../kind_map
+
+#=======================================================================
+#                 Makefile default
+#=======================================================================
+
+.PHONY: all test
+
+all: test
+
+clean:
+	rm -rf $(wrap_dir)/*
+	rm -rf mockdt* *.so
+	rm -rf libsrc.a
+clean_so:	
+	rm mockdt* *.so
+
+.F90.fpp:
+	${FPP} ${SOFLAGS} $<  -o $@
+
+#=======================================================================
+#     Create the libraries (compiled code, self-contained in each dir)
+#=======================================================================
+
+libsrc.a: 
+	make -f Makefile
+
+#=======================================================================
+#shared object (direct compilation, single .py module)
+#=======================================================================
+
+_mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
+	make
+	cd $(wrap_dir) ; f90wrap -m mockdt ${SRC2_FILES} -k $(kmap_file) -v 
+	cp $(wrap_dir)/*.py .
+	f2py-f90wrap -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90 \
+	--fcompiler=$(FCOMP) --f90flags=$(PAR_FLAG) $(OMP_LINK) -I$(moddir) --build-dir . 
+	
+#original command: works without openmp - probably because of -lgomp placement
+#	f2py-f90wrap --fcompiler=$(FCOMP) --f90flags=-fopenmp $(MOD_FLAG) \
+#     --build-dir . -c -m _mockdt -lgomp -L. -lsrc $(wrap_dir)/f90wrap*.f90
+
+#=======================================================================
+#a "package", denoted by the -P option (subdirectory with multiple files)
+#=======================================================================
+
+#deprecated: the f2py-f90wrap line needs to be updated for OPENMP flags
+#_mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
+#	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P 
+#	f2py-f90wrap --fcompiler=$(FCOMP) $(MOD_FLAG) --f90flags=$(PAR_FLAG) \
+#     --build-dir . -c -m _mockdtpkg -L. -lgomp -lsrc $(wrap_dir)/f90wrap*.f90
+#	rm -rf mockdtpkg
+#	mv $(wrap_dir)/mockdtpkg .
+#	mv _mockdtpkg.so mockdtpkg/
+
+#=======================================================================
+#           All shared objects
+#=======================================================================
+
+all_so: _mockdt.so
+#_mockdtpkg.so 
+
+#=======================================================================
+#           final compilation and running of python script
+#=======================================================================
+
+test: all_so
+	python test_module.py
+#	python test_package.py
+
