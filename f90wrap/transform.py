@@ -776,6 +776,11 @@ class RenameReservedWords(ft.FortranVisitor):
         import numpy.f2py.crackfortran
         self.name_map.update(numpy.f2py.crackfortran.badnames)
 
+        # remove some of these which are not Python reserved words
+        del self.name_map['stdout']
+        del self.name_map['stderr']
+        del self.name_map['stdin']
+
     def visit_Argument(self, node):
         if not hasattr(node, 'orig_name'):
             node.orig_name = node.name
