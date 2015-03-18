@@ -18,6 +18,7 @@
 
 import os
 import logging
+import re
 
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
@@ -49,7 +50,9 @@ def format_call_signature(node):
             sig += arg.py_name
         if had_optional:
             sig += ']'
-        sig += ')'        
+        sig += ')'
+        rex = re.compile(r'\s+') # collapse multiple whitespace
+        sig = rex.sub(' ', sig)
         return sig
     elif isinstance(node, ft.Module):
         return 'Module %s' % node.name
