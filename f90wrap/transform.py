@@ -394,6 +394,21 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
 
     return tree
 
+def convert_array_intent_out_to_intent_inout(tree):
+    """
+    Find all intent(out) array arguments and convert to intent(inout)
+    """
+    for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
+        for arg in arguments:
+            dims = [attr for attr in arg.attributes if attr.startswith('dimension') ]
+            if dims == []:
+                continue
+            if len(dims) != 1:
+                raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
+            if 'intent(out)' in arg.attributes:
+                arg.attributes = set_intent(arg.attributes, 'intent(inout)')
+    return tree
+
 
 class StringLengthConverter(ft.FortranVisitor):
     """Convert lengths of all character strings to standard format
@@ -880,7 +895,8 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = fix_subroutine_uses_clauses(tree, types)
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
-    tree = add_missing_destructors(tree)
+    tree = add_missing_destructors(tree) 
+    tree = convert_array_intent_out_to_intent_inout(tree)   
     RenameReservedWords(types, argument_name_map).visit(tree)
     return tree
 
