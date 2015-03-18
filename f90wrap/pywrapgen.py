@@ -49,7 +49,7 @@ def format_call_signature(node):
             sig += arg.py_name
         if had_optional:
             sig += ']'
-        sig += ')'
+        sig += ')'        
         return sig
     elif isinstance(node, ft.Module):
         return 'Module %s' % node.name
@@ -115,7 +115,7 @@ def format_doc_string(node):
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
-                 make_package=False, kind_map=None):
+                 make_package=False, kind_map=None, init_file=None):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\',
@@ -132,6 +132,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         if kind_map is None:
             kind_map = {}
         self.kind_map = kind_map
+        self.init_file = init_file
 
     def write_imports(self, insert=0):
         default_imports = [(self.f90_mod_name, None),
@@ -173,6 +174,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         else:
             py_wrapper_file = open('%s.py' % self.py_mod_name, 'w')
         py_wrapper_file.write(str(self))
+        if self.init_file is not None:
+            py_wrapper_file.write(open(self.init_file).read())
         py_wrapper_file.close()
 
     def visit_Module(self, node):
