@@ -51,7 +51,7 @@ class CLIError(Exception):
         return self.msg
 
 def main(argv=None):
-    '''Parse and wrap Fortran90 code, including derived types.'''
+    '''Parse and wrap Fortran 90 code, including derived types.'''
 
     if argv is None:
         argv = sys.argv
@@ -64,7 +64,7 @@ def main(argv=None):
     program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     program_license = '''%s
 
-   Copyright James Kermode 2011-2014
+   Copyright James Kermode 2011-2015
 
    These portions of the source code are released under the GNU General
    Public License, version 2, http://www.gnu.org/copyleft/gpl.html

@@ -353,6 +353,33 @@ except ValueError:
             self.dedent()
             self.write()
 
+    def visit_Interface(self, node):
+        # first output all the procedures within the interface
+        self.generic_visit(node)
+        
+        dct = dict(intf_name=node.name,
+                   proc_names='[' + ', '.join([proc.name for proc in node.procedures]) + ']')
+        if not self.make_package and node.mod_name is not None and node.type_name is None:
+            # procedures outside of derived types become static methods
+            self.write('@staticmethod')
+        self.write('def %(intf_name)s(*args, **kwargs)' % dct)
+        self.indent()
+        self.write(format_doc_string(node))        
+        # try to call each in turn until no TypeError raised
+        self.write('for proc in %(proc_names)s:' % dct)
+        self.indent()
+        self.write('try:')
+        self.indent()
+        self.write('return proc(*args, **kwargs)')
+        self.dedent()
+        self.write('except TypeError:')
+        self.indent()
+        self.write('continue')
+        self.dedent()
+        self.dedent()
+        self.dedent()
+        self.write()
+
 
     def visit_Type(self, node):
         logging.info('PythonWrapperGenerator visiting type %s' % node.name)

@@ -80,7 +80,11 @@ class AccessUpdater(ft.FortranTransformer):
         self.update_access(node, self.mod, self.mod.default_access)
         return self.generic_visit(node)
 
-    visit_Interface = visit_Procedure
+    def visit_Interface(self, node):
+        if self.mod is None:
+            return self.generic_visit(node)
+        self.update_access(node, self.mod, self.mod.default_access)
+        return self.generic_visit(node)
 
     def visit_Type(self, node):
         if self.mod is None:
@@ -130,8 +134,18 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
 
         return self.generic_visit(node)
 
+    def visit_Interface(self, node):
+        # remove entirely private interfaces
+        if node.name in self.mod.private_symbols:
+            logging.debug('removing private symbol %s' % node.name)
+            return None
+        
+        # do not call generic_visit(), so we don't
+        # remove private procedures within public
+        # interfaces, as these should still be wrapped
+        return node
+
     visit_Type = visit_Procedure
-    visit_Interface = visit_Procedure
     visit_Element = visit_Procedure
 
 def remove_private_symbols(node):
@@ -319,7 +333,10 @@ def fix_subroutine_uses_clauses(tree, types):
         sub.uses = set()
         sub.mod_name = None
         if mod is not None:
-            sub.uses.add((mod.name, (sub.name,)))
+            sub_name = sub.name
+            if hasattr(sub, 'call_name'):
+                sub_name = sub.call_name
+            sub.uses.add((mod.name, (sub_name,)))
             sub.mod_name = mod.name
 
         for arg in arguments:
@@ -829,6 +846,15 @@ class RenameArgumentsPython(ft.FortranVisitor):
             node.py_value = node.py_name
         return node
 
+class RenameInterfacesPython(ft.FortranVisitor):
+
+    def visit_Interface(self, node):
+        for proc in node.procedures:
+            proc.name = '_'+proc.name
+            if hasattr(proc, 'method_name'):
+                proc.method_name = '_'+proc.method_name
+        return node
+
 
 class OnlyAndSkip(ft.FortranTransformer):
     """
@@ -844,7 +870,6 @@ class OnlyAndSkip(ft.FortranTransformer):
         self.kept_mods = kept_mods
 
     def visit_Procedure(self, node):
-
         if len(self.kept_subs) > 0:
             if node not in self.kept_subs:
                 return None
@@ -872,6 +897,18 @@ class NormaliseTypes(ft.FortranVisitor):
     visit_Argument = visit_Declaration
 
 
+class SetInterfaceProcedureCallNames(ft.FortranVisitor):
+    """
+    Set call names of procedures within overloaded interfaces to the name of the interface
+    """
+
+    def visit_Interface(self, node):
+        for proc in node.procedures:
+            logging.info('setting call_name of %s to %s' % (proc.name, node.name))
+            proc.call_name = node.name
+        return node
+    
+
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
                                  only_subs, only_mods, argument_name_map,
@@ -885,12 +922,14 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
      * Removal of unwrappable routines and optional arguments
      * Addition of missing constructor and destructor wrappers
      * Conversion of all functions to subroutines
+     * Updatting call names of procedures within interfaces
      * Update of subroutine uses clauses
     """
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
     tree = MethodFinder(types, constructors, destructors, short_names, move_methods).visit(tree)
+    SetInterfaceProcedureCallNames().visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
     tree = fix_element_uses_clauses(tree, types)
@@ -923,9 +962,11 @@ def transform_to_py_wrapper(tree, types):
     Additional Python-specific transformations:
       * Convert intent(out) arguments to additional return values
       * Rename arguments (e.g. this -> self)
+      * Prefix procedure names within interfaces with an underscore
     """
     IntentOutToReturnValues().visit(tree)
     RenameArgumentsPython(types).visit(tree)
+    RenameInterfacesPython().visit(tree)
     return tree
 
 

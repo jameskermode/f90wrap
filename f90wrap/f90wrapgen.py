@@ -313,7 +313,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
-        logging.info('F90WrapperGenerator visiting routine %s' % node.name)
+        call_name = node.name
+        if hasattr(node, 'call_name'):
+            call_name = node.call_name
+        logging.info('F90WrapperGenerator visiting routine %s call_name %s' % (node.name, call_name))
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
@@ -333,7 +336,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
-        self.write_call_lines(node, node.name)
+        self.write_call_lines(node, call_name)
         self.write_transfer_out_lines(node)
         self.write_finalise_lines(node)
         self.dedent()
