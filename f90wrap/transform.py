@@ -615,7 +615,7 @@ class MethodFinder(ft.FortranTransformer):
                                      interface.lineno,
                                      [node])
                     typ.interfaces.append(intf)
-                    logging.debug('added method %s to interface %s in type %s' %
+                    logging.debug('added method %s to new interface %s in type %s' %
                                   (node.method_name, intf.name, typ.name))
 
             # remove method from parent since we've added it to Type
