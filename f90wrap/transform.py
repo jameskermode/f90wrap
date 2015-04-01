@@ -520,6 +520,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                                          (arg.type,
                                            ','.join([attr for attr in arg.attributes if not attr.startswith('dimension')]),
                                            d.replace('len', 'slen'), arg.name))
+                    new_ds.append(d)
                     continue
                 dummy_arg = ft.Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
 
