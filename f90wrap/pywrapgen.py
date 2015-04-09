@@ -359,10 +359,10 @@ except ValueError:
         
         dct = dict(intf_name=node.name,
                    proc_names='[' + ', '.join([proc.name for proc in node.procedures]) + ']')
-        if not self.make_package and node.mod_name is not None and node.type_name is None:
+        if not self.make_package:
             # procedures outside of derived types become static methods
             self.write('@staticmethod')
-        self.write('def %(intf_name)s(*args, **kwargs)' % dct)
+        self.write('def %(intf_name)s(*args, **kwargs):' % dct)
         self.indent()
         self.write(format_doc_string(node))        
         # try to call each in turn until no TypeError raised
