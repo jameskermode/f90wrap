@@ -171,12 +171,23 @@ class UnwrappablesRemover(ft.FortranTransformer):
         self.constructors = constructors
         self.destructors = destructors
 
+    def visit_Interface(self, node):
+        # don't wrap operator overloading routines
+        if node.name.startswith('operator('):
+            return None
+
+        return self.generic_visit(node)
+
     def visit_Procedure(self, node):
         # special case: keep all constructors and destructors, although
         # they may have pointer arguments
         for suff in self.constructors + self.destructors:
             if node.name.endswith(suff):
                 return self.generic_visit(node)
+
+        # don't wrap operator overloading routines
+        if node.name.startswith('operator('):
+            return None
 
         args = node.arguments[:]
         if isinstance(node, ft.Function):
@@ -538,6 +549,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                 node.arguments.extend(new_dummy_args)
 
 
+
 class MethodFinder(ft.FortranTransformer):
 
     def __init__(self, types, constructor_names, destructor_names, short_names, move_methods):
@@ -749,6 +761,8 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
                               node.uses,
                               node.attributes,
                               mod_name=node.mod_name)
+        if hasattr(node, 'call_name'):
+            new_node.call_name = node.call_name
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
 
@@ -818,6 +832,11 @@ class RenameReservedWords(ft.FortranVisitor):
         if not hasattr(node, 'orig_name'):
             node.orig_name = node.name
         node.name = self.name_map.get(node.name, node.name)
+        if isinstance(node, ft.Argument):
+            # replace names in dimension attribute expressions
+            for (old_name, new_name) in self.name_map.iteritems():
+                node.attributes = [ attr.replace(old_name, new_name)
+                                    for attr in node.attributes ]
         return self.generic_visit(node)
 
     visit_Procedure = visit_Argument
