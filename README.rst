@@ -2,8 +2,8 @@
  f90wrap: Fortran to Python interface generator with derived type support
 ==========================================================================
 
-Copyright (C)James Kermode 2011. Released under the GNU General Public
-License, version 2.
+Copyright (C)James Kermode 2011-2015. Released under the GNU General
+Public License, version 2.
 
 Originally based on f90doc - automatic documentation generator for
 Fortran 90. Copyright (C) 2004 Ian Rutt
@@ -31,10 +31,16 @@ Usage
 f90doc --help
 f90wrap --help
 
+
 Authors
-=======
+=====
 
 James Kermode: james.kermode@gmail.com
+
+
+Contributors
+========
+
 Steven Murray: steven.murray@uwa.edu.au
 
 
