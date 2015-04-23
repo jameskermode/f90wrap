@@ -603,6 +603,13 @@ class LowerCaseConverter(FortranTransformer):
         node.attributes = [a.lower() for a in node.attributes]
         return self.generic_visit(node)
 
+    def visit_Element(self, node):
+        node.orig_name = node.name
+        node.name = node.name.lower()
+        node.type = node.type.lower()
+        node.attributes = [a.lower() for a in node.attributes]
+        return self.generic_visit(node)
+
 def strip_type(t):
     """Return type name from type declaration"""
     t = t.replace(' ', '')  # remove blanks

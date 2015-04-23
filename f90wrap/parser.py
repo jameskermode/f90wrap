@@ -494,7 +494,7 @@ def check_module(cl, file):
                         logging.info('marking module %s as default public' % out.name)
                         out.default_access = 'public'
                     else:
-                        line = line.replace('public', '')
+                        line = line.lower().replace('public', '')
                         line = line.replace('::', '')
                         line = line.strip()
                         out.public_symbols.extend([field.strip() for field in line.split(',')])
@@ -977,10 +977,10 @@ def check_type(cl, file):
                 cl = check[1]
                 continue
 
-            if cl == 'public':
+            if cl.lower() == 'public':
                 current_access = 'public'
 
-            elif cl == 'private':
+            elif cl.lower() == 'private':
                 current_access = 'private'
 
             cl = file.next()

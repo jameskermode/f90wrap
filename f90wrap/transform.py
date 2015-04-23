@@ -91,10 +91,8 @@ class AccessUpdater(ft.FortranTransformer):
             return self.generic_visit(node)
         self.type = node
         self.update_access(node, self.mod, self.mod.default_access)
-        node.default_access = self.mod.default_access
-        if 'public' in node.attributes:
-            node.default_access = 'public'
-        elif 'private' in node.attributes:
+        node.default_access = 'public'
+        if 'private' in node.attributes:
             node.default_access = 'private'
         node = self.generic_visit(node)
         self.type = None
@@ -954,7 +952,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = fix_subroutine_uses_clauses(tree, types)
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
-    tree = add_missing_destructors(tree) 
+    tree = add_missing_destructors(tree)
     tree = convert_array_intent_out_to_intent_inout(tree)   
     RenameReservedWords(types, argument_name_map).visit(tree)
     return tree
