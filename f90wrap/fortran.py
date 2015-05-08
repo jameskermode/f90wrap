@@ -741,7 +741,7 @@ def f2c_type(typename, kind_map):
         'character': 'char',
         'integer': 'int',
         'real': 'float',
-        'double precison': 'double',
+        'double precision': 'double',
         'logical': 'int',
         }
 
