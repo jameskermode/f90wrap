@@ -203,17 +203,19 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         self.generic_visit(node)
 
+        properties = []         # Collect list of properties for a __repr__()
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    self.write_dt_wrappers(node, el)
+                    self.write_dt_wrappers(node, el, properties)
                 else:
-                    self.write_scalar_wrappers(node, el)
+                    self.write_scalar_wrappers(node, el, properties)
             elif el.type.startswith('type'):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims)
             else:
-                self.write_sc_array_wrapper(node, el, dims)
+                self.write_sc_array_wrapper(node, el, dims, properties)
+        self.write_repr(node, properties)
 
         # insert import statements at the beginning of module
         if self.make_package:
@@ -390,24 +392,26 @@ except ValueError:
         self.write(format_doc_string(node))
         self.generic_visit(node)
 
+        properties = []
         for el in node.elements:
             dims = filter(lambda x: x.startswith('dimension'), el.attributes)
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    self.write_dt_wrappers(node, el)
+                    self.write_dt_wrappers(node, el, properties)
                 else:
-                    self.write_scalar_wrappers(node, el)
+                    self.write_scalar_wrappers(node, el, properties)
             elif el.type.startswith('type'):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims)
             else:
-                self.write_sc_array_wrapper(node, el, dims)
+                self.write_sc_array_wrapper(node, el, dims, properties)
+        self.write_repr(node, properties)
 
         self.write('_dt_array_initialisers = [%s]' % (', '.join(node.dt_array_initialisers)))
         self.write()
         self.dedent()
 
 
-    def write_scalar_wrappers(self, node, el):
+    def write_scalar_wrappers(self, node, el, properties):
         dct = dict(el_name=el.name,
                    el_name_get=el.name,
                    el_name_set=el.name,
@@ -429,6 +433,7 @@ except ValueError:
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
+            properties.append(el)
         else:
             dct['el_name_get'] = 'get_' + el.name
             dct['el_name_set'] = 'set_' + el.name
@@ -454,8 +459,24 @@ except ValueError:
     ''' % dct)
             self.write()
 
+    def write_repr(self, node, properties):
+        if len(properties) < 1: return
 
-    def write_dt_wrappers(self, node, el):
+        self.write('def __str__(self):')
+
+        self.indent()
+        self.write(r"ret = ['<{}>".format(node.name) + r"{\n']")
+        self.write("ret.append('    {} : ')".format(properties[0].name))
+        self.write("ret.append(repr(self.{}))".format(properties[0].name))
+        for el in properties[1:]:
+            self.write(r"ret.append(',\n    {} : ')".format(el.name))
+            self.write("ret.append(repr(self.{}))".format(el.name))
+        self.write("ret.append('}')")
+        self.write("return ''.join(ret)")
+        self.dedent()
+        self.write()
+
+    def write_dt_wrappers(self, node, el, properties):
         cls_name = ft.strip_type(el.type).title()
         cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
         dct = dict(el_name=el.name,
@@ -480,6 +501,7 @@ except ValueError:
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
+            properties.append(el)
         else:
             dct['el_name_get'] = 'get_' + el.name
             dct['el_name_set'] = 'set_' + el.name
@@ -512,7 +534,7 @@ return %(el_name)s''' % dct)
             self.write()
 
 
-    def write_sc_array_wrapper(self, node, el, dims):
+    def write_sc_array_wrapper(self, node, el, dims, properties):
         dct = dict(el_name=el.name,
                    el_name_get=el.name,
                    el_name_set=el.name,
@@ -526,6 +548,7 @@ return %(el_name)s''' % dct)
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')
+            properties.append(el)
         else:
             dct['el_name_get'] = 'get_array_' + el.name
             dct['el_name_set'] = 'set_array_' + el.name
