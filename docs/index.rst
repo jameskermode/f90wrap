@@ -36,10 +36,8 @@ Case studies
 
 `f90wrap` has been used to wrap the following real-world large-scale scientific applications
 
-- `QUIP <http://www.libatoms.org>`_ - ZZ kLOC (thousand lines of code)
-  molecular dynamics code, XX modules and YY types wrapped
-- `CASTEP <http://www.castep.org>`_ ZZ kLOC electronic structure code,
-  XX modules and YY types wrapped.
+- `QUIP <http://www.libatoms.org>`_ - molecular dynamics code
+- `CASTEP <http://www.castep.org>`_electronic structure code
 
 Basic Usage
 ===========
