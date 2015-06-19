@@ -465,12 +465,12 @@ except ValueError:
         self.write('def __str__(self):')
 
         self.indent()
-        self.write(r"ret = ['<{}>".format(node.name) + r"{\n']")
-        self.write("ret.append('    {} : ')".format(properties[0].name))
-        self.write("ret.append(repr(self.{}))".format(properties[0].name))
+        self.write(r"ret = ['<{0}>".format(node.name) + r"{\n']")
+        self.write("ret.append('    {0} : ')".format(properties[0].name))
+        self.write("ret.append(repr(self.{0}))".format(properties[0].name))
         for el in properties[1:]:
-            self.write(r"ret.append(',\n    {} : ')".format(el.name))
-            self.write("ret.append(repr(self.{}))".format(el.name))
+            self.write(r"ret.append(',\n    {0} : ')".format(el.name))
+            self.write("ret.append(repr(self.{0}))".format(el.name))
         self.write("ret.append('}')")
         self.write("return ''.join(ret)")
         self.dedent()
