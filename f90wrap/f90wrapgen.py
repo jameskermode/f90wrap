@@ -192,6 +192,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         types, as well as f2py-specific lines.
         """
         for arg in node.arguments:
+            if 'callback' in arg.attributes:
+                return 'external '+arg.name
+            
             attributes = [attr for attr in arg.attributes if attr in ('optional', 'pointer', 'intent(in)',
                                                                        'intent(out)', 'intent(inout)') or
                                                                        attr.startswith('dimension') ]

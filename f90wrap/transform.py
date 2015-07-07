@@ -187,6 +187,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
         if node.name.startswith('operator('):
             return None
 
+        # FIXME don't wrap callback arguments
+        if 'callback' in node.attributes:
+            return None
+
         args = node.arguments[:]
         if isinstance(node, ft.Function):
             args.append(node.ret_val)
@@ -761,6 +765,9 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
                               mod_name=node.mod_name)
         if hasattr(node, 'call_name'):
             new_node.call_name = node.call_name
+        if hasattr(node, 'type'):
+            new_node.type = node.type
+        new_node.orig_name = node.orig_name
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
 
@@ -853,6 +860,8 @@ class RenameArgumentsPython(ft.FortranVisitor):
                 node.ret_val[0].py_name = 'self'
             elif len(node.arguments) >= 1 and node.arguments[0].type in self.types:
                 node.arguments[0].py_name = 'self'
+        elif hasattr(node, 'attributes') and 'callback' in node.attributes:
+            self.visit_Argument(node)
         return self.generic_visit(node)
 
     def visit_Argument(self, node):

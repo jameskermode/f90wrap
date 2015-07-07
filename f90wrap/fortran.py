@@ -553,6 +553,7 @@ def fix_argument_attributes(node):
         for arg in arguments:
             if not hasattr(arg, 'type'):
                 arg.type = 'callback'
+                arg.value = ''
                 arg.attributes.append('callback')
 
     return node

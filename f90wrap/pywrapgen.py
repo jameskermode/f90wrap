@@ -307,6 +307,12 @@ except ValueError:
 
 
     def visit_Procedure(self, node):
+        def py_arg_value(arg):
+            if 'optional' in arg.attributes or arg.value is None:
+                return '=None'
+            else:
+                return ''
+        
         logging.info('PythonWrapperGenerator visiting routine %s' % node.name)
         if 'constructor' in node.attributes:
             self.write_constructor(node)
@@ -317,10 +323,7 @@ except ValueError:
                        method_name=hasattr(node, 'method_name') and node.method_name or node.name,
                        prefix=self.prefix,
                        mod_name=self.f90_mod_name,
-                       py_arg_names=', '.join(['%s%s' % (arg.py_name,
-                                                     ('optional' in arg.attributes or arg.value is None)
-                                                     and '=None' or '')
-                                                     for arg in node.arguments ]),
+                       py_arg_names=', '.join([arg.py_name+py_arg_value(arg) for arg in node.arguments]),
                        f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]),
                        call='')
 
