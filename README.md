@@ -32,6 +32,12 @@ Installation is as follows:
     cd f90wrap
     python setup.py install [--prefix PREFIX]
 
+Examples and Testing
+--------------------
+
+To test the installation, run `make test` from the `examples/`
+directory. You may find the code in the various examples useful.
+
 Case studies
 ------------
 
