@@ -3,10 +3,10 @@
 #=======================================================================
 
 CC       = gcc
-#F90      = gfortran
-F90      = ifort
+F90      = gfortran
+#F90      = ifort
 #F90      =  /opt/intel/composer_xe_2015.3.187/bin/intel64/ifort
-PYTHON   = python2
+PYTHON   = python
 
 #=======================================================================
 #                     additional flags
