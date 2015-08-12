@@ -18,6 +18,7 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 """
+from __future__ import print_function
 
 import sys
 import os
@@ -130,63 +131,64 @@ USAGE
         kind_map = {}
         if args.kind_map:
             kind_map = eval(open(args.kind_map).read())
-        print 'Kind map read from file "%r" : (also saved to .f2py_f2cmap)' % args.kind_map
+        print('Kind map read from file "%r" : (also saved to .f2py_f2cmap)' % args.kind_map)
         pprint.pprint(kind_map)
         f2py_f2cmap = open('.f2py_f2cmap', 'w')
         pprint.pprint(kind_map, f2py_f2cmap)
         f2py_f2cmap.close()
-        print
+        print()
 
-        print 'Constructors:'
-        print args.constructors
-        print
+        print('Constructors:')
+        print(args.constructors)
+        print()
 
-        print 'Destructors:'
-        print args.destructors
-        print
+        print('Destructors:')
+        print(args.destructors)
+        print()
         
         short_names = {}
         if args.short_names:
             short_names = eval(open(args.short_names).read())
-        print 'Short names for derived types read from file "%s"' % args.short_names
+        print('Short names for derived types read from file "%s"' % args.short_names)
         pprint.pprint(short_names)
-        print
+        print()
 
         string_lengths = {}        
         if args.string_lengths:
             string_lengths = eval(open(args.string_lengths).read())
-        print 'String lengths read from file "%s":' % args.string_lengths
+        print('String lengths read from file "%s":' % args.string_lengths)
         pprint.pprint(string_lengths)
-        print
+        print()
 
         init_lines = {}
         if args.init_lines:
             init_lines = eval(open(args.init_lines).read())
-        print 'Initialisation lines for derived types read from file "%s":' % args.init_lines
+        print('Initialisation lines for derived types read from file "%s":' % args.init_lines)
         pprint.pprint(init_lines)
-        print        
+        print()
     
         argument_name_map = {}
         if args.argument_name_map:
             argument_name_map = eval(open(args.argument_name_map).read())
-        print 'Argument name map:'
+        print('Argument name map:')
         pprint.pprint(argument_name_map)
-        print
+        print()
 
         fsize = sizeof_fortran_t()
-        print 'Size of Fortran derived type pointers is %d bytes.' % fsize
-        print
+        print('Size of Fortran derived type pointers is %d bytes.' % fsize)
+        print()
 
         # parse input Fortran source files
-        print 'Parsing Fortran source files %r ...' % args.files
-        tree = fparse.read_files(args.files)
-        print 'done parsing source.'
-        print
+        print('Parsing Fortran source files %r ...' % args.files)
+        parse_tree = fparse.read_files(args.files)
+        print('done parsing source.')
+        print()
+        tree = copy.deepcopy(parse_tree)
 
         types = fortran.find_types(tree)
-        print 'Derived types detected in Fortran source files:'
+        print('Derived types detected in Fortran source files:')
         pprint.pprint(types)
-        print
+        print()
 
         # Find all modules and subroutines the user wishes to keep
         kept_subs = []
@@ -244,6 +246,7 @@ USAGE
                                       init_file=args.init_file).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
                                   args.abort_func, kind_map, types).visit(f90_tree)
+        
         return 0
 
     except KeyboardInterrupt:
@@ -251,7 +254,7 @@ USAGE
         return 0
 
     except Exception, e:
-        traceback.print_exc()
+        traceback.print(_exc())
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help\n")
