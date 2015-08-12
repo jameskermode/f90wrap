@@ -1,0 +1,16 @@
+language: python
+python:
+  - "2.6"
+  - "2.7"
+  - "3.2"
+  - "3.3"
+  - "3.4"
+install:
+  - "sudo apt-get update"
+  - "sudo apt-get install python-numpy python-scipy"
+  - "python setup.py install"
+script:
+  - "cd examples ; make test
+notifications:
+  email:
+    - james.kermode@gmail.com
