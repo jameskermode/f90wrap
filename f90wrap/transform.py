@@ -840,8 +840,13 @@ class RenameReservedWords(ft.FortranVisitor):
         if isinstance(node, ft.Argument):
             # replace names in dimension attribute expressions
             for (old_name, new_name) in self.name_map.iteritems():
-                node.attributes = [ attr.replace(old_name, new_name)
-                                    for attr in node.attributes ]
+                new_attribs = []
+                for attrib in node.attributes:
+                    if attrib.startswith('dimension('):
+                        new_attribs.append(attrib.replace(old_name, new_name))
+                    else:
+                        new_attribs.append(attrib)
+                node.attributes = new_attribs
         return self.generic_visit(node)
 
     visit_Procedure = visit_Argument
