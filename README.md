@@ -17,6 +17,11 @@ documentation generator for Fortran 90. Copyright (C) 2004 Ian Rutt.
 If you would like to license the source code under different terms,
 please contact James Kermode <james.kermode@gmail.com>
 
+Build status
+------------
+
+[![Build Status](https://travis-ci.org/jameskermode/f90wrap.svg?branch=master)](https://travis-ci.org/jameskermode/f90wrap)
+
 Dependencies
 ------------
 
