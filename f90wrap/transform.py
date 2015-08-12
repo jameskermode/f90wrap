@@ -32,18 +32,18 @@ class AccessUpdater(ft.FortranTransformer):
         self.mod = None
         self.type = None
 
-    def update_access(self, node, mod, default_access):
+    def update_access(self, node, mod, default_access, in_type=False):
         if default_access == 'public':
             if ('private' not in getattr(node, 'attributes', []) and
                    node.name not in mod.private_symbols):
 
                 # symbol should be marked as public if it's not already
-                if node.name not in mod.public_symbols:
+                if not in_type and node.name not in mod.public_symbols:
                     logging.debug('marking public symbol ' + node.name)
                     mod.public_symbols.append(node.name)
             else:
                 # symbol should be marked as private if it's not already
-                if (node.name not in mod.private_symbols and
+                if not in_type and (node.name not in mod.private_symbols and
                     'callback' not in getattr(node, 'attributes', [])):
                     logging.debug('marking private symbol ' + node.name)
                     mod.private_symbols.append(node.name)
@@ -53,13 +53,13 @@ class AccessUpdater(ft.FortranTransformer):
                    node.name not in mod.public_symbols):
 
                 # symbol should be marked as private if it's not already
-                if (node.name not in mod.private_symbols and
+                if not in_type and (node.name not in mod.private_symbols and
                     'callback' not in getattr(node, 'attributes', [])):
                     logging.debug('marking private symbol ' + node.name)
                     mod.private_symbols.append(node.name)
             else:
                 # symbol should be marked as public if it's not already
-                if node.name not in mod.public_symbols:
+                if not in_type and node.name not in mod.public_symbols:
                     logging.debug('marking public symbol ' + node.name)
                     mod.public_symbols.append(node.name)
 
@@ -100,7 +100,7 @@ class AccessUpdater(ft.FortranTransformer):
 
     def visit_Element(self, node):
         if self.type is not None:
-            self.update_access(node, self.mod, self.type.default_access)
+            self.update_access(node, self.mod, self.type.default_access, in_type=True)
         else:
             self.update_access(node, self.mod, self.mod.default_access)
         return node
@@ -129,6 +129,9 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         if node.name in self.mod.private_symbols:
             logging.debug('removing private symbol %s' % node.name)
             return None
+
+        if hasattr(node, 'attributes') and 'private' in node.attributes:
+            return None        
 
         return self.generic_visit(node)
 
