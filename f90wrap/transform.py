@@ -885,9 +885,10 @@ class RenameInterfacesPython(ft.FortranVisitor):
 
     def visit_Interface(self, node):
         for proc in node.procedures:
-            proc.name = '_'+proc.name
             if hasattr(proc, 'method_name'):
                 proc.method_name = '_'+proc.method_name
+            else:
+                proc.method_name = '_'+proc.name
         return node
 
 

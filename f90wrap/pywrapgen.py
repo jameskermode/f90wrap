@@ -60,6 +60,12 @@ def format_call_signature(node):
         return ('Element %s ftype=%s pytype=%s' %
                   (node.name, node.type,
                    ft.f2py_type(node.type)))
+    elif isinstance(node, ft.Interface):
+        if hasattr(node, 'method_name'):
+            name = node.method_name
+        else:
+            name = node.name
+        return '%s(*args, **kwargs)' % name
     else:
         return str(node)
 
@@ -83,8 +89,8 @@ def format_doc_string(node):
     doc.append('')
     doc.append('Defined at %s %s' % (node.filename, _format_line_no(node.lineno)))
 
-    # For procedures, write parameters and return values in numpydoc format
     if isinstance(node, ft.Procedure):
+        # For procedures, write parameters and return values in numpydoc format        
         doc.append('')
         # Input parameters
         for i, arg in enumerate(node.arguments):
@@ -110,6 +116,13 @@ def format_doc_string(node):
                     for d in arg.doc:
                         doc.append("\t%s" % d)
                     doc.append("")
+    elif isinstance(node, ft.Interface):
+        # for interfaces, list the components
+        doc.append('')
+        doc.append('Overloaded interface containing the following procedures:')
+        for proc in node.procedures:
+            doc.append('  %s' % (hasattr(proc, 'method_name')
+                                and proc.method_name or proc.name))
 
     doc += [''] + node.doc[:]  # incoming docstring from Fortran source
 
@@ -363,7 +376,9 @@ except ValueError:
         self.generic_visit(node)
         
         dct = dict(intf_name=node.name,
-                   proc_names='[' + ', '.join([proc.name for proc in node.procedures]) + ']')
+                   proc_names='[' + ', '.join([hasattr(proc, 'method_name')
+                                               and proc.method_name or proc.name
+                                               for proc in node.procedures]) + ']')
         if not self.make_package:
             # procedures outside of derived types become static methods
             self.write('@staticmethod')
