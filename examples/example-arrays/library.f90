@@ -3,7 +3,7 @@ module library
     use parameters, only: idp, isp
     implicit none
     private
-    public :: do_array_stuff, only_manipulate
+    public :: do_array_stuff, only_manipulate, return_array
 
 contains
 
@@ -34,6 +34,17 @@ contains
             ENDDO
         ENDDO
     end subroutine only_manipulate
+
+    subroutine return_array(m, n, output)
+        INTEGER, INTENT(in) :: m, n
+        INTEGER, INTENT(out) :: output(m,n)
+        INTEGER :: i,j
+        DO i=1,m
+            DO j=1,n
+                output(i,j) = i*j + j
+            ENDDO
+        ENDDO
+    end subroutine return_array
 
 end module library
 
