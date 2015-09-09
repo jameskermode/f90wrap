@@ -49,6 +49,15 @@ class TestExample(unittest.TestCase):
         for k in range(4):
             np.testing.assert_allclose((x*y + x)**2, co[k,:])
 
+    def test_return_array(self):
+        m, n = 10, 4
+        arr = np.ndarray((m,n), order='F', dtype=np.int32)
+        lib.library.return_array(m, n, arr)
+        ii, jj = np.mgrid[0:m,0:n]
+        ii += 1
+        jj += 1
+        np.testing.assert_equal(ii*jj + jj, arr)
+
 
 if __name__ == '__main__':
 

@@ -1,4 +1,4 @@
-EXAMPLES = mockderivetype example2 example-arrays
+EXAMPLES = mockderivetype example2 example-arrays example-derivedtypes
 
 test:
 	for example in ${EXAMPLES}; do \
