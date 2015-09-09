@@ -124,17 +124,18 @@ class BaseTests(object):
         np.testing.assert_array_equal(dt.iota, iota)
 
     # this test will fail because theta is supposed to be single precision
-    @unittest.expectedFailure
-    def test_single_precesion_array(self):
+    # expectedFailure only added to unittest module in Python 2.7
+    # @unittest.expectedFailure
+    # def test_single_precesion_array(self):
 
-        dt = self.lib.library.modify_dertype_fixed_shape_arrays()
-        self.assertIsInstance(dt, self.lib.datatypes.Fixed_Shape_Arrays)
+    #     dt = self.lib.library.modify_dertype_fixed_shape_arrays()
+    #     self.assertIsInstance(dt, self.lib.datatypes.Fixed_Shape_Arrays)
 
-        # expected failure: dt.theta seems to be float64 (double precision)
-        # while it should be single precision
-        self.assertEqual(dt.theta.dtype, np.float32)
-        theta = np.ones((10,4), dtype=np.float32)
-        np.testing.assert_array_equal(dt.theta, theta*np.float32(2.0))
+    #     # expected failure: dt.theta seems to be float64 (double precision)
+    #     # while it should be single precision
+    #     self.assertEqual(dt.theta.dtype, np.float32)
+    #     theta = np.ones((10,4), dtype=np.float32)
+    #     np.testing.assert_array_equal(dt.theta, theta*np.float32(2.0))
 
     def test_nested_dertype(self):
         ndt = self.lib.datatypes.Nested()
@@ -145,16 +146,17 @@ class BaseTests(object):
 
     # this test will fail because pointer/alloc arrays as arguments are not
     # supported.
-    @unittest.expectedFailure
-    def test_return_dertype_pointer_arrays(self):
-        m, n = 9, 5
-        dt = self.lib.library.return_dertype_pointer_arrays(m, n)
-        self.assertIsInstance(dt, self.lib.datatypes.Pointer_Arrays)
-        expected = np.ones((m, n), order='F', dtype=np.float64) * 100.0
-        expected[m-3, n-2] = -10.0
-        # it seems dt.chi can not be accessed from Python
-        # expected failure
-        np.testing.assert_allclose(dt.chi, expected)
+    # expectedFailure only added to unittest module in Python 2.7
+    # @unittest.expectedFailure
+    # def test_return_dertype_pointer_arrays(self):
+    #     m, n = 9, 5
+    #     dt = self.lib.library.return_dertype_pointer_arrays(m, n)
+    #     self.assertIsInstance(dt, self.lib.datatypes.Pointer_Arrays)
+    #     expected = np.ones((m, n), order='F', dtype=np.float64) * 100.0
+    #     expected[m-3, n-2] = -10.0
+    #     # it seems dt.chi can not be accessed from Python
+    #     # expected failure
+    #     np.testing.assert_allclose(dt.chi, expected)
 
     def test_return_dertype_alloc_arrays(self):
         m, n = 9, 5
