@@ -26,7 +26,7 @@ ifeq ($(F90),ifort)
 	FPP_F90FLAGS = -x f95-cpp-input -fPIC
 	F90FLAGS = -fpscomp logicals -fPIC # use 1 and 0 for True and False
     FCOMP    = intelem # for f2py
-    LIBS = 
+    LIBS =
 endif
 
 CFLAGS = -fPIC #     ==> universal for ifort, gfortran, pgi
@@ -54,7 +54,7 @@ KIND_MAP = kind_map
 #
 #=======================================================================
 
-#VPATH	=  
+#VPATH	=
 
 #=======================================================================
 #       List all source files required for the project
@@ -101,7 +101,7 @@ LIBSRC_WRAP_FPP_FILES = $(addsuffix .fpp,${LIBSRC_WRAP_SOURCES})
 .PHONY: all clean
 
 
-all: _${PYTHON_MODN}.so _${PYTHON_MODN}_pkg.so test
+all: _${PYTHON_MODN}.so _${PYTHON_MODN}_pkg.so
 
 
 clean:
@@ -135,6 +135,6 @@ _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90
 
 
-test:
+test: all
 	${PYTHON} tests.py
 
