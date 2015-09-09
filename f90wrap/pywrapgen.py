@@ -152,7 +152,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
     def write_imports(self, insert=0):
         default_imports = [(self.f90_mod_name, None),
-                           ('f90wrap.runtime', None)]
+                           ('f90wrap.runtime', None),
+                           ('logging', None)]
         imp_lines = []
         for (mod, symbol) in default_imports + list(self.imports):
             if symbol is None:
@@ -248,7 +249,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     for func in _array_initialisers:
         func()
 except ValueError:
-    print('WARNING: unallocated array(s) detected on import of module "%s".')
+    logging.debug('unallocated array(s) detected on import of module "%s".')
 ''' % node.name)
             self.write()
             self.write('''for func in _dt_array_initialisers:
