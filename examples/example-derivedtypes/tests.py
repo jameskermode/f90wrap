@@ -32,7 +32,7 @@ class BaseTests(object):
 
     def test_return_a_dt_func(self):
         dt = self.lib.library.return_a_dt_func()
-        self.assertIsInstance(dt, self.lib.datatypes.Different_Types)
+        self.assert_(isinstance(dt, self.lib.datatypes.Different_Types))
         self.assertEqual(dt.alpha, 1) # logicals, so 1/0 instead of T/F
         self.assertEqual(dt.beta, 666)
         self.assertEqual(dt.delta, 666.666)
@@ -65,7 +65,7 @@ class BaseTests(object):
         self.lib.library.do_array_stuff(n=n, x=x, y=y, br=br, co=co)
         self.lib.library.only_manipulate(n=n, array=co)
 
-#        self.assertIsInstance(br.dtype.type, np.float64)
+#        self.assert_(isinstance(br.dtype.type, np.float64))
 
         for k in range(4):
             np.testing.assert_allclose((x*y + x)**2, co[k,:])
@@ -77,7 +77,7 @@ class BaseTests(object):
 
         dt = self.lib.library.set_derived_type(dt_beta=dt_beta,
                                                dt_delta=dt_delta)
-        self.assertIsInstance(dt, self.lib.datatypes.Different_Types)
+        self.assert_(isinstance(dt, self.lib.datatypes.Different_Types))
         self.assertEqual(dt.beta, dt_beta)
         self.assertEqual(dt.delta, dt_delta)
 
@@ -107,7 +107,7 @@ class BaseTests(object):
     def test_modify_dertype_multiple_arrays(self):
 
         dt = self.lib.library.modify_dertype_fixed_shape_arrays()
-        self.assertIsInstance(dt, self.lib.datatypes.Fixed_Shape_Arrays)
+        self.assert_(isinstance(dt, self.lib.datatypes.Fixed_Shape_Arrays))
 
         self.assertEqual(dt.eta.dtype, np.int32)
         eta = np.ones((10,4), dtype=np.int)
@@ -129,7 +129,7 @@ class BaseTests(object):
     # def test_single_precesion_array(self):
 
     #     dt = self.lib.library.modify_dertype_fixed_shape_arrays()
-    #     self.assertIsInstance(dt, self.lib.datatypes.Fixed_Shape_Arrays)
+    #     self.assert_(isinstance(dt, self.lib.datatypes.Fixed_Shape_Arrays))
 
     #     # expected failure: dt.theta seems to be float64 (double precision)
     #     # while it should be single precision
@@ -139,10 +139,10 @@ class BaseTests(object):
 
     def test_nested_dertype(self):
         ndt = self.lib.datatypes.Nested()
-        self.assertIsInstance(ndt.mu.alpha, int) # boolean/logical in F though
-        self.assertIsInstance(ndt.mu.beta, int)
-        self.assertIsInstance(ndt.mu.delta, float)
-        self.assertIsInstance(ndt.nu, self.lib.datatypes.Fixed_Shape_Arrays)
+        self.assert_(isinstance(ndt.mu.alpha, int)) # boolean/logical in F though)
+        self.assert_(isinstance(ndt.mu.beta, int))
+        self.assert_(isinstance(ndt.mu.delta, float))
+        self.assert_(isinstance(ndt.nu, self.lib.datatypes.Fixed_Shape_Arrays))
 
     # this test will fail because pointer/alloc arrays as arguments are not
     # supported.
@@ -151,7 +151,7 @@ class BaseTests(object):
     # def test_return_dertype_pointer_arrays(self):
     #     m, n = 9, 5
     #     dt = self.lib.library.return_dertype_pointer_arrays(m, n)
-    #     self.assertIsInstance(dt, self.lib.datatypes.Pointer_Arrays)
+    #     self.assert_(isinstance(dt, self.lib.datatypes.Pointer_Arrays))
     #     expected = np.ones((m, n), order='F', dtype=np.float64) * 100.0
     #     expected[m-3, n-2] = -10.0
     #     # it seems dt.chi can not be accessed from Python
@@ -162,7 +162,7 @@ class BaseTests(object):
         m, n = 9, 5
         dt = self.lib.library.return_dertype_alloc_arrays(m, n)
         dt.chi_shape = np.array([m, n], dtype=np.int32)
-        self.assertIsInstance(dt, self.lib.datatypes_allocatable.Alloc_Arrays)
+        self.assert_(isinstance(dt, self.lib.datatypes_allocatable.Alloc_Arrays))
         expected = np.ones((m, n), order='F', dtype=np.float64) * 10.0
         expected[m-3, n-2] = -1.0
         np.testing.assert_allclose(dt.chi, expected)
