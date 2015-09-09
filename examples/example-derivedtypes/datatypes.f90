@@ -44,7 +44,7 @@ implicit none
 ! NB: target attribute needed to allow derived type access from Python.
 ! for gfortran, the mockdtderivetype use the following pre-processor flag:
 ! #define type(x) TYPE(x), target
-! however, for my Linux-64bit installation, both gfortran (v5.2.0) and 
+! however, for my Linux-64bit installation, both gfortran (v5.2.0) and
 ! ifort (v15.0.3 20150407) did work fine withouth using the TARGET attribute
 
 type different_types
@@ -74,12 +74,12 @@ type pointer_arrays
 end type pointer_arrays
 
 ! why is this not working here??
-!type alloc_arrays
-!    REAL(idp), DIMENSION(:,:), ALLOCATABLE :: chi
-!    REAL(idp), DIMENSION(:,:), ALLOCATABLE :: psi
-!    INTEGER(4) chi_shape(2)
-!    INTEGER(4) psi_shape(2)
-!end type alloc_arrays
+type alloc_arrays_2
+    REAL(idp), DIMENSION(:,:), ALLOCATABLE :: chi
+    REAL(idp), DIMENSION(:,:), ALLOCATABLE :: psi
+    INTEGER(4) chi_shape(2)
+    INTEGER(4) psi_shape(2)
+end type alloc_arrays_2
 
 type array_nested
     type(different_types), DIMENSION(:), ALLOCATABLE :: xi
