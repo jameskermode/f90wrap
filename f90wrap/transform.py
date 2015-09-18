@@ -131,7 +131,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
             return None
 
         if hasattr(node, 'attributes') and 'private' in node.attributes:
-            return None        
+            return None
 
         return self.generic_visit(node)
 
@@ -140,7 +140,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         if node.name in self.mod.private_symbols:
             logging.debug('removing private symbol %s' % node.name)
             return None
-        
+
         # do not call generic_visit(), so we don't
         # remove private procedures within public
         # interfaces, as these should still be wrapped
@@ -224,7 +224,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 #    return None
 
                 # no derived types apart from those in self.types
-                if arg.type.startswith('type') and arg.type not in self.types:
+                if arg.type.startswith('type') and ft.split_type(arg.type) not in self.types:
                     logging.debug('removing routine %s due to unsupported derived type %s' %
                                   (node.name, arg.type))
                     return None
@@ -258,7 +258,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
             return None
 
         # remove optional derived types not in self.types
-        if node.type.startswith('type') and node.type not in self.types:
+        if node.type.startswith('type') and ft.split_type(node.type) not in self.types:
             logging.debug('removing optional argument %s due to unsupported derived type %s' %
                           (node.name, node.type))
             return None
@@ -356,8 +356,8 @@ def fix_subroutine_uses_clauses(tree, types):
             sub.mod_name = mod.name
 
         for arg in arguments:
-            if arg.type.startswith('type') and arg.type in types:
-                sub.uses.add((types[arg.type].mod_name, (ft.strip_type(arg.type),)))
+            if arg.type.startswith('type') and ft.strip_type(arg.type) in types:
+                sub.uses.add((types[ft.strip_type(arg.type)].mod_name, (ft.strip_type(arg.type),)))
 
     return tree
 
@@ -368,7 +368,7 @@ def fix_element_uses_clauses(tree, types):
     for mod in ft.walk_modules(tree):
         for el in mod.elements:
             el.uses = set()
-            if el.type.startswith('type') and el.type in types:
+            if el.type.startswith('type') and ft.strip_type(el.type) in types:
                 el.uses.add((types[el.type].mod_name, (ft.strip_type(el.type),)))
 
     return tree
@@ -894,12 +894,12 @@ class RenameInterfacesPython(ft.FortranVisitor):
 
 class OnlyAndSkip(ft.FortranTransformer):
     """
-    This class does the job of removing nodes from the tree 
+    This class does the job of removing nodes from the tree
     which are not necessary to write wrappers for (given user-supplied
-    values for only and skip). 
-    
+    values for only and skip).
+
     Currently it takes a list of subroutines and a list of modules to write
-    wrappers for. If empty, it does all of them. 
+    wrappers for. If empty, it does all of them.
     """
     def __init__(self, kept_subs, kept_mods):
         self.kept_subs = kept_subs
@@ -943,7 +943,7 @@ class SetInterfaceProcedureCallNames(ft.FortranVisitor):
             logging.info('setting call_name of %s to %s' % (proc.name, node.name))
             proc.call_name = node.name
         return node
-    
+
 
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
@@ -971,7 +971,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
-    tree = convert_array_intent_out_to_intent_inout(tree)   
+    tree = convert_array_intent_out_to_intent_inout(tree)
     RenameReservedWords(types, argument_name_map).visit(tree)
     return tree
 
@@ -1008,21 +1008,21 @@ def transform_to_py_wrapper(tree, types):
 
 def find_referenced_modules(mods, tree):
     """
-    Given a set of modules in a parse tree, find any modules (recursively) 
+    Given a set of modules in a parse tree, find any modules (recursively)
     used by these.
-    
+
     Parameters
     ----------
-    mods : set 
+    mods : set
         initial modules to search, must be included in the tree.
-    
+
     tree : `fortran.Root()` object.
         the full fortran parse tree from which the mods have been taken.
-    
+
     Returns
     -------
     all_mods : set
-        Module() objects which are recursively used by the given modules. 
+        Module() objects which are recursively used by the given modules.
     """
     new_mods = copy.copy(mods)
     while new_mods != set():
@@ -1041,20 +1041,20 @@ def find_referenced_types(mods, tree):
     """
     Given a set of modules in a parse tree, find any types either defined in
     or referenced by the module, recursively.
-    
+
     Parameters
     ----------
-    mods : set 
+    mods : set
         initial modules to search, must be included in the tree.
-    
+
     tree : the full fortran parse tree from which the mods have been taken.
     tree : `fortran.Root` object.
         the full fortran parse tree from which the mods have been taken.
-    
+
     Returns
     -------
-    kept_types : set of Type() objects which are referenced or defined in the 
-                 modules given, or recursively referenced by those types. 
+    kept_types : set of Type() objects which are referenced or defined in the
+                 modules given, or recursively referenced by those types.
     """
 
     # Get used types now

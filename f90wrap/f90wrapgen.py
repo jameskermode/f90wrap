@@ -30,26 +30,26 @@ from f90wrap import codegen as cg
 class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     """
     Creates the Fortran90 code necessary to wrap a given Fortran parse tree
-    suitable for input to `f2py`. 
-    
+    suitable for input to `f2py`.
+
     Each node of the tree (Module, Subroutine etc.) is wrapped according to the
-    rules in this class when visited (using `F90WrapperGenerator.visit()`). 
-    
-    Each module's wrapper is written to a separate file, with top-level 
+    rules in this class when visited (using `F90WrapperGenerator.visit()`).
+
+    Each module's wrapper is written to a separate file, with top-level
     procedures written to another separate file. Derived-types and arrays (both
     of normal types and derive-types) are specially treated. For each, a number
     of subroutines allowing the getting/setting of items, and retrieval of array
-    length are written. Furthermore, derived-types are treated as opaque 
-    references to enable wrapping with `f2py`. 
-    
+    length are written. Furthermore, derived-types are treated as opaque
+    references to enable wrapping with `f2py`.
+
     Parameters
     ----------
     prefix : `str`
         A string with which to prefix module, subroutine and type names.
-        
+
     sizeof_fortran_t : `int`
         The size, in bytes, of a pointer to a fortran derived type ??
-        
+
     string_lengths : `dict`
         This is never used...
 
@@ -78,7 +78,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
     def visit_Root(self, node):
         """
-        Write a wrapper for top-level procedures. 
+        Write a wrapper for top-level procedures.
         """
         # clean up any previous wrapper files
         top_level_wrapper_file = '%s%s.f90' % (self.prefix, 'toplevel')
@@ -100,7 +100,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def visit_Module(self, node):
         """
         Wrap modules. Each Fortran module generates one wrapper source file.
-        
+
         Subroutines and elements within each module are properly wrapped.
         """
         logging.info('F90WrapperGenerator visiting module %s' % node.name)
@@ -133,7 +133,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def write_uses_lines(self, node, extra_uses_dict=None):
         """
         Write "uses mod, only: sub" lines to the code.
-        
+
         Parameters
         ----------
         node : Node of parse tree
@@ -173,7 +173,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def write_type_lines(self, tname):
         """
         Write a pointer type for a given type name
-        
+
         Parameters
         ----------
         tname : `str`
@@ -187,14 +187,14 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def write_arg_decl_lines(self, node):
         """
         Write argument declaration lines to the code
-        
-        Takes care of argument attributes, and opaque references for derived 
+
+        Takes care of argument attributes, and opaque references for derived
         types, as well as f2py-specific lines.
         """
         for arg in node.arguments:
             if 'callback' in arg.attributes:
                 return 'external '+arg.name
-            
+
             attributes = [attr for attr in arg.attributes if attr in ('optional', 'pointer', 'intent(in)',
                                                                        'intent(out)', 'intent(inout)') or
                                                                        attr.startswith('dimension') ]
@@ -367,21 +367,21 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def _write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
         """
         Write wrapper for arrays of intrinsic types
-        
+
         Parameters
         ----------
         t : `fortran.Type` node
             Derived-type node of the parse tree.
-            
+
         el : `fortran.Element` node
             An element of a module which is derived-type array
-            
+
         dims : `tuple` of `int`s
             The dimensions of the element
-            
+
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
-            
+
         """
         if isinstance(t, ft.Type):
             this = 'this, '
@@ -447,18 +447,18 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                                sizeof_fortran_t):
         """
         Write fortran get/set/len routines for a derived-type array.
-        
+
         Parameters
         ----------
         t : `fortran.Type` node
             Derived-type node of the parse tree.
-            
+
         el : `fortran.Element` node
             An element of a module which is derived-type array
-            
+
         dims : `tuple` of `int`s
             The dimensions of the element
-            
+
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
         """
@@ -472,15 +472,15 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def _write_scalar_wrappers(self, t, element, sizeof_fortran_t):
         """
         Write fortran get/set routines for scalar derived-types
-        
+
         Parameters
         ----------
         t : `fortran.Type` node
             Derived-type node of the parse tree.
-            
+
         el : `fortran.Element` node
             An element of a module which is derived-type array
-            
+
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
         """
@@ -491,18 +491,18 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
         """
         Write a subroutine to get/set items in a derived-type array.
-        
+
         Parameters
         ----------
         t : `fortran.Type` node
             Derived-type node of the parse tree.
-            
+
         el : `fortran.Element` node
             An element of a module which is derived-type array
-            
+
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
-            
+
         getset : `str` {``"get"``,``"set"``}
             String indicating whether to write a get routine, or a set routine.
         """
@@ -592,15 +592,15 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def _write_array_len(self, t, el, sizeof_fortran_t):
         """
         Write a subroutine which returns the length of a derived-type array
-        
+
         Parameters
         ----------
         t : `fortran.Type` node or `fortran.Module` node
             Node of the parse tree which contains this derived-type as an element
-            
+
         el : `fortran.Element` node
             An element of a module which is derived-type array
-            
+
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
         """
@@ -661,18 +661,18 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def _write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
         """
         Write get/set routines for scalar elements of derived-types and modules
-        
+
         Parameters
         ----------
         t : `fortran.Type` node or `fortran.Module` node
             Node of the parse tree which contains this derived-type as an element
-            
+
         el : `fortran.Element` node
             An element of a module which is derived-type array
-            
+
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
-            
+
         getset : `str` {``"get"``,``"set"``}
             String indicating whether to write a get routine, or a set routine.
         """

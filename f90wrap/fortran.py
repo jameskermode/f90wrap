@@ -17,11 +17,12 @@
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 """
 This module defines a series of classes which inherit an abstract base class.
-Each represents a node in a Fortran parse tree -- Modules, Subroutines, 
+Each represents a node in a Fortran parse tree -- Modules, Subroutines,
 Arguments etc. A Fortran parse tree will contain only these classes as nodes.
 """
 
 import logging
+import re
 
 import numpy as np
 
@@ -36,19 +37,19 @@ def _rep_des(doc, string):
 
 class Fortran(object):
     """
-    Abstract base class for all nodes in Fortran parser tree. 
-    
+    Abstract base class for all nodes in Fortran parser tree.
+
     Parameters
     ----------
     name : `str`, default ``""``
         Name of the node
-        
+
     filename : `str`, default ``""``
         Name of the file in which node is defined
-        
+
     doc : `list` of `str`, default ``None``
         Documentation found in the node
-        
+
     lineno : `int`, default ``0``.
         Line number at which the node begins.
     """
@@ -91,10 +92,10 @@ class Root(Fortran):
     """
     programs : `list` of `fortran.Program`, default ``None``
         A list of Programs within the parse tree.
-        
+
     modules : `list` of `fortran.Module`, default ``None``
         A list of modules within the parse tree
-        
+
     procedures : `list` of `fortran.Procedure`, default ``None``
         A list of top-level procedures within the parse tree.
     """
@@ -135,27 +136,27 @@ class Module(Fortran):
     """
     types : list of :class:`fortran.Type` , default ``None``
         Derived-types defined in the module
-        
+
     elements : list of :class:`fortran.Element` , default ``None``
         Module-level variables in the module
-    
+
     procedures : list of :class:`fortran.Procedure` , default ``None``
         A list of procedures defined in the module
-        
+
     interfaces : list of :class:`fortran.Interface` , default ``None``
         A list of interfaces defined in the module
-        
+
     uses : list of `str` or `tuple` , default ``None``
-        A list of modules that this module uses. If the entry is a tuple, it 
+        A list of modules that this module uses. If the entry is a tuple, it
         should be in the form (uses,only,[only,..]), where the `only` entries
         are subroutines/elements in the used module.
-    
+
     default_access : `str`, default ``"public"``
         The default access to the module (public or private)
-        
+
     public_symbols : list of `str` , default ``None``
         The symbols within the module that are public
-        
+
     private_symbols : list of `str` , default ``None``
         The symbols within the module that are private
     """
@@ -195,18 +196,18 @@ class Procedure(Fortran):
     """
     arguments : list of :class:`fortran.Argument`
         A list of arguments to the procedure
-        
+
     uses : list of `str` or `tuple` , default ``None``
-        A list of modules that this procedure uses. If the entry is a tuple, it 
+        A list of modules that this procedure uses. If the entry is a tuple, it
         should be in the form (uses,only,[only,..]), where the `only` entries
         are subroutines/elements in the used module.
-    
+
     attributes : list of `str`, default ``None``
         Attributes of the procedure
-        
+
     mod_name : `str` , default ``None``
         The name of the module in which the procedure is found, if any.
-        
+
     type_name : `str` , default ``None``
         The name of the type in which the procedure is defined, if any.
     """
@@ -234,7 +235,7 @@ class Function(Procedure):
     """
     ret_val : :class:`fortran.Argument`
         The argument which is the returned value
-        
+
     ret_val_doc : `str`
         The documentation of the returned value
     """
@@ -261,10 +262,10 @@ class Declaration(Fortran):
     """
     type : `str` , default ``""``
         The type of the declaration
-        
+
     attributes : list of `str` , default ``None``
         A list of attributes defined in the declaration (eg. intent(in), allocatable)
-        
+
     value : `str`
         A value given to the variable upon definition
         (eg. value=8 in ``"integer :: x = 8"``
@@ -291,7 +292,7 @@ class Type(Fortran):
     """
     elements : list of :class:`fortran.Element`
         Variables within the type
-        
+
     procedures : list of :class:`fortran.Procedure`
         Procedures defined with the type.
     """
@@ -595,6 +596,7 @@ class LowerCaseConverter(FortranTransformer):
     def visit_Type(self, node):
         node.orig_name = node.name
         node.name = node.name.lower()
+        node.attributes = [a.lower() for a in node.attributes]
         return self.generic_visit(node)
 
     def visit_Declaration(self, node):
@@ -709,6 +711,13 @@ def remove_private_symbols(node):
     node = AccessUpdater().visit(node)
     node = PrivateSymbolsRemover().visit(node)
     return node
+
+def split_type(typename):
+    """
+    type(TYPE) -> TYPE
+    """
+    type_re = re.compile(r'type\s*\((.*?)\)')
+    return type_re.match(typename).group(1)
 
 def split_type_kind(typename):
     """
