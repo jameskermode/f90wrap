@@ -1,1 +1,4 @@
 Contributed by James Orr <James.Orr@lsce.ipsl.fr>
+
+Note that operator overloading is not yet supported, so not many features 
+of the DNAD library are available from Python. Contributions welcome!
