@@ -110,7 +110,7 @@ MODULE Dual_Num_Auto_Diff
 
 IMPLICIT NONE
 
-INTEGER(2), PUBLIC,PARAMETER:: NDV_AD=3 ! number of design variables
+INTEGER(2), PUBLIC,PARAMETER:: NDV_AD=2 ! number of design variables
 
 PRIVATE
 
