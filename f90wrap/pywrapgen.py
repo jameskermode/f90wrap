@@ -90,7 +90,7 @@ def format_doc_string(node):
     doc.append('Defined at %s %s' % (node.filename, _format_line_no(node.lineno)))
 
     if isinstance(node, ft.Procedure):
-        # For procedures, write parameters and return values in numpydoc format        
+        # For procedures, write parameters and return values in numpydoc format
         doc.append('')
         # Input parameters
         for i, arg in enumerate(node.arguments):
@@ -326,7 +326,7 @@ except ValueError:
                 return '=None'
             else:
                 return ''
-        
+
         logging.info('PythonWrapperGenerator visiting routine %s' % node.name)
         if 'constructor' in node.attributes:
             self.write_constructor(node)
@@ -375,7 +375,7 @@ except ValueError:
     def visit_Interface(self, node):
         # first output all the procedures within the interface
         self.generic_visit(node)
-        
+
         dct = dict(intf_name=node.name,
                    proc_names='[' + ', '.join([hasattr(proc, 'method_name')
                                                and proc.method_name or proc.name
@@ -385,7 +385,7 @@ except ValueError:
             self.write('@staticmethod')
         self.write('def %(intf_name)s(*args, **kwargs):' % dct)
         self.indent()
-        self.write(format_doc_string(node))        
+        self.write(format_doc_string(node))
         # try to call each in turn until no TypeError raised
         self.write('for proc in %(proc_names)s:' % dct)
         self.indent()
@@ -473,7 +473,7 @@ except ValueError:
         if 'parameter' not in el.attributes:
             if not isinstance(node, ft.Module) or not self.make_package:
                 self.write('@%(el_name_get)s.setter' % dct)
-            self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name_get)s):
+            self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
     %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
     ''' % dct)
             self.write()
