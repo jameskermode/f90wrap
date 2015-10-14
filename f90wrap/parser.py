@@ -49,12 +49,12 @@ module_end = re.compile('^end\s*module', re.IGNORECASE)
 program = re.compile('^program', re.IGNORECASE)
 program_end = re.compile('^end\s*program', re.IGNORECASE)
 
-attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private'  # jrk33 added target
+attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
 type_end = re.compile('^end\s*type', re.IGNORECASE)
 
-types = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))'
+types = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
 a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private'
 
 types_re = re.compile(types, re.IGNORECASE)
@@ -596,6 +596,10 @@ def check_subt(cl, file, grab_hold_doc=True):
 
         cl = subt.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
+
+	# Test in principle whether we can have a 'do not wrap' list
+	if out.name.lower() == 'debugtype_stop_if':
+		return [None,cl]
 
         # Check to see if there are any arguments
 

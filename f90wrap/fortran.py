@@ -618,6 +618,8 @@ def strip_type(t):
     t = t.replace(' ', '')  # remove blanks
     if t.startswith('type('):
         t = t[t.index('(') + 1:t.index(')')]
+    if t.startswith('class('):
+        t = t[t.index('(') + 1:t.index(')')]
     return t.lower()
 
 class AccessUpdater(FortranTransformer):
@@ -769,6 +771,8 @@ def f2c_type(typename, kind_map):
         if type in default_f2c_type:
             c_type = default_f2c_type[type]
         elif type.startswith('type'):
+            return 'type'
+        elif type.startswith('class'):
             return 'type'
         else:
             raise RuntimeError('Unknown type "%s" - ' % type +
