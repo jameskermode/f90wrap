@@ -148,7 +148,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     node_uses.append(use)
 
         if extra_uses_dict is not None:
-            for (mod, only) in extra_uses_dict.iteritems():
+            for (mod, only) in extra_uses_dict.items():
                 node_uses.append((mod, only))
 
         if node_uses:
@@ -164,7 +164,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 else:
                     all_uses[mod] = None
 
-        for mod, only in all_uses.iteritems():
+        for mod, only in all_uses.items():
             if only is not None:
                 self.write('use %s, only: %s' % (mod, ', '.join(only)))
             else:
