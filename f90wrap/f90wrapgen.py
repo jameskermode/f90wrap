@@ -16,7 +16,7 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-from six import string_types     # Python 2/3 compatibility library
+from f90wrap.six import string_types     # Python 2/3 compatibility library
 
 import copy
 import logging
