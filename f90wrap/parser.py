@@ -189,7 +189,7 @@ def split_attribs(atr):
     if atr != '':
         atrl.append(atr)
 
-    return map(string.strip, atrl)  # jrk33 added strip
+    return list(map(lambda s : s.strip(), atrl))  # jrk33 added strip
 
 
 hold_doc = None
@@ -627,7 +627,7 @@ def check_subt(cl, file, grab_hold_doc=True):
         else:
             argl = []
 
-        argl = map(string.lower, argl)
+        argl = list(map(lambda s : s.lower(), argl))
 
         # Get next line, and check each possibility in turn
 
@@ -804,7 +804,7 @@ def check_funct(cl, file, grab_hold_doc=True):
         else:
             argl = []
 
-        argl = map(string.lower, argl)
+        argl = list(map(lambda s : s.lower(), argl))
 
         # Get next line, and check each possibility in turn
 
@@ -1084,7 +1084,7 @@ def check_prototype(cl, file):
 
     m = prototype.match(cl)
     if m != None:
-        out = map(string.strip, map(string.lower, m.group(1).split(',')))
+        out = map(lambda s : s.strip().lower(), m.group(1).split(','))
         out = [Prototype(name=name, lineno=file.lineno, filename=file.filename) for name in out]
 
         cl = file.next()
@@ -1335,7 +1335,7 @@ def read_files(args):
             cline = file.next()
 
     # apply some rules to the parsed tree
-    from fortran import fix_argument_attributes, LowerCaseConverter
+    from f90wrap.fortran import fix_argument_attributes, LowerCaseConverter
 
     root = fix_argument_attributes(root)
     root = LowerCaseConverter().visit(root)

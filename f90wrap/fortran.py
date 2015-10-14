@@ -21,6 +21,7 @@ Each represents a node in a Fortran parse tree -- Modules, Subroutines,
 Arguments etc. A Fortran parse tree will contain only these classes as nodes.
 """
 
+from __future__ import print_function
 import logging
 import re
 
@@ -498,7 +499,7 @@ class FortranTreeDumper(FortranVisitor):
     def __init__(self):
         self.depth = 0
     def generic_visit(self, node):
-        print '  ' * self.depth + str(node)
+        print('  ' * self.depth + str(node))
         self.depth += 1
         FortranVisitor.generic_visit(self, node)
         self.depth -= 1

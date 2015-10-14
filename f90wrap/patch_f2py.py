@@ -152,22 +152,21 @@ def old_setup_compile(self, outdir, macros, incdirs, sources, depends,
      if outdir is None:
          outdir = self.output_dir
      elif type(outdir) is not StringType:
-         raise TypeError, "'output_dir' must be a string or None"
+         raise TypeError("'output_dir' must be a string or None")
 
      if macros is None:
          macros = self.macros
      elif type(macros) is ListType:
          macros = macros + (self.macros or [])
      else:
-         raise TypeError, "'macros' (if supplied) must be a list of tuples"
+         raise TypeError("'macros' (if supplied) must be a list of tuples")
 
      if incdirs is None:
          incdirs = self.include_dirs
      elif type(incdirs) in (ListType, TupleType):
          incdirs = list(incdirs) + (self.include_dirs or [])
      else:
-         raise TypeError, \
-               "'include_dirs' (if supplied) must be a list of strings"
+         raise TypeError("'include_dirs' (if supplied) must be a list of strings")
 
      if extra is None:
          extra = []

@@ -16,6 +16,8 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+from __future__ import print_function
+
 import copy
 import logging
 import re
@@ -584,7 +586,7 @@ class MethodFinder(ft.FortranTransformer):
 
     def visit_Procedure(self, node, interface=None):
         if (len(node.arguments) == 0 or
-             (node.arguments[0] > 0 and
+             (node.arguments[0] is not None and
               node.arguments[0].type not in self.types)):
             # procedure is not a method, so leave it alone
             return node

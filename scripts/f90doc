@@ -35,6 +35,8 @@
 # Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 
+from __future__ import print_function
+
 import sys
 import getopt
 import logging
@@ -42,7 +44,7 @@ from f90wrap.parser import read_files
 from f90wrap.latex import write_latex
 
 def usage():
-    print r"""
+    print(r"""
 f90doc: documentation generator for Fortran 90.
 Usage: f90doc [-t <title>] [-a <author>] [-i <intro>] [-n] [-s] [-l] [-f] <filenames>
 Options:
@@ -68,7 +70,7 @@ Modifications for Fortran 95 (c) 2006-2008 James Kermode.
 
 This is free software, and you are welcome to redistribute it under
 certain conditions. See LICENCE for details.
-"""
+""")
 
 if __name__ == '__main__':
 
@@ -78,7 +80,7 @@ if __name__ == '__main__':
         optlist, args = getopt.getopt(all_args, 'sa:t:hni:lfpo:v', 'help')
     except getopt.GetoptError:
         # print help information and exit:
-        print "f90doc: use -h or --help for help"
+        print("f90doc: use -h or --help for help")
         sys.exit(2)
 
     doc_title='Title'
