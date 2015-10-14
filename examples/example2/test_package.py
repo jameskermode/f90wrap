@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 #=======================================================================
 #           simple test for f90wrap 
 #=======================================================================
@@ -20,8 +22,8 @@ import mockdtpkg as md
 #This particular routine sets some numeric constants 
 md.assign_constants()
 
-print type(md.precision)
-print md.precision.get_zero()
+print(type(md.precision))
+print(md.precision.get_zero())
 
 #=======================================================================
 #Check if the subroutine worked : it modifies the "precision" module 
@@ -38,9 +40,9 @@ assert(md.precision.get_half()   == 0.5)
 
 #"acid" test for trailing digits, double precision: nonterminating, nonrepeating
 assert(md.precision.get_pi()     == np.pi)
-print '1,2,3,4 as done by subroutine are '
-print md.precision.get_one(),md.precision.get_two(), md.precision.get_three(),\
-      md.precision.get_four()
+print('1,2,3,4 as done by subroutine are ')
+print(md.precision.get_one(),md.precision.get_two(), md.precision.get_three(),\
+      md.precision.get_four())
 
 #=======================================================================
 #Create "Solveroptions" derived type, defined in mod defineallproperties
@@ -48,7 +50,7 @@ print md.precision.get_one(),md.precision.get_two(), md.precision.get_three(),\
 
 Options =  md.defineallproperties.Solveroptionsdef()
 
-print type(Options.airframevib)
+print(type(Options.airframevib))
 Options.airframevib = 0
 Options.fet_qddot   = 1
 
@@ -63,5 +65,5 @@ assert(Options.fusharm               == 0)
 assert(Options.fet_response          == 0)
 assert(Options.store_fet_responsejac == 0)
 
-print 'all tests passed, OK!'
+print('all tests passed, OK!')
 
