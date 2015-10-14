@@ -16,6 +16,8 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+from six import string_types     # Python 2/3 compatibility library
+
 import copy
 import logging
 import warnings
@@ -110,7 +112,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.generic_visit(node)
 
         for el in node.elements:
-            dims = filter(lambda x: x.startswith('dimension'), el.attributes)
+            dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
             elif el.type.startswith('type'):  # array of derived types
@@ -142,7 +144,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         node_uses = []
         if hasattr(node, 'uses'):
             for use in node.uses:
-                if isinstance(use, basestring):
+                if isinstance(use, string_types):
                     node_uses.append((use, None))
                 else:
                     node_uses.append(use)
@@ -354,7 +356,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         logging.info('F90WrapperGenerator visiting type %s' % node.name)
 
         for el in node.elements:
-            dims = filter(lambda x: x.startswith('dimension'), el.attributes)
+            dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
             elif el.type.startswith('type'):  # array of derived types

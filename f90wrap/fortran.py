@@ -858,8 +858,8 @@ def f2py_type(type, attributes=None):
         pytype = strip_type(type).title()
     else:
         pytype = "unknown"
-    dims = filter(lambda x: x.startswith("dimension"),
-                  attributes)
+    dims = list(filter(lambda x: x.startswith("dimension"),
+                  attributes))
     if len(dims) > 0:
         pytype += " array"
     return pytype
