@@ -8,6 +8,7 @@ python:
 install:
   - "sudo apt-get update"
   - "sudo apt-get install python-numpy python-scipy gfortran"
+  - "pip install numpy"
   - "python setup.py install"
 script:
   - "cd examples ; make test"
