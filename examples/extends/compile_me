@@ -1,0 +1,4 @@
+gfortran -c testextends.f90
+f90wrap -m testextends testextends.f90 
+f2py-f90wrap -c -m _f90wrap_extends f90wrap_*.f90
+

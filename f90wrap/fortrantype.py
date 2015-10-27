@@ -6,7 +6,7 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-    
+
 class FortranModule(object):
     """
     Baseclass for Fortran modules
@@ -32,7 +32,7 @@ class FortranDerivedType(object):
     """
 
     _dt_array_initialisers = []
-        
+
     def __init__(self):
         self._handle = None
         self._arrays = {}
@@ -50,7 +50,7 @@ class FortranDerivedType(object):
         self._handle = handle
         self._alloc = False
         return self
-        
+
 class FortranDerivedTypeArray(object):
 
     def __init__(self, parent, getfunc, setfunc, lenfunc, doc, arraytype):
@@ -66,24 +66,24 @@ class FortranDerivedTypeArray(object):
 
     indices = property(iterindices)
 
-    def iteritems(self):
+    def items(self):
         for idx in self.indices:
             yield self[idx]
 
     def __iter__(self):
-        return self.iteritems()
+        return self.items()
 
     def __len__(self):
         parent = self.parent()
         if parent is None:
-            raise RuntimeError("Array's parent has gone out of scope")        
+            raise RuntimeError("Array's parent has gone out of scope")
         return self.lenfunc(parent._handle)
 
     def __getitem__(self, i):
         parent = self.parent()
         if parent is None:
             raise RuntimeError("Array's parent has gone out of scope")
-            
+
         i += 1  # convert from 0-based (Python) to 1-based indices (Fortran)
         element_handle = self.getfunc(parent._handle, i)
         try:
@@ -96,7 +96,7 @@ class FortranDerivedTypeArray(object):
         parent = self.parent()
         if parent is None:
             raise RuntimeError("Array's parent has gone out of scope")
-        
+
         i += 1 # convert from 0-based (Python) to 1-based indices (Fortran)
         self.setfunc(parent._handle, i, value._handle)
 

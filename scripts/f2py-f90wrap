@@ -37,6 +37,8 @@ is generated. We make several changes to f2py:
 
 """
 
+from __future__ import print_function
+
 __all__ = []
 
 import numpy
@@ -162,7 +164,5 @@ numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(7, {isoptional:"""\
 """})
 
 # now call the main function
-print
-print '!! f90wrap patched version of f2py - James Kermode <james.kermode@gmail.com> !!'
-print
+print('\n!! f90wrap patched version of f2py - James Kermode <james.kermode@gmail.com> !!\n')
 numpy.f2py.main()
