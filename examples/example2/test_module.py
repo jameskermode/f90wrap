@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 #=======================================================================
 #           simple test for f90wrap 
 #=======================================================================
@@ -34,8 +36,8 @@ assert(precision.half   == 0.5)
 
 #"acid" test for trailing digits, double precision: nonterminating, nonrepeating
 assert(precision.pi     == np.pi)
-print '1,2,3,4 as done by subroutine are '
-print precision.one,precision.two, precision.three,precision.four
+print('1,2,3,4 as done by subroutine are ')
+print(precision.one,precision.two, precision.three,precision.four)
 
 #=======================================================================
 #           Declare the SolverOptions derived type
@@ -43,7 +45,7 @@ print precision.one,precision.two, precision.three,precision.four
 
 Options =  Defineallproperties.Solveroptionsdef()
 
-print type(Options.airframevib)
+print(type(Options.airframevib))
 Options.airframevib = 0
 Options.fet_qddot   = 1
 
@@ -58,5 +60,5 @@ assert(Options.fusharm               == 0)
 assert(Options.fet_response          == 0)
 assert(Options.store_fet_responsejac == 0)
 
-print 'all tests passed, OK!'
+print('all tests passed, OK!')
 

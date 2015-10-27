@@ -19,6 +19,12 @@
 #include <Python.h>
 #include <fortranobject.h>
 
+// http://python3porting.com/cextensions.html
+#ifndef Py_TYPE
+    #define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
+#endif
+
+
 static PyObject*
 get_array(PyObject *self, PyObject *args)
 {
@@ -121,6 +127,53 @@ static PyMethodDef arraydata_methods[] = {
 static char arraydata_doc[] = 
   "Extension module to create numpy arrays which access existing data at a given memory location";
 
+
+// =====================================================
+#if PY_MAJOR_VERSION >= 3
+
+struct module_state {
+    PyObject *error;
+};
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+
+static int arraydataTraverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+
+static int arraydataClear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+static PyModuleDef arraydataModuleDef = {
+    PyModuleDef_HEAD_INIT,
+    "arraydata",
+    arraydata_doc,
+    sizeof(struct module_state),
+    arraydata_methods,
+    NULL,
+    arraydataTraverse,
+    arraydataClear,
+    NULL
+};
+
+
+PyMODINIT_FUNC
+PyInit_arraydata(void)
+{
+  PyObject *mod = PyModule_Create(&arraydataModuleDef);
+  Py_TYPE(&PyFortran_Type) = &PyType_Type;
+
+  import_array();
+  return mod;
+}
+
+
+
+// =====================================================
+#else
+
 PyMODINIT_FUNC
 initarraydata(void)
 {
@@ -129,4 +182,7 @@ initarraydata(void)
   import_array();
 }
 
+#endif
+
+// =====================================================
 

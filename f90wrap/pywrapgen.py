@@ -219,7 +219,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         properties = []         # Collect list of properties for a __repr__()
         for el in node.elements:
-            dims = filter(lambda x: x.startswith('dimension'), el.attributes)
+            dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
                     self.write_dt_wrappers(node, el, properties)
@@ -413,7 +413,7 @@ except ValueError:
 
         properties = []
         for el in node.elements:
-            dims = filter(lambda x: x.startswith('dimension'), el.attributes)
+            dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
                     self.write_dt_wrappers(node, el, properties)

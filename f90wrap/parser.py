@@ -49,12 +49,12 @@ module_end = re.compile('^end\s*module', re.IGNORECASE)
 program = re.compile('^program', re.IGNORECASE)
 program_end = re.compile('^end\s*program', re.IGNORECASE)
 
-attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private'  # jrk33 added target
+attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
 type_end = re.compile('^end\s*type', re.IGNORECASE)
 
-types = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))'
+types = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
 a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private'
 
 types_re = re.compile(types, re.IGNORECASE)
@@ -189,7 +189,7 @@ def split_attribs(atr):
     if atr != '':
         atrl.append(atr)
 
-    return map(string.strip, atrl)  # jrk33 added strip
+    return list(map(lambda s : s.strip(), atrl))  # jrk33 added strip
 
 
 hold_doc = None
@@ -597,6 +597,10 @@ def check_subt(cl, file, grab_hold_doc=True):
         cl = subt.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
 
+        # Test in principle whether we can have a 'do not wrap' list
+        if out.name.lower() == 'debugtype_stop_if':
+            return [None,cl]
+
         # Check to see if there are any arguments
 
         has_args = 0
@@ -627,7 +631,7 @@ def check_subt(cl, file, grab_hold_doc=True):
         else:
             argl = []
 
-        argl = map(string.lower, argl)
+        argl = list(map(lambda s : s.lower(), argl))
 
         # Get next line, and check each possibility in turn
 
@@ -804,7 +808,7 @@ def check_funct(cl, file, grab_hold_doc=True):
         else:
             argl = []
 
-        argl = map(string.lower, argl)
+        argl = list(map(lambda s : s.lower(), argl))
 
         # Get next line, and check each possibility in turn
 
@@ -1084,7 +1088,7 @@ def check_prototype(cl, file):
 
     m = prototype.match(cl)
     if m != None:
-        out = map(string.strip, map(string.lower, m.group(1).split(',')))
+        out = map(lambda s : s.strip().lower(), m.group(1).split(','))
         out = [Prototype(name=name, lineno=file.lineno, filename=file.filename) for name in out]
 
         cl = file.next()
@@ -1335,7 +1339,7 @@ def read_files(args):
             cline = file.next()
 
     # apply some rules to the parsed tree
-    from fortran import fix_argument_attributes, LowerCaseConverter
+    from f90wrap.fortran import fix_argument_attributes, LowerCaseConverter
 
     root = fix_argument_attributes(root)
     root = LowerCaseConverter().visit(root)

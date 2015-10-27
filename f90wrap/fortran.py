@@ -21,6 +21,7 @@ Each represents a node in a Fortran parse tree -- Modules, Subroutines,
 Arguments etc. A Fortran parse tree will contain only these classes as nodes.
 """
 
+from __future__ import print_function
 import logging
 import re
 
@@ -498,7 +499,7 @@ class FortranTreeDumper(FortranVisitor):
     def __init__(self):
         self.depth = 0
     def generic_visit(self, node):
-        print '  ' * self.depth + str(node)
+        print('  ' * self.depth + str(node))
         self.depth += 1
         FortranVisitor.generic_visit(self, node)
         self.depth -= 1
@@ -617,6 +618,8 @@ def strip_type(t):
     """Return type name from type declaration"""
     t = t.replace(' ', '')  # remove blanks
     if t.startswith('type('):
+        t = t[t.index('(') + 1:t.index(')')]
+    if t.startswith('class('):
         t = t[t.index('(') + 1:t.index(')')]
     return t.lower()
 
@@ -770,6 +773,8 @@ def f2c_type(typename, kind_map):
             c_type = default_f2c_type[type]
         elif type.startswith('type'):
             return 'type'
+        elif type.startswith('class'):
+            return 'type'
         else:
             raise RuntimeError('Unknown type "%s" - ' % type +
                                'add to kind map and try again')
@@ -857,8 +862,8 @@ def f2py_type(type, attributes=None):
         pytype = strip_type(type).title()
     else:
         pytype = "unknown"
-    dims = filter(lambda x: x.startswith("dimension"),
-                  attributes)
+    dims = list(filter(lambda x: x.startswith("dimension"),
+                  attributes))
     if len(dims) > 0:
         pytype += " array"
     return pytype

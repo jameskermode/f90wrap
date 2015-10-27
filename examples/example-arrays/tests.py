@@ -32,15 +32,15 @@ class TestExample(unittest.TestCase):
         np.testing.assert_allclose(x/(y+1.0), br)
 
     def test_basic(self):
-        self.do_array_stuff(1e3)
+        self.do_array_stuff(1000)
 
     def test_verybig_array(self):
-        self.do_array_stuff(1e6)
+        self.do_array_stuff(1000000)
 
     def test_square(self):
-        n = 1e5
-        x = np.arange(n)
-        y = np.arange(n)
+        n = 100000
+        x = np.arange(n, dtype=float)
+        y = np.arange(n, dtype=float)
         br = np.zeros((n,), order='F')
         co = np.zeros((4, n), order='F')
 
