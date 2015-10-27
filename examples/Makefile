@@ -1,4 +1,4 @@
-EXAMPLES = mockderivetype example2 example-arrays example-derivedtypes cylinder
+EXAMPLES = mockderivetype example2 example-arrays example-derivedtypes cylinder elemental passbyreference
 
 test:
 	for example in ${EXAMPLES}; do \

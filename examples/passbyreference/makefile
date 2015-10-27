@@ -8,3 +8,5 @@ f90wrap_mycode.f90 : mycode.F90
 mycode.o : mycode.F90
 	gfortran -c mycode.F90
 
+test:
+	python example_mymodule.py

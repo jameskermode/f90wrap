@@ -43,7 +43,7 @@ endif
 #=======================================================================
 #     Note: right now, all source files for creating the library (.a)
 #           AND the python interface generator are the same. In a realistic
-#           situation, we would give python access to only SELECT 
+#           situation, we would give python access to only SELECT
 #           source files (e.g. top level subroutines) and leave the rest
 #           of the fortran code as "hidden" from python, since low-level
 #           routines should generally not be accessed once verified
@@ -64,7 +64,7 @@ LIBSRC_OBJECTS   = $(addsuffix .o,${LIBSRC_SOURCES})
 #same files, except with fpp extension
 LIBSRC_FPP_FILES = $(addsuffix .fpp,${LIBSRC_SOURCES})
 
-#fpp files : address 
+#fpp files : address
 SRC2_FILES       = $(addprefix '../',$(LIBSRC_FPP_FILES))
 
 kmap_file        = ../kind_map
@@ -89,7 +89,7 @@ clean:
 	rm -rf $(wrap_dir)/*
 	rm -rf mockdt* *.so
 	rm -rf mockdtpkg
-	rm ${LIBSRC_OBJECTS} libsrc.a $(LIBSRC_FPP_FILES) 
+	rm ${LIBSRC_OBJECTS} libsrc.a $(LIBSRC_FPP_FILES)
 
 .F90.o:
 	${F90} ${F90FLAGS} ${SOFLAGS} -c $< -o $@
@@ -119,17 +119,17 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 #=======================================================================
 
 _mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
-	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P 
+	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P
 	f2py-f90wrap --fcompiler=$(FCOMP) -I$(moddir) --build-dir . -c -m _mockdtpkg -L. -lsrc $(wrap_dir)/f90wrap*.f90
 	rm -rf mockdtpkg
 	mv $(wrap_dir)/mockdtpkg .
-	mv _mockdtpkg.so mockdtpkg/
+	#mv _mockdtpkg.so mockdtpkg/
 
 #=======================================================================
 #           All shared objects
 #=======================================================================
 
-all_so: _mockdt.so _mockdtpkg.so 
+all_so: _mockdt.so _mockdtpkg.so
 
 #=======================================================================
 #           final compilation and running of python script

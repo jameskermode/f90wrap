@@ -39,8 +39,8 @@ class TestExample(unittest.TestCase):
 
     def test_square(self):
         n = 100000
-        x = np.arange(n)
-        y = np.arange(n)
+        x = np.arange(n, dtype=float)
+        y = np.arange(n, dtype=float)
         br = np.zeros((n,), order='F')
         co = np.zeros((4, n), order='F')
 
