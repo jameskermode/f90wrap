@@ -460,6 +460,14 @@ except ValueError:
             dct['selfdot'] = ''
             dct['selfcomma'] = ''
 
+        # check for name clashes with pre-existing routines
+        if hasattr(node, 'procedures'):
+            procs = [proc.name for proc in node.procedures]
+            if dct['el_name_get'] in procs:
+                dct['el_name_get'] += '_'
+            if dct['el_name_set'] in procs:
+                dct['el_name_set'] += '_'
+
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
         self.write(format_doc_string(el))
@@ -527,6 +535,14 @@ except ValueError:
             dct['self'] = ''
             dct['selfdot'] = ''
             dct['selfcomma'] = ''
+
+        # check for name clashes with pre-existing routines
+        if hasattr(node, 'procedures'):
+            procs = [proc.name for proc in node.procedures]
+            if dct['el_name_get'] in procs:
+                dct['el_name_get'] += '_'
+            if dct['el_name_set'] in procs:
+                dct['el_name_set'] += '_'
 
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()

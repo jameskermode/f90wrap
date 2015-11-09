@@ -41,7 +41,13 @@ class BaseTests(object):
 
     def test_set_global_string(self):
         self.lib.set_global_string(self.n, self.text)
-        self.assertEqual(self.lib.global_string[:self.n], self.text)
+        if hasattr(self.lib, 'global_string'):
+            # module mode, has global_string property
+            self.assertEqual(self.lib.global_string.strip(), self.text)
+        else:
+            # package mode, has get_global_string accessor
+            self.assertEqual(self.lib.get_global_string().strip(), self.text)
+
 
     # string on an inout variable does not work
     # expectedFailure only added to unittest module in Python 2.7

@@ -5,7 +5,7 @@
 CC       = gcc
 F90      = gfortran
 #F90      = ifort
-PYTHON   = python2
+PYTHON   = python
 
 #=======================================================================
 #                     additional flags
