@@ -15,12 +15,13 @@ import ExampleStrings_pkg
 
 
 def generate_string(n):
-    return ''.join([chr(k) for k in range(34,n+34)])
+    s = ''.join([chr(k) for k in range(34,n+34)])
+    return s.encode('latin-1')
 
 
 class BaseTests(object):
 
-    text = '-_-::this is a string with ASCII, / and 123...::-_-'
+    text = b'-_-::this is a string with ASCII, / and 123...::-_-'
     n = len(text)
 
     def test_func_generate_string(self):
