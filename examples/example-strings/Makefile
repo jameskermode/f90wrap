@@ -134,6 +134,6 @@ _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90
 
 
-test:
+test: _${PYTHON_MODN}.so _${PYTHON_MODN}_pkg.so
 	${PYTHON} tests.py
 
