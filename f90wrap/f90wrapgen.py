@@ -465,10 +465,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
         """
-        print(dims)
-        print(ArrayDimensionConverter.split_dimensions(dims))
         if element.type.startswith('type') and len(ArrayDimensionConverter.split_dimensions(dims)) != 1:
-            return
+            return False
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, 'get')
         self._write_array_getset_item(t, element, sizeof_fortran_t, 'set')

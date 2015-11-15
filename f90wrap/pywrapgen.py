@@ -20,9 +20,9 @@ import os
 import logging
 import re
 
+from f90wrap.transform import ArrayDimensionConverter
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
-
 
 def format_call_signature(node):
     if isinstance(node, ft.Procedure):
@@ -226,9 +226,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 else:
                     self.write_scalar_wrappers(node, el, properties)
             elif el.type.startswith('type'):  # array of derived types
-                self.write_dt_array_wrapper(node, el, dims)
+                self.write_dt_array_wrapper(node, el, dims[0])
             else:
-                self.write_sc_array_wrapper(node, el, dims, properties)
+                self.write_sc_array_wrapper(node, el, dims[0], properties)
         self.write_repr(node, properties)
 
         # insert import statements at the beginning of module
@@ -420,7 +420,7 @@ except ValueError:
                 else:
                     self.write_scalar_wrappers(node, el, properties)
             elif el.type.startswith('type'):  # array of derived types
-                self.write_dt_array_wrapper(node, el, dims)
+                self.write_dt_array_wrapper(node, el, dims[0])
             else:
                 self.write_sc_array_wrapper(node, el, dims, properties)
         self.write_repr(node, properties)
@@ -619,6 +619,9 @@ return %(el_name)s""" % dct)
 
 
     def write_dt_array_wrapper(self, node, el, dims):
+        if el.type.startswith('type') and len(ArrayDimensionConverter.split_dimensions(dims)) != 1:
+            return
+
         func_name = 'init_array_%s' % el.name
         node.dt_array_initialisers.append(func_name)
         cls_name = ft.strip_type(el.type).title()
