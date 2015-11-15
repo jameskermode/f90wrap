@@ -25,6 +25,7 @@ import os
 
 import numpy as np
 
+from f90wrap.transform import ArrayDimensionConverter
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
@@ -360,9 +361,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
             elif el.type.startswith('type'):  # array of derived types
-                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+                self._write_dt_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
             else:
-                self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+                self._write_sc_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
 
         return self.generic_visit(node)
 
@@ -409,7 +410,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('integer, intent(out) :: nd')
         self.write('integer, intent(out) :: dtype')
         try:
-            rank = dims[0].count(',') + 1
+            rank = dims.count(',') + 1
             if el.type.startswith('character'): rank += 1
         except ValueError:
             rank = 1
@@ -448,7 +449,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
     def _write_dt_array_wrapper(self, t, element, dims,
                                sizeof_fortran_t):
         """
-        Write fortran get/set/len routines for a derived-type array.
+        Write fortran get/set/len routines for a (1-dimensional) derived-type array.
 
         Parameters
         ----------
@@ -464,7 +465,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
         """
-        if element.type.startswith('type') and len(dims) != 1:
+        print(dims)
+        print(ArrayDimensionConverter.split_dimensions(dims))
+        if element.type.startswith('type') and len(ArrayDimensionConverter.split_dimensions(dims)) != 1:
             return
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, 'get')
@@ -521,7 +524,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('subroutine %s%s__array_%sitem__%s(%s, i, %s)' % (self.prefix, t.name,
                                                                      getset, el.name,
                                                                      this,
-                                                                     el.name))
+                                                                     el.name+'item'))
         self.indent()
         self.write()
         extra_uses = {}
@@ -550,7 +553,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         else:
             array_name = '%s_%s' % (t.name, el.name)
         self.write('integer, intent(in) :: i')
-        self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name, sizeof_fortran_t))
+        self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name+'item', sizeof_fortran_t))
         self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
         self.write()
         if isinstance(t, ft.Type):
@@ -569,9 +572,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         if getset == "get":
             self.write('%s_ptr%%p => %s(i)' % (el.name, array_name))
-            self.write('%s = transfer(%s_ptr,%s)' % (el.name, el.name, el.name))
+            self.write('%s = transfer(%s_ptr,%s)' % (el.name+'item', el.name, el.name))
         else:
-            self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name, el.name))
+            self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name+'item', el.name))
             self.write('%s(i) = %s_ptr%%p' % (array_name, el.name))
 
         self.dedent()
