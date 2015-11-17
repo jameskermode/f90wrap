@@ -54,6 +54,8 @@ attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
 type_end = re.compile('^end\s*type', re.IGNORECASE)
 
+dummy_types_re = re.compile('recursive|pure|elemental', re.IGNORECASE)
+
 types = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
 a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private'
 
@@ -69,8 +71,6 @@ iface_end = re.compile('^end\s*interface', re.IGNORECASE)
 
 subt = re.compile(r'^(recursive\s+)?subroutine', re.IGNORECASE)
 subt_end = re.compile(r'^end\s*subroutine\s*(\w*)', re.IGNORECASE)
-
-recursive = re.compile('recursive', re.IGNORECASE)
 
 funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
 # funct       = re.compile('^function',re.IGNORECASE)
@@ -587,13 +587,12 @@ def check_subt(cl, file, grab_hold_doc=True):
         out.filename = file.filename
         out.lineno = file.lineno
 
-        # Check if recursive
-
-        if re.match(recursive, cl) != None:
-            out.attributes.append('recursive')
+        # Check if recursive, elemental or pure
+        m = re.match(dummy_types_re, cl)
+        if m != None:
+            out.attributes.append(m.group())
 
         # Get subt name
-
         cl = subt.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
 
@@ -751,18 +750,17 @@ def check_funct(cl, file, grab_hold_doc=True):
         out.ret_val.filename = out.filename
         out.ret_val.lineno = out.lineno
 
-        # Check if recursive
+        # Check if recursive, elemental or pure
 
-        if re.search(recursive, cl) != None:
-            out.attributes.append('recursive')
-            cl = recursive.sub('', cl)
+        m = re.search(dummy_types_re, cl)
+        if m != None:
+            out.attributes.append(m.group())
+            cl = dummy_types_re.sub('', cl)
 
         # Get return type, if present
-
         cl = cl.strip()
         if re.match(types_re, cl) != None:
             out.ret_val.type = re.match(types_re, cl).group()
-
 
         # jrk33 - Does function header specify alternate name of
         # return variable?
