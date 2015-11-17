@@ -1,5 +1,5 @@
 EXAMPLES = mockderivetype example2 arrays derivedtypes \
-	cylinder elemental passbyreference strings
+	cylinder elemental passbyreference strings type_bn
 
 test:
 	for example in ${EXAMPLES}; do \
