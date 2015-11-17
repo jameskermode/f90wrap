@@ -1,0 +1,12 @@
+{'character': {'': 'char', '1': 'char'},
+ 'complex': {'': 'complex_float',
+             '16': 'complex_long_double',
+             '8': 'complex_double',
+             'dp': 'complex_double'},
+ 'integer': {'4': 'int', '8': 'long_long', 'dp': 'long_long'},
+ 'real': {'': 'float',
+          '4': 'float',
+          '8': 'double',
+          'dp': 'double',
+          'idp': 'double',
+          'isp': 'float'}}
