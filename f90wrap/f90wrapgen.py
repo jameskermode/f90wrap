@@ -117,10 +117,10 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
             elif el.type.startswith('type'):  # array of derived types
-                self._write_dt_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+                self._write_dt_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
             else:
                 if 'parameter' not in el.attributes:
-                    self._write_sc_array_wrapper(node, el, dims, self.sizeof_fortran_t)
+                    self._write_sc_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
 
         self.write('! End of module %s defined in file %s' % (node.name, node.filename))
         self.write()
@@ -410,8 +410,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('integer, intent(out) :: nd')
         self.write('integer, intent(out) :: dtype')
         try:
-            rank = dims.count(',') + 1
-            if el.type.startswith('character'): rank += 1
+            rank = len(ArrayDimensionConverter.split_dimensions(dims))
+            if el.type.startswith('character'):
+                rank += 1
         except ValueError:
             rank = 1
         self.write('integer, dimension(10), intent(out) :: dshape')
@@ -466,7 +467,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             The size, in bytes, of a pointer to a fortran derived type ??
         """
         if element.type.startswith('type') and len(ArrayDimensionConverter.split_dimensions(dims)) != 1:
-            return False
+            return
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, 'get')
         self._write_array_getset_item(t, element, sizeof_fortran_t, 'set')
@@ -570,7 +571,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         if getset == "get":
             self.write('%s_ptr%%p => %s(i)' % (el.name, array_name))
-            self.write('%s = transfer(%s_ptr,%s)' % (el.name+'item', el.name, el.name))
+            self.write('%s = transfer(%s_ptr,%s)' % (el.name+'item', el.name, el.name+'item'))
         else:
             self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name+'item', el.name))
             self.write('%s(i) = %s_ptr%%p' % (array_name, el.name))
