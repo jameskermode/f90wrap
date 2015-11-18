@@ -15,3 +15,6 @@ leveltwomod.py
 use_a_type.py
 org.eclipse.core.resources.prefs
 docs/_build
+src.*
+.f2py_f2cmap
+.ipynb_checkpoints
