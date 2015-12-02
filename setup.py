@@ -32,6 +32,10 @@ except ImportError:
     sys.stderr.write('Numpy 1.3 (http://www.numpy.org) or later needed to use this package\n')
     sys.exit(1)
 
+try:
+    import setuptools
+except ImportError:
+    pass
 from numpy.distutils.core import setup, Extension
 from numpy.distutils.system_info import get_info
 
