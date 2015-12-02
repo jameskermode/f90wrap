@@ -1,13 +1,20 @@
+CC = gcc
+F90 = gfortran
+FPP = gfortran -E
+F90FLAGS = -x f95-cpp-input -fPIC
+CFLAGS = -fPIC
+
 all: test
 
-mod:
+example.o: example.f90
+	$(F90) $(F90FLAGS) -c $<
+
+mod: example.o
 	f90wrap -m example ./example.f90
-	gfortran -c example.f90 -fPIC
 	f2py-f90wrap -c -m _example f90wrap_example.f90 example.o
 
-package:
+package: example.o
 	f90wrap -P -m examplepkg ./example.f90
-	gfortran -c example.f90 -fPIC
 	f2py-f90wrap -c -m _examplepkg f90wrap_example.f90 example.o
 
 test: mod package
