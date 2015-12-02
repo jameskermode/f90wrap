@@ -2,12 +2,12 @@ all: test
 
 mod:
 	f90wrap -m example ./example.f90
-	gfortran -c example.f90
+	gfortran -c example.f90 -fPIC
 	f2py-f90wrap -c -m _example f90wrap_example.f90 example.o
 
 package:
 	f90wrap -P -m examplepkg ./example.f90
-	gfortran -c example.f90
+	gfortran -c example.f90 -fPIC
 	f2py-f90wrap -c -m _examplepkg f90wrap_example.f90 example.o
 
 test: mod package
