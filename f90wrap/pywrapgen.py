@@ -376,10 +376,19 @@ except ValueError:
         # first output all the procedures within the interface
         self.generic_visit(node)
 
+        proc_names = []
+        for proc in node.procedures:
+            proc_name = ''
+            if not self.make_package:
+                proc_name += proc.mod_name.title()+'.'
+            if hasattr(proc, 'method_name'):
+                proc_name += proc.method_name
+            else:
+                proc_name += proc.name
+            proc_names.append(proc_name)
+
         dct = dict(intf_name=node.name,
-                   proc_names='[' + ', '.join([hasattr(proc, 'method_name')
-                                               and proc.method_name or proc.name
-                                               for proc in node.procedures]) + ']')
+                   proc_names='[' + ', '.join(proc_names) + ']')
         if not self.make_package:
             # procedures outside of derived types become static methods
             self.write('@staticmethod')
