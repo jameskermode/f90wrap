@@ -628,7 +628,6 @@ def check_subt(cl, file, grab_hold_doc=True):
                 del(arglt[len(arglt) - 1])
                 for a in arglt:
                     argl.append(a)
-                print argl
 
         else:
             argl = []
