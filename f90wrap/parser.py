@@ -621,11 +621,14 @@ def check_subt(cl, file, grab_hold_doc=True):
 
             while cl.strip() == '' or re.search('&', cl) != None:
                 cl = file.next()
+                if cl.startswith('_COMMENT'):
+                    cl = file.next()
                 if cl.strip() == '': continue
                 arglt = re.split('[\W]+', cl)
                 del(arglt[len(arglt) - 1])
                 for a in arglt:
-                    argl.append()
+                    argl.append(a)
+                print argl
 
         else:
             argl = []
@@ -797,6 +800,8 @@ def check_funct(cl, file, grab_hold_doc=True):
 
             while cl.strip() == '' or re.search('&', cl) != None:
                 cl = file.next()
+                if cl.startswith('_COMMENT'):
+                    cl = file.next()
                 if cl.strip() == '':
                     continue
                 arglt = re.split('[\W]+', cl)

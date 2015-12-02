@@ -183,7 +183,7 @@ USAGE
         parse_tree = fparse.read_files(args.files)
         print('done parsing source.')
         print()
-        tree = copy.deepcopy(parse_tree)  # Why?
+        tree = copy.deepcopy(parse_tree)
 
         types = fortran.find_types(tree)
         print('Derived types detected in Fortran source files:')
