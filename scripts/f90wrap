@@ -96,7 +96,7 @@ USAGE
                             help="""Names of constructor routines.""")
         parser.add_argument('-D', '--destructors', nargs="*", default=('finalise', 'deallocate'),
                             help="""Names of destructor routines.""")
-        parser.add_argument('-k', '--kind-map', 
+        parser.add_argument('-k', '--kind-map',
                             help="""File containting Python dictionary in f2py_f2cmap format""")
         parser.add_argument('-s', '--string-lengths',
                             help=""""File containing Python dictionary mapping string length names to values""")
@@ -114,6 +114,8 @@ USAGE
                             help="Name of output extension module (without .so extension).")
         parser.add_argument('-M', '--move-methods', action='store_true',
                             help="Convert routines with derived type instance as first agument into class methods")
+        parser.add_argument('--shorten-routine-names', action='store_true',
+                            help="Remove type name prefix from routine names, e.g. cell_symmetrise() -> symmetrise()")
         parser.add_argument('-P', '--package', action='store_true',
                             help="Generate a Python package instead of a single module")
         parser.add_argument('-a', '--abort-func', default='f90wrap_abort',
@@ -145,7 +147,7 @@ USAGE
         print('Destructors:')
         print(args.destructors)
         print()
-        
+
         short_names = {}
         if args.short_names:
             short_names = eval(open(args.short_names).read())
@@ -153,7 +155,7 @@ USAGE
         pprint.pprint(short_names)
         print()
 
-        string_lengths = {}        
+        string_lengths = {}
         if args.string_lengths:
             string_lengths = eval(open(args.string_lengths).read())
         print('String lengths read from file "%s":' % args.string_lengths)
@@ -166,7 +168,7 @@ USAGE
         print('Initialisation lines for derived types read from file "%s":' % args.init_lines)
         pprint.pprint(init_lines)
         print()
-    
+
         argument_name_map = {}
         if args.argument_name_map:
             argument_name_map = eval(open(args.argument_name_map).read())
@@ -222,14 +224,15 @@ USAGE
                                                kept_subs,
                                                kept_mods,
                                                argument_name_map,
-                                               args.move_methods)
+                                               args.move_methods,
+                                               args.shorten_routine_names)
 
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
 
         py_tree = tf.transform_to_py_wrapper(py_tree, types)
 
-        f90_tree = tf.transform_to_f90_wrapper(f90_tree, types, 
+        f90_tree = tf.transform_to_f90_wrapper(f90_tree, types,
                                                args.callback,
                                                args.constructors,
                                                args.destructors,

@@ -559,12 +559,14 @@ class ArrayDimensionConverter(ft.FortranVisitor):
 
 class MethodFinder(ft.FortranTransformer):
 
-    def __init__(self, types, constructor_names, destructor_names, short_names, move_methods):
+    def __init__(self, types, constructor_names, destructor_names, short_names,
+                 move_methods, shorten_routine_names=True):
         self.types = types
         self.constructor_names = constructor_names
         self.destructor_names = destructor_names
         self.short_names = short_names
         self.move_methods = move_methods
+        self.shorten_routine_names = shorten_routine_names
 
     def visit_Interface(self, node):
         new_procs = []
@@ -591,21 +593,22 @@ class MethodFinder(ft.FortranTransformer):
             # procedure is not a method, so leave it alone
             return node
 
-        # remove prefix from subroutine name to get method name
         typ = self.types[node.arguments[0].type]
         node.method_name = node.name
-        prefices = [typ.name + '_']
-        if typ.name in self.short_names:
-            prefices.append(self.short_names[typ.name] + '_')
-        for prefix in prefices:
-            if node.name.startswith(prefix):
-                node.method_name = node.name[len(prefix):]
+        if self.shorten_routine_names:
+            # remove prefix from subroutine name to get method name
+            prefices = [typ.name + '_']
+            if typ.name in self.short_names:
+                prefices.append(self.short_names[typ.name] + '_')
+            for prefix in prefices:
+                if node.name.startswith(prefix):
+                    node.method_name = node.name[len(prefix):]
 
         # label constructors and destructors
-        if node.method_name in self.constructor_names:
-            node.attributes.append('constructor')
-        elif node.method_name in self.destructor_names:
+        if any(node.method_name.endswith(dn) for dn in self.destructor_names):
             node.attributes.append('destructor')
+        elif any(node.method_name.endswith(cn) for cn in self.constructor_names):
+            node.attributes.append('constructor')
 
         if (self.move_methods or
             'constructor' in node.attributes or
@@ -949,7 +952,7 @@ class SetInterfaceProcedureCallNames(ft.FortranVisitor):
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
                                  only_subs, only_mods, argument_name_map,
-                                 move_methods):
+                                 move_methods, shorten_routine_names):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
@@ -965,7 +968,8 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
-    tree = MethodFinder(types, constructors, destructors, short_names, move_methods).visit(tree)
+    tree = MethodFinder(types, constructors, destructors, short_names,
+                        move_methods, shorten_routine_names).visit(tree)
     SetInterfaceProcedureCallNames().visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
