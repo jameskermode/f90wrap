@@ -12,7 +12,6 @@ Submodules
    f90wrap.fortrantype
    f90wrap.latex
    f90wrap.parser
-   f90wrap.patch_f2py
    f90wrap.pywrapgen
    f90wrap.transform
 

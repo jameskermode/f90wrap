@@ -4,7 +4,7 @@ API
 
 .. toctree::
    :maxdepth: 2
-   
+
    api_docs/fortran
    api_docs/parser
    api_docs/transform
@@ -12,5 +12,3 @@ API
    api_docs/f90wrapgen
    api_docs/pywrapgen
    api_docs/fortrantype
-   api_docs/patch_f2py
-   

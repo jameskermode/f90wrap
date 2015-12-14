@@ -8,7 +8,7 @@ Quick overview
 
 To use `f90wrap` to wrap a set of Fortran 90 source files and produce
 wrappers suitable for input to `f2py` use::
-	
+
 	f90wrap -m MODULE F90_FILES
 
 where `MODULE` is the name of the Python module you want to produce
@@ -24,7 +24,7 @@ with the `f2py`-generated module to give a more Pythonic interface.
 One Fortran 90 wrapper file is written for each source file, named
 :file:`f90wrap_F90_FILE.f90`, plus possibly an extra file named
 :file:`f90wrap_toplevel.f90` if there are any subroutines or functions
-defined outside of modules in `F90_FILES`. 
+defined outside of modules in `F90_FILES`.
 
 To use `f2py` to compile these wrappers into an extension module,
 use::
@@ -38,7 +38,7 @@ How f90wrap works
 -----------------
 
 There are five steps in the process of wrapping a Fortran 90
-routine to allow it to be called from Python. 
+routine to allow it to be called from Python.
 
 1. The Fortran source files are scanned, building up an AST (:mod:`ast
    <abstract symbol tree>`) which describes all the modules, types,
@@ -48,7 +48,7 @@ routine to allow it to be called from Python.
    which should not be wrapped (e.g. private symbols in modules,
    routines with arguments of a derived type not defined in the
    project, etc.)
-   
+
 3. The :class:`~f90wrap.f90wrapgen.F90WrapperGenerator` class is used to
    write a simplified Fortran 90 prototype for each routine, with
    derived type arguments replaced by integer arrays containing a
@@ -57,7 +57,7 @@ routine to allow it to be called from Python.
    true Fortran derived type data structures to be passed back and
    forth between Python and Fortran.
 
-4. `f2py` is used to combine the F90 wrappers and the original 
+4. `f2py` is used to combine the F90 wrappers and the original
    compiled functions into a Python extension module (optionally,
    `f2py` can be replaced by :ref:`f2py-f90wrap`, a slightly modified
    version which adds support for exception handling and interruption
@@ -118,10 +118,10 @@ features:
   1. Allow the Fortran :c:func:`present` function to work correctly
      with optional arguments.  If an argument to an f2py wrapped
      function is optional and is not given, replace it with ``NULL``.
-     
+
   2. Allow Fortran routines to raise a :exc:`RuntimeError` exception
      with a message by calling an external function
-     :c:func:`quippy_error_abort`. This is implemented using a
+     :c:func:`f90wrap_error_abort`. This is implemented using a
      :c:func:`setjmp`/ :c:func:`longjmp` trap.
 
   3. Allow Fortran routines to be interrupted with :kbd:`Ctrl+C` by
