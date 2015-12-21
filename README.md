@@ -89,7 +89,7 @@ that introduces the following features:
     optional arguments. If an argument to an f2py wrapped function is
     optional and is not given, replace it with `NULL`.
 2.  Allow Fortran routines to raise a RuntimeError exception with a
-    message by calling an external function `f90wrap_error_abort`().
+    message by calling an external function `f90wrap_abort`().
     This is implemented using a `setjmp()/longjmp()` trap.
 3.  Allow Fortran routines to be interrupted with `Ctrl+C` by installing
     a custom interrupt handler before the call into Fortran is made.
