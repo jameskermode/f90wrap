@@ -44,10 +44,10 @@ from f90wrap.fortran import *
 # Define some regular expressions
 
 module = re.compile('^module', re.IGNORECASE)
-module_end = re.compile('^end\s*module', re.IGNORECASE)
+module_end = re.compile('^end\s*module|end$', re.IGNORECASE)
 
 program = re.compile('^program', re.IGNORECASE)
-program_end = re.compile('^end\s*program', re.IGNORECASE)
+program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
 
 attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
 
@@ -70,11 +70,11 @@ iface = re.compile('^interface', re.IGNORECASE)
 iface_end = re.compile('^end\s*interface', re.IGNORECASE)
 
 subt = re.compile(r'^(recursive\s+)?subroutine', re.IGNORECASE)
-subt_end = re.compile(r'^end\s*subroutine\s*(\w*)', re.IGNORECASE)
+subt_end = re.compile(r'^end\s*subroutine\s*(\w*)|end$', re.IGNORECASE)
 
 funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
 # funct       = re.compile('^function',re.IGNORECASE)
-funct_end = re.compile('^end\s*function\s*(\w*)', re.IGNORECASE)
+funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
 prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)')
 
@@ -692,7 +692,7 @@ def check_subt(cl, file, grab_hold_doc=True):
             if m == None:
                 cl = file.next()
                 continue
-            elif m.group(1).lower() == out.name.lower() or m.group(1) == '':
+            else:
                 break
 
             # If no joy, get next line
@@ -881,7 +881,7 @@ def check_funct(cl, file, grab_hold_doc=True):
                 cl = file.next()
                 continue
 
-            elif m.group(1).lower() == out.name.lower() or m.group(1) == '':
+            else:
                 break
 
             cl = file.next()
