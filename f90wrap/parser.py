@@ -52,7 +52,7 @@ program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
 attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
-type_end = re.compile('^end\s*type', re.IGNORECASE)
+type_end = re.compile('^end\s*type|end$', re.IGNORECASE)
 
 dummy_types_re = re.compile('recursive|pure|elemental', re.IGNORECASE)
 
@@ -67,7 +67,7 @@ whitespace = re.compile(r'^\s*')  # Initial whitespace
 c_ret = re.compile(r'\r')
 
 iface = re.compile('^interface', re.IGNORECASE)
-iface_end = re.compile('^end\s*interface', re.IGNORECASE)
+iface_end = re.compile('^end\s*interface|end$', re.IGNORECASE)
 
 subt = re.compile(r'^(recursive\s+)?subroutine', re.IGNORECASE)
 subt_end = re.compile(r'^end\s*subroutine\s*(\w*)|end$', re.IGNORECASE)
