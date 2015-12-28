@@ -228,17 +228,37 @@ class F90File(object):
                 pass
             else:
                 cont_index = cline.find('&')
-                comm_index = cline.find('!')
-                while (cont_index != -1 and (comm_index == -1 or comm_index > cont_index)):
-                    cont = cline[:cont_index].strip()
+                try:
                     cont2 = self.lines[1].strip()
                     if cont2.startswith('&'):
-                        cont2 = cont2[1:]
+                        cont2_index = 0
+                    else:
+                        cont2_index = -1
+                except:
+                    cont2_index = -1
+                comm_index = cline.find('!')
+                while (cont_index != -1 and (comm_index == -1 or comm_index > cont_index)) or \
+                      (cont2_index != -1):
+                    if cont_index != -1:
+                        cont = cline[:cont_index].strip()
+                    else:
+                        cont = cline.strip()
+                    cont2 = self.lines[1].strip()
+                    if cont2.startswith('&'):
+                        cont2 = cont2[1:].strip()
                     cont = cont + cont2
                     self.lines = [cont] + self.lines[2:]
                     self._lineno = self._lineno + 1
                     cline = self.lines[0].strip()
                     cont_index = cline.find('&')
+                    try:
+                        cont2 = self.lines[1].strip()
+                        if cont2.startswith('&'):
+                            cont2_index = 0
+                        else:
+                            cont2_index = -1
+                    except:
+                        cont2_index = -1
 
             # split by '!', if necessary
             comm_index = cline.find('!')
@@ -262,6 +282,7 @@ class F90File(object):
         if cline == '':
             return None
         else:
+            print 'RETURN', cline
             return cline
 
 
