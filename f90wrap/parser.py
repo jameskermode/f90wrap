@@ -282,7 +282,6 @@ class F90File(object):
         if cline == '':
             return None
         else:
-            print 'RETURN', cline
             return cline
 
 
