@@ -44,15 +44,15 @@ from f90wrap.fortran import *
 # Define some regular expressions
 
 module = re.compile('^module', re.IGNORECASE)
-module_end = re.compile('^end\s*module', re.IGNORECASE)
+module_end = re.compile('^end\s*module|end$', re.IGNORECASE)
 
 program = re.compile('^program', re.IGNORECASE)
-program_end = re.compile('^end\s*program', re.IGNORECASE)
+program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
 
 attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
-type_end = re.compile('^end\s*type', re.IGNORECASE)
+type_end = re.compile('^end\s*type|end$', re.IGNORECASE)
 
 dummy_types_re = re.compile('recursive|pure|elemental', re.IGNORECASE)
 
@@ -67,14 +67,14 @@ whitespace = re.compile(r'^\s*')  # Initial whitespace
 c_ret = re.compile(r'\r')
 
 iface = re.compile('^interface', re.IGNORECASE)
-iface_end = re.compile('^end\s*interface', re.IGNORECASE)
+iface_end = re.compile('^end\s*interface|end$', re.IGNORECASE)
 
 subt = re.compile(r'^(recursive\s+)?subroutine', re.IGNORECASE)
-subt_end = re.compile(r'^end\s*subroutine\s*(\w*)', re.IGNORECASE)
+subt_end = re.compile(r'^end\s*subroutine\s*(\w*)|end$', re.IGNORECASE)
 
 funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
 # funct       = re.compile('^function',re.IGNORECASE)
-funct_end = re.compile('^end\s*function\s*(\w*)', re.IGNORECASE)
+funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
 prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)')
 
@@ -228,17 +228,37 @@ class F90File(object):
                 pass
             else:
                 cont_index = cline.find('&')
-                comm_index = cline.find('!')
-                while (cont_index != -1 and (comm_index == -1 or comm_index > cont_index)):
-                    cont = cline[:cont_index].strip()
+                try:
                     cont2 = self.lines[1].strip()
                     if cont2.startswith('&'):
-                        cont2 = cont2[1:]
+                        cont2_index = 0
+                    else:
+                        cont2_index = -1
+                except:
+                    cont2_index = -1
+                comm_index = cline.find('!')
+                while (cont_index != -1 and (comm_index == -1 or comm_index > cont_index)) or \
+                      (cont2_index != -1):
+                    if cont_index != -1:
+                        cont = cline[:cont_index].strip()
+                    else:
+                        cont = cline.strip()
+                    cont2 = self.lines[1].strip()
+                    if cont2.startswith('&'):
+                        cont2 = cont2[1:].strip()
                     cont = cont + cont2
                     self.lines = [cont] + self.lines[2:]
                     self._lineno = self._lineno + 1
                     cline = self.lines[0].strip()
                     cont_index = cline.find('&')
+                    try:
+                        cont2 = self.lines[1].strip()
+                        if cont2.startswith('&'):
+                            cont2_index = 0
+                        else:
+                            cont2_index = -1
+                    except:
+                        cont2_index = -1
 
             # split by '!', if necessary
             comm_index = cline.find('!')
@@ -692,7 +712,7 @@ def check_subt(cl, file, grab_hold_doc=True):
             if m == None:
                 cl = file.next()
                 continue
-            elif m.group(1).lower() == out.name.lower() or m.group(1) == '':
+            else:
                 break
 
             # If no joy, get next line
@@ -881,7 +901,7 @@ def check_funct(cl, file, grab_hold_doc=True):
                 cl = file.next()
                 continue
 
-            elif m.group(1).lower() == out.name.lower() or m.group(1) == '':
+            else:
                 break
 
             cl = file.next()
