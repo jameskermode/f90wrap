@@ -195,7 +195,7 @@ Contributors
 ------------
 
 - Steven Murray [steven-murray](https://github.com/steven-murray)
-- Greg Corbett [Gr3gC0rb3tt](https://github.com/Gr3g-C0rb3tt)
+- Greg Corbett  [gregcorbett](https://github.com/gregcorbett)
 - Bob Fischer [citibob](https://github.com/citibob)
 - David Verelst [davidovitch](https://github.com/davidovitch)
 - James Orr [jamesorr](https://github.com/jamesorr)
