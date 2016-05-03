@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import copy
 import logging
+import warnings
 import re
 from f90wrap import fortran as ft
 
@@ -215,7 +216,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
             else:
                 # no allocatables or pointers
                 if 'allocatable' in arg.attributes or 'pointer' in arg.attributes:
-                    logging.debug('removing routine %s due to allocatable/pointer arguments' % node.name)
+                    warnings.warn('removing routine %s due to allocatable/pointer arguments' % node.name)
                     return None
 
                 dims = [attrib for attrib in arg.attributes if attrib.startswith('dimension')]
@@ -227,13 +228,13 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
                 # no derived types apart from those in self.types
                 if arg.type.startswith('type') and ft.split_type(arg.type) not in self.types:
-                    logging.debug('removing routine %s due to unsupported derived type %s' %
+                    warnings.warn('removing routine %s due to unsupported derived type %s' %
                                   (node.name, arg.type))
                     return None
 
                 # no arrays of derived types
                 if arg.type.startswith('type') and len(dims) != 0:
-                    logging.debug('removing routine %s due to unsupported derived type array %s' %
+                    warnings.warn('removing routine %s due to unsupported derived type array %s' %
                                   (node.name, arg.type))
                     return None
 
@@ -248,7 +249,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
         # remove optional allocatable/pointer arguments
         if 'allocatable' in node.attributes or 'pointer' in node.attributes:
-            logging.debug('removing optional argument %s due to allocatable/pointer attributes' %
+            warnings.warn('removing optional argument %s due to allocatable/pointer attributes' %
                           node.name)
             return None
 
@@ -256,18 +257,18 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
         # remove optional complex scalar arguments
         if node.type.startswith('complex') and len(dims) == 0:
-            logging.debug('removing optional argument %s as it is a complex scalar' % node.name)
+            warnings.warn('removing optional argument %s as it is a complex scalar' % node.name)
             return None
 
         # remove optional derived types not in self.types
         if node.type.startswith('type') and ft.split_type(node.type) not in self.types:
-            logging.debug('removing optional argument %s due to unsupported derived type %s' %
+            warnings.warn('removing optional argument %s due to unsupported derived type %s' %
                           (node.name, node.type))
             return None
 
         # remove arrays of derived types
         if node.type.startswith('type') and len(dims) != 0:
-            logging.debug('removing optional argument %s due to unsupported derived type array %s' %
+            warnings.warn('removing optional argument %s due to unsupported derived type array %s' %
                           (node.name, node.type))
             return None
 
@@ -288,15 +289,15 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 dims = filter(lambda x: x.startswith('dimension'), element.attributes)
                 # Skip this if the type is not do-able
                 if 'pointer' in element.attributes and dims != []:
-                    logging.debug('removing %s.%s due to pointer attribute' %
+                    warnings.warn('removing %s.%s due to pointer attribute' %
                                   (node.name, element.name))
                     continue
                 if element.type.lower() == 'type(c_ptr)':
-                    logging.debug('removing %s.%s as type(c_ptr) unsupported' %
+                    warnings.warn('removing %s.%s as type(c_ptr) unsupported' %
                                   (node.name, element.name))
                     continue
                 if element.type.startswith('type') and element.type not in self.types:
-                    logging.debug('removing %s.%s as type %s unsupported' %
+                    warnings.warn('removing %s.%s as type %s unsupported' %
                                   (node.name, element.name, element.type))
                     continue
                 elements.append(element)
@@ -316,19 +317,19 @@ class UnwrappablesRemover(ft.FortranTransformer):
             # Get the number of dimensions of the element (if any)
             dims = filter(lambda x: x.startswith('dimension'), element.attributes)
             if 'pointer' in element.attributes and dims != []:
-                logging.debug('removing %s.%s due to pointer attribute' %
+                warnings.warn('removing %s.%s due to pointer attribute' %
                              (node.name, element.name))
                 continue
             if element.type.lower() == 'type(c_ptr)':
-                logging.debug('removing %s.%s as type(c_ptr) unsupported' %
+                warnings.warn('removing %s.%s as type(c_ptr) unsupported' %
                                 (node.name, element.name))
                 continue
             if element.type.startswith('type') and 'target' not in element.attributes:
-                logging.debug('removing %s.%s as missing "target" attribute' %
+                warnings.warn('removing %s.%s as missing "target" attribute' %
                                 (node.name, element.name))
                 continue
             if element.type.startswith('type') and element.type not in self.types:
-                logging.debug('removing %s.%s as type %s unsupported' %
+                warnings.warn('removing %s.%s as type %s unsupported' %
                               (node.name, element.name, element.type))
                 continue
             # parameter arrays in modules live only in the mind of the compiler
