@@ -102,13 +102,11 @@ Notes
 - Unlike standard `f2py`, `f90wrap` converts all `intent(out)` arrays to 
 `intent(in, out)`. This was a deliberate design decision to allow allocatable and automatic arrays of unknown output size to be used. It’s hard in general to work out what size array needs to be allocated, so relying on the the user to pre-allocate from Python is the safest solution.
 - Pointer arguments are not supported
-- Arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array:
+- Arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array and replacing all type_var(i) by type_array_var%item(i):
 
-    `type my_type_array
+    type my_type_array
         type(mytype),dimension(my_dimension) :: item
-    end type my_type_array`
-
-(and replacing all type_var(i) by type_array_var%item(i))
+    end type my_type_array
 
 
 
@@ -130,7 +128,7 @@ allow it to be called from Python.
     representation of a pointer to the derived type, in the manner
     described in
     (Pletzer2008)[http://link.aip.org/link/?CSENFA/10/86/1].
-	This allows opaque references to the
+    This allows opaque references to the
     true Fortran derived type data structures to be passed back and
     forth between Python and Fortran.
 4.  f2py is used to combine the F90 wrappers and the original compiled
