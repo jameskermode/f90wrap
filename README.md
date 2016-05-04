@@ -104,9 +104,6 @@ Notes
 - Arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array:
 
     f2py -c -m _MODULE OBJ_FILES f90wrap_*.f90 *.o
-    type my_type_array
-        type(mytype),dimension(my_dimension) :: item
-    end type my_type_array
 
 (and replacing all type_var(i) by type_array_var%item(i))
 
