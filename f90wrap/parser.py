@@ -615,6 +615,7 @@ def check_subt(cl, file, grab_hold_doc=True):
         # Get subt name
         cl = subt.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
+        logging.debug('    module subroutine checking ' + out.name)
 
         # Test in principle whether we can have a 'do not wrap' list
         if out.name.lower() == 'debugtype_stop_if':
@@ -736,6 +737,8 @@ def check_subt(cl, file, grab_hold_doc=True):
                     len([a for a in ag_temp if a.name.lower() == i.name.lower()]) == 0):
                     ag_temp.append(i)
 
+            implicit_to_explicit_arguments(argl, ag_temp)
+            
             out.arguments = ag_temp
             out.arguments.sort(key=lambda x:argl.index(x.name.lower()))
 
@@ -756,6 +759,21 @@ def check_subt(cl, file, grab_hold_doc=True):
         return [out, cl]
     else:
         return [None, cl]
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+def implicit_to_explicit_arguments(argl, ag_temp):
+
+# Give a Type to the undeclared arguments, following the implicit arguments rule
+    implicit_arguments = set(argl) - set(a.name.lower() for a in ag_temp)
+    for i in implicit_arguments:
+        ag_temp.append(Argument(name=i, doc=None, type=implicit_type_rule(i), attributes=None,filename=None, lineno=None))
+
+
+def implicit_type_rule(var):
+    tp = 'integer' if var[0] in ('i', 'j','k', 'l', 'm', 'n') else 'real'
+    logging.debug('        implicit type of "%s" inferred from its name as "%s"' % (var, tp))
+    return tp
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -795,14 +813,17 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         cl = funct.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
+        logging.debug('    module function checking ' + out.name)
 
         # Default name of return value is function name
         out.ret_val.name = out.name
-
-
+        # If return type not present, infer type from function name
+        if out.ret_val.type == '':
+            out.ret_val.type = implicit_type_rule(out.name)
 
         # Check to see if there are any arguments
 
+        # Find "(" followed by anithing else than ")"
         if re.search(r'\([^\)]+', cl) != None:
             has_args = 1
         else:
@@ -811,9 +832,10 @@ def check_funct(cl, file, grab_hold_doc=True):
         if has_args:
             # get argument list
 
+            # substitue 'consecutive words' by '' in cl, at most 1 time
             cl = re.sub('\w+', '', cl, count=1)
             argl = re.split('[\W]+', cl)
-
+ 
             del(argl[0])
             del(argl[len(argl) - 1])
 
@@ -928,6 +950,8 @@ def check_funct(cl, file, grab_hold_doc=True):
                 out.ret_val = i
             if ret_var != None and i.name.lower().strip() == ret_var.lower().strip():
                 out.ret_val = i
+
+        implicit_to_explicit_arguments(argl, ag_temp)
 
         out.arguments = ag_temp
         out.arguments.sort(key=lambda x:argl.index(x.name.lower()))
@@ -1345,7 +1369,7 @@ def read_files(args):
             # stand-alone subroutines
             check = check_subt(cline, file)
             if check[0] != None:
-                logging.debug('  subroutine ' + check[0].name)
+                # logging.debug('  subroutine ' + check[0].name)
                 root.procedures.append(check[0])
                 cline = check[1]
                 continue
@@ -1353,7 +1377,7 @@ def read_files(args):
             # stand-alone functions
             check = check_funct(cline, file)
             if check[0] != None:
-                logging.debug('  function ' + check[0].name)
+                # logging.debug('  function ' + check[0].name)
                 root.procedures.append(check[0])
                 cline = check[1]
                 continue
