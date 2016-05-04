@@ -772,7 +772,7 @@ def implicit_to_explicit_arguments(argl, ag_temp):
 
 def implicit_type_rule(var):
     tp = 'integer' if var[0] in ('i', 'j','k', 'l', 'm', 'n') else 'real'
-    logging.debug('        implicit type of "{}" inferred from its name as "{}"'.format(var, tp))
+    logging.debug('        implicit type of "%s" inferred from its name as "%s"' % (var, tp))
     return tp
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++
