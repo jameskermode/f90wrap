@@ -103,11 +103,13 @@ Notes
 `intent(in, out)`. This was a deliberate design decision to allow allocatable and automatic arrays of unknown output size to be used. It’s hard in general to work out what size array needs to be allocated, so relying on the the user to pre-allocate from Python is the safest solution.
 - Pointer arguments are not supported.
 - Arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array
+
     ```
     type my_type_array
         type(mytype),dimension(my_dimension) :: item
     end type my_type_array
     ```
+
 and replacing all type_var(i) by type_array_var%item(i).
 
 
