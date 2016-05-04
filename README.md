@@ -109,7 +109,6 @@ Notes
         type(mytype),dimension(my_dimension) :: item
     end type my_type_array
     ```
-
 and replacing all type_var(i) by type_array_var%item(i).
 
 
