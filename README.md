@@ -104,10 +104,10 @@ Notes
 - Pointer arguments are not supported
 - Arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array:
 
-    type my_type_array
+    `type my_type_array
         type(mytype),dimension(my_dimension) :: item
-    end type my_type_array
-    
+    end type my_type_array`
+
 (and replacing all type_var(i) by type_array_var%item(i))
 
 
