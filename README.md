@@ -101,8 +101,9 @@ Notes
 
 - Unlike standard `f2py`, `f90wrap` converts all `intent(out)` arrays to 
 `intent(in, out)`. This was a deliberate design decision to allow allocatable and automatic arrays of unknown output size to be used. It’s hard in general to work out what size array needs to be allocated, so relying on the the user to pre-allocate from Python is the safest solution.
-- Arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array :
+- Arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array:
 
+    f2py -c -m _MODULE OBJ_FILES f90wrap_*.f90 *.o
     type my_type_array
         type(mytype),dimension(my_dimension) :: item
     end type my_type_array
