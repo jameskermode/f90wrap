@@ -797,6 +797,10 @@ def check_funct(cl, file, grab_hold_doc=True):
             out.attributes.append(m.group())
             cl = dummy_types_re.sub('', cl)
 
+        # Get return type, if present
+        cl = cl.strip()
+        if re.match(types_re, cl) != None:
+            out.ret_val.type = re.match(types_re, cl).group()
 
         # jrk33 - Does function header specify alternate name of
         # return variable?
@@ -809,21 +813,17 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         cl = funct.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
-        logging.debug('    module subroutine checking ' + out.name)
+        logging.debug('    module function checking ' + out.name)
 
         # Default name of return value is function name
         out.ret_val.name = out.name
-
-        # Get return type, if present
-        cl = cl.strip()
-        if re.match(types_re, cl) != None:
-            out.ret_val.type = re.match(types_re, cl).group()
-        # If not present, infer type from function name
-        else:
+        # If return type not present, infer type from function name
+        if out.ret_val.type == '':
             out.ret_val.type = implicit_type_rule(out.name)
 
         # Check to see if there are any arguments
 
+        # Find "(" followed by anithing else than ")"
         if re.search(r'\([^\)]+', cl) != None:
             has_args = 1
         else:
@@ -832,9 +832,10 @@ def check_funct(cl, file, grab_hold_doc=True):
         if has_args:
             # get argument list
 
+            # substitue 'consecutive words' by '' in cl, at most 1 time
             cl = re.sub('\w+', '', cl, count=1)
             argl = re.split('[\W]+', cl)
-
+ 
             del(argl[0])
             del(argl[len(argl) - 1])
 
