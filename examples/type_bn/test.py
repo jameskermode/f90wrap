@@ -1,4 +1,5 @@
 import type_bn
 
-type_bn.type = 1
-assert(type_bn.type == 1)
+a = type_bn.module_structure.Type_Face()
+a.type = 1
+assert(a.type == 1)
