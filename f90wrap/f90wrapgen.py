@@ -711,7 +711,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         # If the var that is get/set has the same name as something in uses, then append _
         localvar = el.name
-        if localvar in getattr(el, "uses", []) or localvar in extra_uses:
+        if localvar in getattr(el, "uses", []) or localvar in extra_uses or localvar == "type":
             localvar += "_"
 
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
