@@ -120,7 +120,7 @@ get_array(PyObject *self, PyObject *args)
 
 static PyMethodDef arraydata_methods[] = {
   {"get_array", get_array, METH_VARARGS, 
-   "Make an array from integer(sizeof_fortran_t) array containing reference to derived type object,\n and fortran array function.\n\get_array(sizeof_fortran_t, fpointer,array_fobj[,key]) -> array"},
+   "Make an array from integer(sizeof_fortran_t) array containing reference to derived type object,\n and fortran array function.\n\nget_array(sizeof_fortran_t, fpointer,array_fobj[,key]) -> array"},
   {NULL, NULL}
 };
 
