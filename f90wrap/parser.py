@@ -823,7 +823,7 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         # Check to see if there are any arguments
 
-        # Find "(" followed by anithing else than ")"
+        # Find "(" followed by anything else than ")"
         if re.search(r'\([^\)]+', cl) != None:
             has_args = 1
         else:
@@ -835,7 +835,7 @@ def check_funct(cl, file, grab_hold_doc=True):
             # substitue 'consecutive words' by '' in cl, at most 1 time
             cl = re.sub('\w+', '', cl, count=1)
             argl = re.split('[\W]+', cl)
- 
+
             del(argl[0])
             del(argl[len(argl) - 1])
 
