@@ -710,8 +710,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 extra_uses[mod] = [el_tname]
 
         # If the var that is get/set has the same name as something in uses, then append _
-        # EDIT : Since some cases require a safer localvar name, why not always transform it ?
-        localvar = el.name + "_f90wrap"
+        localvar = el.name + "_f90wrap"  # Since some cases require a safer localvar name, why not always transform it ?
         # if localvar in getattr(el, "uses", []) or localvar in extra_uses or localvar == "type":
         #     localvar += "_"
 

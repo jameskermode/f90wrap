@@ -286,7 +286,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
             elements = []
             for element in node.elements:
                 # Get the number of dimensions of the element (if any)
-                dims = filter(lambda x: x.startswith('dimension'), element.attributes)
+                dims = [attr for attr in element.attributes if attr.startswith('dimension')]  # dims = filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
                 # Skip this if the type is not do-able
                 if 'pointer' in element.attributes and dims != []:
                     warnings.warn('removing %s.%s due to pointer attribute' %
@@ -315,7 +315,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
         elements = []
         for element in node.elements:
             # Get the number of dimensions of the element (if any)
-            dims = filter(lambda x: x.startswith('dimension'), element.attributes)
+            dims = [attr for attr in element.attributes if attr.startswith('dimension')]  # filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
             if 'pointer' in element.attributes and dims != []:
                 warnings.warn('removing %s.%s due to pointer attribute' %
                              (node.name, element.name))
@@ -332,9 +332,9 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 warnings.warn('removing %s.%s as type %s unsupported' %
                               (node.name, element.name, element.type))
                 continue
-            # parameter arrays in modules live only in the mind of the compiler
+            # parameter ARRAYS in modules live only in the mind of the compiler
             if 'parameter' in element.attributes and dims != []:
-                logging.debug('removing %s.%s as it has "parameter" attribute' %
+                logging.debug('removing %s.%s as it has "parameter array" attribute' %
                               (node.name, element.name))
                 continue
 
@@ -859,6 +859,7 @@ class RenameReservedWords(ft.FortranVisitor):
         return self.generic_visit(node)
 
     visit_Procedure = visit_Argument
+    # visit_Element = visit_Argument
     visit_Module = visit_Argument
     visit_Type = visit_Argument
 
