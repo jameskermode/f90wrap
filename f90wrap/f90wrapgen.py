@@ -709,10 +709,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 extra_uses[mod] = [el_tname]
 
-        # If the var that is get/set has the same name as something in uses, then append _
-        localvar = el.name + "_f90wrap"  # Since some cases require a safer localvar name, why not always transform it ?
-        # if localvar in getattr(el, "uses", []) or localvar in extra_uses or localvar == "type":
-        #     localvar += "_"
+        # Prepend prefix to element name
+        #   -- Since some cases require a safer localvar name, we always transform it
+        localvar = self.prefix + el.name
 
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
                                                     getset, el.name, this, localvar))
