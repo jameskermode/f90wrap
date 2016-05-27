@@ -216,6 +216,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s' % arg_dict)
             if hasattr(arg, 'f2py_line'):
                 self.write(arg.f2py_line)
+            elif all('intent' not in attr for attr in arg.attributes):  # add "default to 'inout' option selected" check here
+                # No f2py instruction and no explicit intent : force f2py to make it intent(inout) :
+                self.write('!f2py intent(inout) '+arg.name)
+
 
     def write_transfer_in_lines(self, node):
         """
@@ -709,10 +713,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             else:
                 extra_uses[mod] = [el_tname]
 
-        # If the var that is get/set has the same name as something in uses, then append _
-        localvar = el.name + "_f90wrap"  # Since some cases require a safer localvar name, why not always transform it ?
-        # if localvar in getattr(el, "uses", []) or localvar in extra_uses or localvar == "type":
-        #     localvar += "_"
+        # Prepend prefix to element name
+        #   -- Since some cases require a safer localvar name, we always transform it
+        localvar = self.prefix + el.name
 
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
                                                     getset, el.name, this, localvar))
