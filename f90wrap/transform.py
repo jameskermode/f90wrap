@@ -205,7 +205,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
             # only callback functions in self.callbacks
             if 'callback' in arg.attributes:
                 if node.name not in self.callbacks:
-                    logging.debug('removing callback routine %s' % node.name)
+                    warnings.warn('removing callback routine %s' % node.name)
                     return None
                 else:
                     continue
@@ -232,11 +232,20 @@ class UnwrappablesRemover(ft.FortranTransformer):
                                   (node.name, arg.type))
                     return None
 
-                # no arrays of derived types
+                # no arrays of derived types of assumed shape, or more than one dimension
+                # Yann - EXPERIMENTAL !!
                 if arg.type.startswith('type') and len(dims) != 0:
-                    warnings.warn('removing routine %s due to unsupported derived type array %s' %
-                                  (node.name, arg.type))
-                    return None
+                    # warnings.warn('removing routine %s due to unsupported arrays of derived types %s' %
+                    #               (node.name, arg.type))
+                    # return none
+                    if len(dims) > 1:
+                        raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
+                    dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+                    if len(dimensions_list) > 1 or ':' in dimensions_list:
+                        warnings.warn('removing routine %s due to derived type array %s -- currently, only '
+                                      'fixed-lengh one-dimensional arrays of derived type are supported'
+                                      % (arg.name, arg.type))
+                        return None
 
         return self.generic_visit(node)
 
@@ -267,10 +276,14 @@ class UnwrappablesRemover(ft.FortranTransformer):
             return None
 
         # remove arrays of derived types
+        # EXPERIMENTAL !
         if node.type.startswith('type') and len(dims) != 0:
-            warnings.warn('removing optional argument %s due to unsupported derived type array %s' %
-                          (node.name, node.type))
-            return None
+            if len(dims) > 1:
+                raise ValueError('more than one dimension attribute found for arg %s' % node.name)
+            if len(ArrayDimensionConverter.split_dimensions(dims[0])) > 1:
+                warnings.warn('test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
+                              (node.name, node.type))
+                return None
 
         return self.generic_visit(node)
 
@@ -280,7 +293,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
         Remove unwrappable elements inside derived types
         """
         if node.name not in self.types:
-            logging.debug('removing type %s' % node.name)
+            warnings.warn('removing type %s' % node.name)
             return None
         else:
             elements = []
@@ -334,7 +347,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 continue
             # parameter ARRAYS in modules live only in the mind of the compiler
             if 'parameter' in element.attributes and dims != []:
-                logging.debug('removing %s.%s as it has "parameter array" attribute' %
+                warnings.warn('removing %s.%s as it has "parameter array" attribute' %
                               (node.name, element.name))
                 continue
 
@@ -967,6 +980,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
      * Updatting call names of procedures within interfaces
      * Update of subroutine uses clauses
     """
+
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
@@ -975,6 +989,11 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     SetInterfaceProcedureCallNames().visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
+    # This must happen before fix_subroutine_type_arrays
+    create_super_types(tree, types)
+    # This must happen after fix_subroutine_uses_clauses, to avoid using the super-type
+    # that does not exist and use the regular type, which is used in the declaration of the super-type
+    fix_subroutine_type_arrays(tree, types)
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
@@ -1095,3 +1114,51 @@ def find_referenced_types(mods, tree):
         kept_types |= new_set
 
     return kept_types
+
+
+def create_super_types(tree, types):
+    # Yann - Gather all the dimensions of arrays of type in arguments and module variables
+    # Add here any other elements where arrays of derived types may appear
+    from itertools import chain
+    # For each top-level procedure and module procedures:
+    for proc in chain(tree.procedures, *(mod.procedures for mod in tree.modules)):
+        for arg in proc.arguments:
+            append_type_dimension(arg, types)
+    # Then create a super-type for each type for each dimension, inside the module where
+    # the type is declared in the first place.
+    modules_indexes = {mod.name: i for i, mod in enumerate(tree.modules)}  # name to index map
+    containers = []
+    for ty in types.values():
+        for dim in set(attr for attr in ty.attributes if attr.startswith('dimension')):
+            d = ArrayDimensionConverter.split_dimensions(dim)[0]
+            el = ft.Element(name='items', attributes=[dim], type='type('+ty.name+')')
+            name = ty.name + '_x' + str(d) + '_array'
+            if name not in (t.name for t in tree.modules[modules_indexes[ty.mod_name]].types):
+                super_type = ft.Type(name=name,filename=ty.filename,lineno=ty.lineno,
+                                     doc=['super-type', 'Automatically generated to handle derived type arrays as a new derived type'], elements=[el], mod_name=ty.mod_name)
+                super_type.uses = ty.uses
+                tree.modules[modules_indexes[ty.mod_name]].types.append(super_type)
+                containers.append(tree.modules[modules_indexes[ty.mod_name]].types[-1])
+    for ty in containers:
+        types['type(%s)' % ty.name] = types[ty.name] = ty
+
+def append_type_dimension(var, types):
+    if var.type in types:
+        types[var.type].attributes += [attrib for attrib in var.attributes if
+                                       attrib.startswith('dimension')]
+        # Legality of dimension has been checked at the visit stage
+
+def fix_subroutine_type_arrays(tree, types):
+    from itertools import chain
+    # For each top-level procedure and module procedures:
+    for proc in chain(tree.procedures, *(mod.procedures for mod in tree.modules)):
+        for arg in proc.arguments:
+            dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
+            if arg.type.startswith('type') and dims != []:
+                # If the argument is an array of types, convert it to super-type
+                d = ArrayDimensionConverter.split_dimensions(dims[0])[0]
+                arg.type = arg.type[:-1] + '_x' + str(d) + '_array)'
+                # ... remove the dimension
+                arg.attributes = [attr for attr in arg.attributes if not attr.startswith('dimension')]
+                # ... and brand it for the final call
+                arg.doc.append('super-type')

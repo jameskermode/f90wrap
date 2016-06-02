@@ -66,7 +66,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         Dictionary mapping type names to Fortran modules where they are defined
     """
     def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
-                 kind_map, types):
+                 kind_map, types, default_to_inout):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='&',
@@ -78,6 +78,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.abort_func = abort_func
         self.kind_map = kind_map
         self.types = types
+        self.default_to_inout = default_to_inout
 
     def visit_Root(self, node):
         """
@@ -173,6 +174,15 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             else:
                 self.write('use %s' % mod)
 
+    def write_super_type_lines(self, ty):
+        self.write('type '+ty.name)
+        self.indent()
+        for el in ty.elements:
+            self.write(el.type+''.join(', '+attr for attr in el.attributes)+' :: '+el.name)
+        self.dedent()
+        self.write('end type ' + ty.name)
+        self.write()
+
     def write_type_lines(self, tname):
         """
         Write a pointer type for a given type name
@@ -216,8 +226,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s' % arg_dict)
             if hasattr(arg, 'f2py_line'):
                 self.write(arg.f2py_line)
-            elif all('intent' not in attr for attr in arg.attributes):  # add "default to 'inout' option selected" check here
-                # No f2py instruction and no explicit intent : force f2py to make it intent(inout) :
+            elif self.default_to_inout and all('intent' not in attr for attr in arg.attributes):
+                # No f2py instruction and no explicit intent : force f2py to make the argument intent(inout)
+                # This is put as an option to prserve backwards compatibility
                 self.write('!f2py intent(inout) '+arg.name)
 
 
@@ -278,11 +289,13 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             return arg.orig_name
 
         def actual_arg_name(arg):
+            name = arg.name
             if ((hasattr(node, 'transfer_in') and arg.name in node.transfer_in) or
                 (hasattr(node, 'transfer_out') and arg.name in node.transfer_out)):
-                return '%s_ptr%%p' % arg.name
-            else:
-                return arg.name
+                name += '_ptr%p'
+            if 'super-type' in arg.doc:
+                name += '%items'
+            return name
 
         if node.mod_name is not None:
             # use keyword arguments if subroutine is in a module and we have an explicit interface
@@ -342,6 +355,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         self.write()
         for tname in node.types:
+            if 'super-type' in self.types[tname].doc:
+                self.write_super_type_lines(self.types[tname])
             self.write_type_lines(tname)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
@@ -535,7 +550,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
             mod = self.types[t.name].mod_name
-            extra_uses[mod] = [t.name]
+            if 'super-type' not in t.doc:
+                extra_uses[mod] = [t.name]
         mod = self.types[el.type].mod_name
         el_tname = ft.strip_type(el.type)
         if mod in extra_uses:
@@ -545,6 +561,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
         self.write()
+
+        if 'super-type' in t.doc:
+            self.write_super_type_lines(t)
+
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
         self.write_type_lines(el.type)
@@ -624,7 +644,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if isinstance(t, ft.Module):
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
-            extra_uses[self.types[t.name].mod_name] = [t.name]
+            if 'super-type' not in t.doc:
+                extra_uses[self.types[t.name].mod_name] = [t.name]
         mod = self.types[el.type].mod_name
         el_tname = ft.strip_type(el.type)
         if mod in extra_uses:
@@ -634,6 +655,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write_uses_lines(el, extra_uses)
         self.write('implicit none')
         self.write()
+        if 'super-type' in t.doc:
+            self.write_super_type_lines(t)
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
         self.write_type_lines(el.type)
