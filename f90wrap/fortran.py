@@ -192,6 +192,15 @@ class Module(Fortran):
             private_symbols = []
         self.private_symbols = private_symbols
 
+    # Required for the Module object to be hashable so one can create sets of Modules
+    # So this function should return a unique imprint of the object
+    # I guess the filename + the module name should be unique enough ?
+    # Also, hash requires an integer, so we convert the string to integers with the
+    # same number of digits to ensure one-to-one conversion.
+    # This is maybe unnecessarily long ?
+    def __hash__(self):
+        return int(''.join(str(ord(x)).zfill(3) for x in self.filename + self.name))
+
 
 class Procedure(Fortran):
     """

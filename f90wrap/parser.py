@@ -501,8 +501,8 @@ def check_module(cl, file):
                 # Module variable
                 check = check_decl(cl, file)
                 if check[0] != None:
-                    for a in check[0]:
-                        out.elements.append(a)
+                    for el in check[0]:
+                        out.elements.append(el)
                         cl = check[1]
                     continue
 
@@ -1307,7 +1307,6 @@ def check_arg(cl, file):
             # Append dimension if necessary
             if sizes[i] != '':
                 temp.attributes.append('dimension' + sizes[i])
-
             out.append(temp)
 
         return [out, cl]

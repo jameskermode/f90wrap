@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/Users/Yann/anaconda/bin/python
 """
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 # HF X
@@ -122,6 +122,8 @@ USAGE
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude from wrapper")
+        parser.add_argument('--default-to-inout', action='store_true', default=False,
+                            help="Sets all arguments without intent to intent(inout)")
 
         args = parser.parse_args()
 
@@ -248,7 +250,7 @@ USAGE
                                       kind_map=kind_map,
                                       init_file=args.init_file).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
-                                  args.abort_func, kind_map, types).visit(f90_tree)
+                                  args.abort_func, kind_map, types, args.default_to_inout).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:
