@@ -1126,7 +1126,8 @@ def create_super_types(tree, types):
             append_type_dimension(arg, types)
     # Then create a super-type for each type for each dimension, inside the module where
     # the type is declared in the first place.
-    modules_indexes = {mod.name: i for i, mod in enumerate(tree.modules)}  # name to index map
+    # modules_indexes = {mod.name: i for i, mod in enumerate(tree.modules)}  # name to index map
+    modules_indexes = dict((mod.name, i) for (i, mod) in enumerate(tree.modules))
     containers = []
     for ty in types.values():
         for dim in set(attr for attr in ty.attributes if attr.startswith('dimension')):
