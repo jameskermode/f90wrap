@@ -1132,6 +1132,8 @@ def create_super_types(tree, types):
     for ty in types.values():
         for dim in set(attr for attr in ty.attributes if attr.startswith('dimension')):
             d = ArrayDimensionConverter.split_dimensions(dim)[0]
+            if str(d) == ':':
+                continue
             el = ft.Element(name='items', attributes=[dim], type='type('+ty.name+')')
             name = ty.name + '_x' + str(d) + '_array'
             if name not in (t.name for t in tree.modules[modules_indexes[ty.mod_name]].types):
@@ -1158,6 +1160,8 @@ def fix_subroutine_type_arrays(tree, types):
             if arg.type.startswith('type') and dims != []:
                 # If the argument is an array of types, convert it to super-type
                 d = ArrayDimensionConverter.split_dimensions(dims[0])[0]
+                if str(d) == ':':
+                    continue
                 arg.type = arg.type[:-1] + '_x' + str(d) + '_array)'
                 # ... remove the dimension
                 arg.attributes = [attr for attr in arg.attributes if not attr.startswith('dimension')]
