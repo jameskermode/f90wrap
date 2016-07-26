@@ -919,6 +919,19 @@ class RenameInterfacesPython(ft.FortranVisitor):
                 proc.method_name = '_'+proc.name
         return node
 
+class ReorderOptionalArgumentsPython(ft.FortranVisitor):
+    """
+    Move optional arguments after non-optional arguments:
+    in Fortran they can come in any order, but in Python
+    optional arguments must come at the end of argument list.
+    """
+
+    def visit_Procedure(self, node):
+        non_optional = [arg for arg in node.arguments if 'optional' not in arg.attributes]
+        optional = [arg for arg in node.arguments if 'optional' in arg.attributes]
+        node.arguments = non_optional + optional
+        return node
+
 
 class OnlyAndSkip(ft.FortranTransformer):
     """
@@ -1037,6 +1050,7 @@ def transform_to_py_wrapper(tree, types):
     """
     IntentOutToReturnValues().visit(tree)
     RenameArgumentsPython(types).visit(tree)
+    ReorderOptionalArgumentsPython().visit(tree)
     RenameInterfacesPython().visit(tree)
     return tree
 

@@ -1,6 +1,19 @@
-EXAMPLES = mockderivetype example2 arrays derivedtypes \
-	cylinder elemental passbyreference strings type_bn interface \
-	arrays_fixed
+EXAMPLES = arrayderivedtypes \
+	arrays \
+	arrays_fixed \
+	cylinder \
+	derivedtypes \
+	elemental \
+	example2 \
+	extends \
+	interface \
+	issue32 \
+	mockderivetype \
+	mod_arg_clash \
+	optional_args_issue53 \
+	passbyreference \
+	strings \
+	type_bn
 
 test:
 	for example in ${EXAMPLES}; do \
