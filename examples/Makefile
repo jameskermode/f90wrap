@@ -1,4 +1,4 @@
-EXAMPLES = arrayderivedtypes \
+EXAMPLES = \
 	arrays \
 	arrays_fixed \
 	cylinder \
