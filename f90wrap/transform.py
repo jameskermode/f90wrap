@@ -381,7 +381,7 @@ def fix_subroutine_uses_clauses(tree, types):
     for mod, sub, arguments in ft.walk_procedures(tree):
         for arg in arguments:
             for (mod_name, type_name) in sub.uses:
-                if arg.name == mod.name:
+                if arg.name == mod_name:
                     arg.name += '_'
 
     return tree
