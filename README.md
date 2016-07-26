@@ -35,6 +35,26 @@ Installation is as follows:
     cd f90wrap
     python setup.py install [--prefix PREFIX]
 
+
+f90wrap can also be installed using `conda` via the conda-forge channel:
+
+```
+conda config --add channels conda-forge
+```
+
+Once the conda-forge channel has been enabled, f90wrap can be installed with:
+
+```
+conda install f90wrap
+```
+
+It is possible to list all of the versions of f90wrap available on your platform with:
+
+```
+conda search f90wrap --channel conda-forge
+```
+
+
 Examples and Testing
 --------------------
 
