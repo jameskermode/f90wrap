@@ -359,7 +359,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
 def fix_subroutine_uses_clauses(tree, types):
     """Walk over all nodes in tree, updating subroutine uses
        clauses to include the parent module and all necessary
-       modules from types"""
+       modules from types
+
+       Also rename any arguments that clash with module names.
+    """
 
     for mod, sub, arguments in ft.walk_procedures(tree):
         sub.uses = set()
@@ -374,6 +377,12 @@ def fix_subroutine_uses_clauses(tree, types):
         for arg in arguments:
             if arg.type.startswith('type') and ft.strip_type(arg.type) in types:
                 sub.uses.add((types[ft.strip_type(arg.type)].mod_name, (ft.strip_type(arg.type),)))
+
+    for mod, sub, arguments in ft.walk_procedures(tree):
+        for arg in arguments:
+            for (mod_name, type_name) in sub.uses:
+                if arg.name == mod.name:
+                    arg.name += '_'
 
     return tree
 

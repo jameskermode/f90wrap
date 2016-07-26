@@ -1,4 +1,5 @@
-FPP=gfortran
+#FPP=gfortran
+FPP=ifort
 FFLAGS=-fPIC
 
 %.o : %.f90
