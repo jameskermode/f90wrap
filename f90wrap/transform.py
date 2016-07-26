@@ -236,8 +236,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 # Yann - EXPERIMENTAL !!
                 if arg.type.startswith('type') and len(dims) != 0:
                     # warnings.warn('removing routine %s due to unsupported arrays of derived types %s' %
-                    #               (node.name, arg.type))
-                    # return none
+                    #                (node.name, arg.type))
+                    # return None
                     if len(dims) > 1:
                         raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
                     dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
@@ -280,7 +280,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
         if node.type.startswith('type') and len(dims) != 0:
             if len(dims) > 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % node.name)
-            if len(ArrayDimensionConverter.split_dimensions(dims[0])) > 1:
+            dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+            if len(dimensions_list) > 1 or ':' in dimensions_list:
                 warnings.warn('test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
                               (node.name, node.type))
                 return None
@@ -1155,8 +1156,6 @@ def create_super_types(tree, types):
     for ty in types.values():
         for dim in set(attr for attr in ty.attributes if attr.startswith('dimension')):
             d = ArrayDimensionConverter.split_dimensions(dim)[0]
-            if str(d) == ':':
-                continue
             el = ft.Element(name='items', attributes=[dim], type='type('+ty.name+')')
             name = ty.name + '_x' + str(d) + '_array'
             if name not in (t.name for t in tree.modules[modules_indexes[ty.mod_name]].types):
@@ -1183,8 +1182,6 @@ def fix_subroutine_type_arrays(tree, types):
             if arg.type.startswith('type') and dims != []:
                 # If the argument is an array of types, convert it to super-type
                 d = ArrayDimensionConverter.split_dimensions(dims[0])[0]
-                if str(d) == ':':
-                    continue
                 arg.type = arg.type[:-1] + '_x' + str(d) + '_array)'
                 # ... remove the dimension
                 arg.attributes = [attr for attr in arg.attributes if not attr.startswith('dimension')]

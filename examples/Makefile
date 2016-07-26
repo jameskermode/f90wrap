@@ -12,6 +12,7 @@ EXAMPLES = arrayderivedtypes \
 	mockderivetype \
 	mod_arg_clash \
 	optional_args_issue53 \
+	optional_derived_arrays \
 	passbyreference \
 	strings \
 	type_bn
