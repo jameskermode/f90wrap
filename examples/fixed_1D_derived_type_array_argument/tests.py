@@ -17,6 +17,16 @@ print(list(d.items[i].y for i in range(len(d.items))))
 print(list(e.items[i].y for i in range(len(e.items))))
 print(f)
 
+# multiple gets, to see if i is modified by the call or not
+i = numpy.ones(1, dtype=int)
+g = b.items[i].y[i]
+g = b.items[i].y[i]
+g = b.items[i].y[i]
+g = b.items[i].y[i]
+g = b.items[i].y[i]
+g = b.items[i].y[i]
+print("g = " + str(g))
+print("i = " + str(i))
 
 assert(all(a == numpy.array([42, 1, 1, 1, 1], dtype=numpy.float32)))
 assert(b.items[1].y[1] == 42)
@@ -24,3 +34,4 @@ assert(c.items[2].y[2] == 42)
 assert(d.items[3].y[3] == 42)
 assert(e.items[4].y[4] == 42)
 assert(f == 2)
+assert(g == 42)
