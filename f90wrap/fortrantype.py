@@ -1,11 +1,14 @@
 import weakref
 
+
 class Singleton(type):
     _instances = {}
+
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
 
 class FortranModule(object):
     """
@@ -18,6 +21,7 @@ class FortranModule(object):
     _dt_array_initialisers = []
 
     __metaclass__ = Singleton
+
     def __init__(self):
         self._arrays = {}
         self._objs = {}
@@ -25,6 +29,7 @@ class FortranModule(object):
         # initialise any derived type arrays
         for init_array in self._dt_array_initialisers:
             init_array(self)
+
 
 class FortranDerivedType(object):
     """
@@ -46,13 +51,13 @@ class FortranDerivedType(object):
     @classmethod
     def from_handle(cls, handle):
         self = cls.__new__(cls)
-        FortranDerivedType.__init__(self) # always call the base constructor only
+        FortranDerivedType.__init__(self)  # always call the base constructor only
         self._handle = handle
         self._alloc = False
         return self
 
-class FortranDerivedTypeArray(object):
 
+class FortranDerivedTypeArray(object):
     def __init__(self, parent, getfunc, setfunc, lenfunc, doc, arraytype):
         self.parent = weakref.ref(parent)
         self.getfunc = getfunc
@@ -84,8 +89,10 @@ class FortranDerivedTypeArray(object):
         if parent is None:
             raise RuntimeError("Array's parent has gone out of scope")
 
-        i += 1  # convert from 0-based (Python) to 1-based indices (Fortran)
-        element_handle = self.getfunc(parent._handle, i)
+        # i += 1  # convert from 0-based (Python) to 1-based indices (Fortran)
+        # YANN: as "i" is passed by reference, and would be incremented on each call ! This seems wrong to me
+        #       so I propose to add the +1 on the function call instead, as following.
+        element_handle = self.getfunc(parent._handle, i + 1)
         try:
             obj = parent._objs[tuple(element_handle)]
         except KeyError:
@@ -97,6 +104,6 @@ class FortranDerivedTypeArray(object):
         if parent is None:
             raise RuntimeError("Array's parent has gone out of scope")
 
-        i += 1 # convert from 0-based (Python) to 1-based indices (Fortran)
-        self.setfunc(parent._handle, i, value._handle)
-
+        # i += 1 # convert from 0-based (Python) to 1-based indices (Fortran)
+        # YANN: Same issue
+        self.setfunc(parent._handle, i + 1, value._handle)

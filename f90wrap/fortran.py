@@ -320,6 +320,7 @@ class Type(Fortran):
         if interfaces is None: interfaces = []
         self.interfaces = interfaces
         self.mod_name = mod_name
+        self.super_types_dimensions = set()
 
 
 class Interface(Fortran):

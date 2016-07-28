@@ -35,10 +35,8 @@
 # Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 
-import re
 import string
-import logging
-import itertools
+
 from f90wrap.fortran import *
 
 # Define some regular expressions
@@ -89,7 +87,6 @@ d_colon = re.compile('::')
 attr_re = re.compile('(,\s*(' + attribs + r')\s*)+', re.IGNORECASE)
 s_attrib_re = re.compile(attribs, re.IGNORECASE)
 
-
 decl_a = re.compile('^(' + types + r')\s*(,\s*(' + a_attribs + r')\s*)*(::)?\s*\w+(\s*,\s*\w+)*', re.IGNORECASE)
 attr_re_a = re.compile('(,\s*(' + a_attribs + r')\s*)+', re.IGNORECASE)
 s_attrib_re_a = re.compile(a_attribs, re.IGNORECASE)
@@ -117,7 +114,6 @@ private = re.compile('(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(
 
 
 def remove_delimited(line, d1, d2):
-
     bk = 0
     temp_str = ''
     undel_str = ''
@@ -142,8 +138,8 @@ def remove_delimited(line, d1, d2):
 
     return delimited, undel_str
 
-def recover_delimited(line, d1, d2, delimited):
 
+def recover_delimited(line, d1, d2, delimited):
     if delimited == []:
         return line, []
 
@@ -158,10 +154,9 @@ def recover_delimited(line, d1, d2, delimited):
     return line, delimited
 
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def split_attribs(atr):
-
     atr = atr.strip()
     if re.match('[,]', atr) != None:
         atr = atr[1:]
@@ -189,14 +184,13 @@ def split_attribs(atr):
     if atr != '':
         atrl.append(atr)
 
-    return list(map(lambda s : s.strip(), atrl))  # jrk33 added strip
+    return list(map(lambda s: s.strip(), atrl))  # jrk33 added strip
 
 
 hold_doc = None
 
 
 class F90File(object):
-
     def __init__(self, fname):
         self.filename = fname
         self.file = open(fname, 'r')
@@ -238,7 +232,7 @@ class F90File(object):
                     cont2_index = -1
                 comm_index = cline.find('!')
                 while (cont_index != -1 and (comm_index == -1 or comm_index > cont_index)) or \
-                      (cont2_index != -1):
+                        (cont2_index != -1):
                     if cont_index != -1:
                         cont = cline[:cont_index].strip()
                     else:
@@ -285,9 +279,7 @@ class F90File(object):
             return cline
 
 
-
 def check_uses(cline, file):
-
     if re.match(uses, cline) != None:
         cline = uses.sub('', cline)
         cline = cline.strip()
@@ -297,10 +289,10 @@ def check_uses(cline, file):
     else:
         return [None, cline]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_doc(cline, file):
-
     if cline and re.match(fdoc_mark, cline) != None:
         out = fdoc_mark.sub('', cline)
         out = out.rstrip()
@@ -309,10 +301,10 @@ def check_doc(cline, file):
     else:
         return [None, cline]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_doc_rv(cline, file):
-
     cl = cline
 
     if cl is None:
@@ -326,10 +318,10 @@ def check_doc_rv(cline, file):
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_cont(cline, file):
-
     cl = cline
 
     if re.match(contains, cl) != None:
@@ -338,10 +330,10 @@ def check_cont(cline, file):
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_program(cl, file):
-
     global hold_doc
 
     out = Program()
@@ -412,9 +404,6 @@ def check_program(cl, file):
                     cl = check[1]
                     continue
 
-
-
-
             # If no joy, get next line
             cl = file.next()
 
@@ -425,10 +414,10 @@ def check_program(cl, file):
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_module(cl, file):
-
     global hold_doc
 
     out = Module()
@@ -583,7 +572,6 @@ def check_module(cl, file):
                     cl = check[1]
                     continue
 
-
             # If no joy, get next line
             cl = file.next()
 
@@ -594,10 +582,10 @@ def check_module(cl, file):
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_subt(cl, file, grab_hold_doc=True):
-
     global hold_doc
 
     out = Subroutine()
@@ -619,7 +607,7 @@ def check_subt(cl, file, grab_hold_doc=True):
 
         # Test in principle whether we can have a 'do not wrap' list
         if out.name.lower() == 'debugtype_stop_if':
-            return [None,cl]
+            return [None, cl]
 
         # Check to see if there are any arguments
 
@@ -637,8 +625,8 @@ def check_subt(cl, file, grab_hold_doc=True):
             cl = re.sub('\w+', '', cl, count=1)
             argl = re.split('[\W]+', cl)
 
-            del(argl[0])
-            del(argl[len(argl) - 1])
+            del (argl[0])
+            del (argl[len(argl) - 1])
 
             while cl.strip() == '' or re.search('&', cl) != None:
                 cl = file.next()
@@ -646,14 +634,14 @@ def check_subt(cl, file, grab_hold_doc=True):
                     cl = file.next()
                 if cl.strip() == '': continue
                 arglt = re.split('[\W]+', cl)
-                del(arglt[len(arglt) - 1])
+                del (arglt[len(arglt) - 1])
                 for a in arglt:
                     argl.append(a)
 
         else:
             argl = []
 
-        argl = list(map(lambda s : s.lower(), argl))
+        argl = list(map(lambda s: s.lower(), argl))
 
         # Get next line, and check each possibility in turn
 
@@ -670,7 +658,7 @@ def check_subt(cl, file, grab_hold_doc=True):
 
             # Look for block comments starting with a line of ======= or -------
             if cl is not None and not in_block_doc and not had_block_doc:
-               if cl.startswith('_COMMENT=====') or cl.startswith('_COMMENT-----'):
+                if cl.startswith('_COMMENT=====') or cl.startswith('_COMMENT-----'):
                     in_block_doc = True
 
             if cl is not None and in_block_doc:
@@ -719,8 +707,6 @@ def check_subt(cl, file, grab_hold_doc=True):
             # If no joy, get next line
             cl = file.next()
 
-
-
         # Select only first declaration that matches entries
         # in argument list
 
@@ -734,13 +720,13 @@ def check_subt(cl, file, grab_hold_doc=True):
 
             for i in out.arguments:
                 if (i.name.lower() in argl and
-                    len([a for a in ag_temp if a.name.lower() == i.name.lower()]) == 0):
+                            len([a for a in ag_temp if a.name.lower() == i.name.lower()]) == 0):
                     ag_temp.append(i)
 
             implicit_to_explicit_arguments(argl, ag_temp)
-            
+
             out.arguments = ag_temp
-            out.arguments.sort(key=lambda x:argl.index(x.name.lower()))
+            out.arguments.sort(key=lambda x: argl.index(x.name.lower()))
 
         else:
             out.arguments = []
@@ -754,31 +740,32 @@ def check_subt(cl, file, grab_hold_doc=True):
                 out.doc.append(line)
             hold_doc = None
 
-
         out.lineno = slice(out.lineno, file.lineno - 1)
         return [out, cl]
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def implicit_to_explicit_arguments(argl, ag_temp):
-
-# Give a Type to the undeclared arguments, following the implicit arguments rule
+    # YANN: Give a Type to undeclared arguments in the arguments list, following the implicit arguments type rule
     implicit_arguments = set(argl) - set(a.name.lower() for a in ag_temp)
     for i in implicit_arguments:
-        ag_temp.append(Argument(name=i, doc=None, type=implicit_type_rule(i), attributes=None,filename=None, lineno=None))
+        ag_temp.append(
+            Argument(name=i, doc=None, type=implicit_type_rule(i), attributes=None, filename=None, lineno=None))
 
 
 def implicit_type_rule(var):
-    tp = 'integer' if var[0] in ('i', 'j','k', 'l', 'm', 'n') else 'real'
+    # YANN: implicit arguments type rule
+    tp = 'integer' if var[0] in ('i', 'j', 'k', 'l', 'm', 'n') else 'real'
     logging.debug('        implicit type of "%s" inferred from its name as "%s"' % (var, tp))
     return tp
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_funct(cl, file, grab_hold_doc=True):
-
     global hold_doc
 
     out = Function()
@@ -836,8 +823,8 @@ def check_funct(cl, file, grab_hold_doc=True):
             cl = re.sub('\w+', '', cl, count=1)
             argl = re.split('[\W]+', cl)
 
-            del(argl[0])
-            del(argl[len(argl) - 1])
+            del (argl[0])
+            del (argl[len(argl) - 1])
 
             while cl.strip() == '' or re.search('&', cl) != None:
                 cl = file.next()
@@ -846,13 +833,13 @@ def check_funct(cl, file, grab_hold_doc=True):
                 if cl.strip() == '':
                     continue
                 arglt = re.split('[\W]+', cl)
-                del(arglt[len(arglt) - 1])
+                del (arglt[len(arglt) - 1])
                 for a in arglt:
                     argl.append(a.lower())
         else:
             argl = []
 
-        argl = list(map(lambda s : s.lower(), argl))
+        argl = list(map(lambda s: s.lower(), argl))
 
         # Get next line, and check each possibility in turn
 
@@ -860,7 +847,6 @@ def check_funct(cl, file, grab_hold_doc=True):
         had_block_doc = False
 
         cl = file.next()
-
 
         while True:
 
@@ -873,7 +859,7 @@ def check_funct(cl, file, grab_hold_doc=True):
 
             # Look for block comments starting with a line of ======= or -------
             if cl is not None and not in_block_doc and not had_block_doc:
-               if cl.startswith('_COMMENT=====') or cl.startswith('_COMMENT-----'):
+                if cl.startswith('_COMMENT=====') or cl.startswith('_COMMENT-----'):
                     in_block_doc = True
 
             if cl is not None and in_block_doc:
@@ -944,7 +930,7 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         for i in out.arguments:
             if has_args and i.name.lower() in argl and \
-                   len([a for a in ag_temp if a.name.lower() == i.name.lower()]) == 0:
+                            len([a for a in ag_temp if a.name.lower() == i.name.lower()]) == 0:
                 ag_temp.append(i)
             if re.search(name_re, i.name) != None:
                 out.ret_val = i
@@ -954,7 +940,7 @@ def check_funct(cl, file, grab_hold_doc=True):
         implicit_to_explicit_arguments(argl, ag_temp)
 
         out.arguments = ag_temp
-        out.arguments.sort(key=lambda x:argl.index(x.name.lower()))
+        out.arguments.sort(key=lambda x: argl.index(x.name.lower()))
 
         cl = file.next()
 
@@ -970,11 +956,11 @@ def check_funct(cl, file, grab_hold_doc=True):
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_type(cl, file):
-
-#    global hold_doc
+    #    global hold_doc
 
     out = Type()
     m = re.match(type_re, cl)
@@ -990,11 +976,10 @@ def check_type(cl, file):
         if decl.match(cl) != None:
             return [None, cl]
 
-#        if hold_doc != None:
-#            for line in hold_doc:
-#                out.doc.append(line)
-#            hold_doc = None
-
+        # if hold_doc != None:
+        #            for line in hold_doc:
+        #                out.doc.append(line)
+        #            hold_doc = None
 
         # Get type name
         cl = type_re.sub('', cl)
@@ -1042,10 +1027,10 @@ def check_type(cl, file):
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_interface(cl, file):
-
     global hold_doc
 
     out = Interface()
@@ -1094,7 +1079,6 @@ def check_interface(cl, file):
 
 
 def check_interface_decl(cl, file):
-
     out = Interface()
 
     if cl and re.match(iface, cl) != None:
@@ -1131,10 +1115,9 @@ def check_interface_decl(cl, file):
 
 
 def check_prototype(cl, file):
-
     m = prototype.match(cl)
     if m != None:
-        out = map(lambda s : s.strip().lower(), m.group(1).split(','))
+        out = map(lambda s: s.strip().lower(), m.group(1).split(','))
         out = [Prototype(name=name, lineno=file.lineno, filename=file.filename) for name in out]
 
         cl = file.next()
@@ -1144,14 +1127,10 @@ def check_prototype(cl, file):
         return [None, cl]
 
 
-
-
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 def check_decl(cl, file):
-
     out = []
 
     if re.match(decl, cl) != None:
@@ -1177,7 +1156,6 @@ def check_decl(cl, file):
         # nl=re.split(r'\s*,\s*',names)
         nl = split_attribs(names)
 
-
         alist = []
         for j in range(len(atrl)):
             alist.append(atrl[j])
@@ -1200,7 +1178,7 @@ def check_decl(cl, file):
 
             names, sizes = splitnames(nlv[0])
             temp = Element(name=names[0], type=tp, doc=dc, attributes=alist[:],
-                         filename=filename, lineno=lineno)
+                           filename=filename, lineno=lineno)
             if len(nlv) == 2:
                 temp.value = nlv[1]
             if sizes[0] != '':
@@ -1211,48 +1189,47 @@ def check_decl(cl, file):
     else:
         return [None, cl]
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def splitnames(names):
-   nl = []
-   sizes = []
-   b = 0
-   namestart = 0
-   sizestart = 0
-   name = ''
-   size = ''
-   for i, n in enumerate(names):
-      if n == '(':
-         b += 1
-         size += '('
-      elif n == ')':
-         b -= 1
-         size += ')'
-      elif n == ',' and b == 0:
-         nl.append(name)
-         name = ''
-         sizes.append(size)
-         size = ''
-      elif b == 0:
-         name += n
-      else:
-         size += n
+    nl = []
+    sizes = []
+    b = 0
+    namestart = 0
+    sizestart = 0
+    name = ''
+    size = ''
+    for i, n in enumerate(names):
+        if n == '(':
+            b += 1
+            size += '('
+        elif n == ')':
+            b -= 1
+            size += ')'
+        elif n == ',' and b == 0:
+            nl.append(name)
+            name = ''
+            sizes.append(size)
+            size = ''
+        elif b == 0:
+            name += n
+        else:
+            size += n
 
-   nl.append(name)
-   sizes.append(size)
+    nl.append(name)
+    sizes.append(size)
 
-   return nl, sizes
+    return nl, sizes
 
 
 def check_arg(cl, file):
-
     out = []
 
     if cl and re.match(decl_a, cl) != None:
 
         filename = file.filename
         lineno = file.lineno
-
 
         tp = re.match(types_re, cl).group()
         m = re.search(d_colon, cl)
@@ -1264,13 +1241,12 @@ def check_arg(cl, file):
             # Need to remove ONLY THE FIRST type string (the name may have the type in it)
             names = types_re.sub('', cl, 1)
 
-
         atrl = split_attribs(atr_temp)
 
-#        names=cl[re.search(d_colon,cl).end():]
-# #        nl=re.split(',',names)
-# #        for i in range(len(nl)):
-# #            nl[i]=nl[i].strip()
+        #        names=cl[re.search(d_colon,cl).end():]
+        # #        nl=re.split(',',names)
+        # #        for i in range(len(nl)):
+        # #            nl[i]=nl[i].strip()
 
 
         # jrk33 - added code to cope with array declarations with
@@ -1280,7 +1256,6 @@ def check_arg(cl, file):
         names = re.sub(r'=.*$', '', names)
 
         nl, sizes = splitnames(names)
-
 
         alist = []
         for j in range(len(atrl)):
@@ -1302,7 +1277,7 @@ def check_arg(cl, file):
         for i in range(len(nl)):
             nl[i] = nl[i].strip()
             temp = Argument(name=nl[i], doc=dc, type=tp, attributes=alist[:],
-                          filename=filename, lineno=lineno)
+                            filename=filename, lineno=lineno)
 
             # Append dimension if necessary
             if sizes[i] != '':
@@ -1314,11 +1289,10 @@ def check_arg(cl, file):
         return [None, cl]
 
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 def read_files(args):
-
     global hold_doc
 
     root = Root()
@@ -1363,7 +1337,6 @@ def read_files(args):
                     hold_doc.append(check[0])
                 cline = check[1]
                 continue
-
 
             # stand-alone subroutines
             check = check_subt(cline, file)

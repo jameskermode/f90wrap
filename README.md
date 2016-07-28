@@ -121,17 +121,9 @@ Notes
 
 - Unlike standard `f2py`, `f90wrap` converts all `intent(out)` arrays to 
 `intent(in, out)`. This was a deliberate design decision to allow allocatable and automatic arrays of unknown output size to be used. It’s hard in general to work out what size array needs to be allocated, so relying on the the user to pre-allocate from Python is the safest solution.
+- Scalar arguments without `intent` are treated as `intent(in)` by `f2py`. To have `inout` scalars, you need to call `f90wrap` with the `--default-to-inout` flag and declare the python variables as 1-length numpy arrays (`numpy.zeros(1)` for example).
 - Pointer arguments are not supported.
-- Arrays of derived types inside other types or in modules are supported, but are currently limited to one dimension
-- Procedures which have arguments that are arrays of derived types are currently not supported. But they can be used by creating a (super-)type containing the array
-
-    ```
-    type my_type_array
-        type(mytype),dimension(my_dimension) :: item
-    end type my_type_array
-    ```
-and replacing all ``type_var(i)`` by ``type_array_var%item(i)``.
-
+- Arrays of derived types are currently not fully supported: a workaround is provided for 1D-fixed-length arrays, i.e. `type(a), dimension(b) :: c`. In this case, the super-type `Type_a_Xb_Array` will be created, and the array of types can be accessed through `c.items`. Note that dimension b can not be `:`, but can be a parameter.
 
 
 How f90wrap works
