@@ -276,12 +276,13 @@ class UnwrappablesRemover(ft.FortranTransformer):
                           (node.name, node.type))
             return None
 
-        # remove arrays of derived types
+        # remove optional arrays of derived types
         # EXPERIMENTAL !
         if node.type.startswith('type') and len(dims) != 0:
             if len(dims) > 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % node.name)
-            if len(ArrayDimensionConverter.split_dimensions(dims[0])) > 1:
+            dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+            if len(dimensions_list) > 1 or ':' in dimensions_list:
                 warnings.warn(
                     'test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
                     (node.name, node.type))
