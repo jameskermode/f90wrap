@@ -1165,7 +1165,7 @@ def create_super_types(tree, types):
         (mod.name, i) for (i, mod) in enumerate(tree.modules))  # name to index map, compatible python 2.6
     containers = []
     for ty in types.values():
-        for dimensions_attribute in [attr for attr in ty.attributes if attr.startswith('dimension')]:
+        for dimensions_attribute in ty.super_types_dimensions:
             # each type might have many "dimension" attributes since "append_type_dimension"
             dimensions = ArrayDimensionConverter.split_dimensions(dimensions_attribute)
             if len(dimensions) == 1:  # at this point, only 1D arrays are supported
@@ -1197,15 +1197,13 @@ def create_super_types(tree, types):
 
 
 def append_type_dimension(tree, types):
-    # YANN: save the dimensions of all the type arrays in the base-type attributes, in order to create a super-type for each of them afterwards
-    # This might cause trouble ...
+    # YANN: save the dimensions of all the type arrays in the base-type, in order to create a super-type for each of them afterwards
     from itertools import chain
     for proc in chain(tree.procedures, *(mod.procedures for mod in tree.modules)):
         for arg in proc.arguments:
             if arg.type in types:
-                types[arg.type].attributes += [attrib for attrib in arg.attributes if
-                                               attrib.startswith('dimension')]
-                # Legality of dimension has been checked at the visit stage
+                types[arg.type].super_types_dimensions.update(attrib for attrib in arg.attributes if
+                                                            attrib.startswith('dimension'))
 
 
 def fix_subroutine_type_arrays(tree, types):
@@ -1221,12 +1219,13 @@ def fix_subroutine_type_arrays(tree, types):
                 d = ArrayDimensionConverter.split_dimensions(dimensions_attribute[0])[0]
                 if str(d) == ':':
                     continue
+                # change the type to super-type
                 arg.type = arg.type[:-1] + '_x' + str(d) + '_array)'
                 # if the dimension is a parameter somewhere, add it to the uses clauses
                 param = extract_dimensions_parameters(d, tree)
                 if param:
                     proc.uses.add((param[0], (param[1],)))
-                # ... then remove the dimension ...
+                # ... then remove the dimension, since we now use a scalar super-type ...
                 arg.attributes = [attr for attr in arg.attributes if not attr.startswith('dimension')]
                 # ... and brand it for the final call
                 arg.doc.append('super-type')
