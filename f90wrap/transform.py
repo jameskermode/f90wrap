@@ -20,9 +20,11 @@ from __future__ import print_function
 
 import copy
 import logging
-import warnings
 import re
+import warnings
+
 from f90wrap import fortran as ft
+
 
 class AccessUpdater(ft.FortranTransformer):
     """Visit module contents and update public_symbols and
@@ -38,7 +40,7 @@ class AccessUpdater(ft.FortranTransformer):
     def update_access(self, node, mod, default_access, in_type=False):
         if default_access == 'public':
             if ('private' not in getattr(node, 'attributes', []) and
-                   node.name not in mod.private_symbols):
+                        node.name not in mod.private_symbols):
 
                 # symbol should be marked as public if it's not already
                 if not in_type and node.name not in mod.public_symbols:
@@ -47,17 +49,17 @@ class AccessUpdater(ft.FortranTransformer):
             else:
                 # symbol should be marked as private if it's not already
                 if not in_type and (node.name not in mod.private_symbols and
-                    'callback' not in getattr(node, 'attributes', [])):
+                                            'callback' not in getattr(node, 'attributes', [])):
                     logging.debug('marking private symbol ' + node.name)
                     mod.private_symbols.append(node.name)
 
         elif default_access == 'private':
             if ('public' not in getattr(node, 'attributes', []) and
-                   node.name not in mod.public_symbols):
+                        node.name not in mod.public_symbols):
 
                 # symbol should be marked as private if it's not already
                 if not in_type and (node.name not in mod.private_symbols and
-                    'callback' not in getattr(node, 'attributes', [])):
+                                            'callback' not in getattr(node, 'attributes', [])):
                     logging.debug('marking private symbol ' + node.name)
                     mod.private_symbols.append(node.name)
             else:
@@ -68,7 +70,7 @@ class AccessUpdater(ft.FortranTransformer):
 
         else:
             raise ValueError('bad default access %s for reference %s' %
-                               (mod.default_access, mod.name))
+                             (mod.default_access, mod.name))
 
     def visit_Module(self, mod):
         # keep track of the current module
@@ -107,7 +109,6 @@ class AccessUpdater(ft.FortranTransformer):
         else:
             self.update_access(node, self.mod, self.mod.default_access)
         return node
-
 
 
 class PrivateSymbolsRemover(ft.FortranTransformer):
@@ -152,6 +153,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     visit_Type = visit_Procedure
     visit_Element = visit_Procedure
 
+
 def remove_private_symbols(node):
     """
     Walk the tree starting at *node*, removing all private symbols.
@@ -168,7 +170,6 @@ def remove_private_symbols(node):
 
 
 class UnwrappablesRemover(ft.FortranTransformer):
-
     def __init__(self, callbacks, types, constructors, destructors):
         self.callbacks = callbacks
         self.types = types
@@ -236,15 +237,15 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 # Yann - EXPERIMENTAL !!
                 if arg.type.startswith('type') and len(dims) != 0:
                     # warnings.warn('removing routine %s due to unsupported arrays of derived types %s' %
-                    #                (node.name, arg.type))
-                    # return None
+                    #               (node.name, arg.type))
+                    # return none
                     if len(dims) > 1:
                         raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
                     dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
                     if len(dimensions_list) > 1 or ':' in dimensions_list:
-                        warnings.warn('removing routine %s due to derived type array %s -- currently, only '
+                        warnings.warn('removing routine %s due to derived type array argument : %s -- currently, only '
                                       'fixed-lengh one-dimensional arrays of derived type are supported'
-                                      % (arg.name, arg.type))
+                                      % (node.name, arg.name))
                         return None
 
         return self.generic_visit(node)
@@ -280,14 +281,13 @@ class UnwrappablesRemover(ft.FortranTransformer):
         if node.type.startswith('type') and len(dims) != 0:
             if len(dims) > 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % node.name)
-            dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
-            if len(dimensions_list) > 1 or ':' in dimensions_list:
-                warnings.warn('test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
-                              (node.name, node.type))
+            if len(ArrayDimensionConverter.split_dimensions(dims[0])) > 1:
+                warnings.warn(
+                    'test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
+                    (node.name, node.type))
                 return None
 
         return self.generic_visit(node)
-
 
     def visit_Type(self, node):
         """
@@ -300,7 +300,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
             elements = []
             for element in node.elements:
                 # Get the number of dimensions of the element (if any)
-                dims = [attr for attr in element.attributes if attr.startswith('dimension')]  # dims = filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
+                dims = [attr for attr in element.attributes if attr.startswith(
+                    'dimension')]  # dims = filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
                 # Skip this if the type is not do-able
                 if 'pointer' in element.attributes and dims != []:
                     warnings.warn('removing %s.%s due to pointer attribute' %
@@ -318,7 +319,6 @@ class UnwrappablesRemover(ft.FortranTransformer):
             node.elements = elements
             return self.generic_visit(node)
 
-
     def visit_Module(self, node):
         """
         Remove unwrappable elements inside modules.
@@ -329,18 +329,19 @@ class UnwrappablesRemover(ft.FortranTransformer):
         elements = []
         for element in node.elements:
             # Get the number of dimensions of the element (if any)
-            dims = [attr for attr in element.attributes if attr.startswith('dimension')]  # filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
+            dims = [attr for attr in element.attributes if attr.startswith(
+                'dimension')]  # filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
             if 'pointer' in element.attributes and dims != []:
                 warnings.warn('removing %s.%s due to pointer attribute' %
-                             (node.name, element.name))
+                              (node.name, element.name))
                 continue
             if element.type.lower() == 'type(c_ptr)':
                 warnings.warn('removing %s.%s as type(c_ptr) unsupported' %
-                                (node.name, element.name))
+                              (node.name, element.name))
                 continue
             if element.type.startswith('type') and 'target' not in element.attributes:
                 warnings.warn('removing %s.%s as missing "target" attribute' %
-                                (node.name, element.name))
+                              (node.name, element.name))
                 continue
             if element.type.startswith('type') and element.type not in self.types:
                 warnings.warn('removing %s.%s as type %s unsupported' %
@@ -387,6 +388,7 @@ def fix_subroutine_uses_clauses(tree, types):
 
     return tree
 
+
 def fix_element_uses_clauses(tree, types):
     """
     Add uses clauses to derived type elements in modules
@@ -405,6 +407,7 @@ def set_intent(attributes, intent):
     attributes = [attr for attr in attributes if not attr.startswith('intent')]
     attributes.append(intent)
     return attributes
+
 
 def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
     for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
@@ -428,7 +431,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             # save original Fortran intent since we'll be overwriting it
             # with intent of the opaque pointer
             arg.attributes = arg.attributes + ['fortran_' + attr for attr in
-                               arg.attributes if attr.startswith('intent')]
+                                               arg.attributes if attr.startswith('intent')]
 
             typename = ft.strip_type(arg.type)
             arg.wrapper_type = 'integer'
@@ -453,13 +456,14 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
 
     return tree
 
+
 def convert_array_intent_out_to_intent_inout(tree):
     """
     Find all intent(out) array arguments and convert to intent(inout)
     """
     for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
         for arg in arguments:
-            dims = [attr for attr in arg.attributes if attr.startswith('dimension') ]
+            dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
             if dims == []:
                 continue
             if len(dims) != 1:
@@ -534,18 +538,22 @@ class ArrayDimensionConverter(ft.FortranVisitor):
         ds = ['']
         for c in dim:
             if c != ',': ds[-1] += c
-            if   c == '(': br += 1
-            elif c == ')': br -= 1
+            if c == '(':
+                br += 1
+            elif c == ')':
+                br -= 1
             elif c == ',':
-                if br == 0: ds.append('')
-                else: ds[-1] += ','
+                if br == 0:
+                    ds.append('')
+                else:
+                    ds[-1] += ','
         return ds
 
     def visit_Procedure(self, node):
 
         n_dummy = 0
         for arg in node.arguments:
-            dims = [attr for attr in arg.attributes if attr.startswith('dimension') ]
+            dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
             if dims == []:
                 continue
             if len(dims) != 1:
@@ -560,8 +568,9 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                     if d.startswith('len'):
                         arg.f2py_line = ('!f2py %s %s, dimension(%s) :: %s' % \
                                          (arg.type,
-                                           ','.join([attr for attr in arg.attributes if not attr.startswith('dimension')]),
-                                           d.replace('len', 'slen'), arg.name))
+                                          ','.join(
+                                              [attr for attr in arg.attributes if not attr.startswith('dimension')]),
+                                          d.replace('len', 'slen'), arg.name))
                     new_ds.append(d)
                     continue
                 dummy_arg = ft.Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
@@ -580,9 +589,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                 node.arguments.extend(new_dummy_args)
 
 
-
 class MethodFinder(ft.FortranTransformer):
-
     def __init__(self, types, constructor_names, destructor_names, short_names,
                  move_methods, shorten_routine_names=True):
         self.types = types
@@ -612,8 +619,8 @@ class MethodFinder(ft.FortranTransformer):
 
     def visit_Procedure(self, node, interface=None):
         if (len(node.arguments) == 0 or
-             (node.arguments[0] is not None and
-              node.arguments[0].type not in self.types)):
+                (node.arguments[0] is not None and
+                         node.arguments[0].type not in self.types)):
             # procedure is not a method, so leave it alone
             return node
 
@@ -635,8 +642,8 @@ class MethodFinder(ft.FortranTransformer):
             node.attributes.append('constructor')
 
         if (self.move_methods or
-            'constructor' in node.attributes or
-            'destructor' in node.attributes):
+                    'constructor' in node.attributes or
+                    'destructor' in node.attributes):
 
             node.attributes.append('method')
             node.type_name = typ.name
@@ -657,10 +664,10 @@ class MethodFinder(ft.FortranTransformer):
                         break
                 else:
                     intf = ft.Interface(interface.name,
-                                     interface.filename,
-                                     interface.doc,
-                                     interface.lineno,
-                                     [node])
+                                        interface.filename,
+                                        interface.doc,
+                                        interface.lineno,
+                                        [node])
                     typ.interfaces.append(intf)
                     logging.debug('added method %s to new interface %s in type %s' %
                                   (node.method_name, intf.name, typ.name))
@@ -670,11 +677,13 @@ class MethodFinder(ft.FortranTransformer):
         else:
             return node
 
+
 def collapse_single_interfaces(tree):
     """Collapse interfaces which contain only a single procedure."""
 
     class _InterfaceCollapser(ft.FortranTransformer):
         """Replace interfaces with only one procedure by that procedure"""
+
         def visit_Interface(self, node):
             if len(node.procedures) == 1:
                 proc = node.procedures[0]
@@ -686,6 +695,7 @@ def collapse_single_interfaces(tree):
 
     class _ProcedureRelocator(ft.FortranTransformer):
         """Filter interfaces and procedures into correct lists"""
+
         def visit_Type(self, node):
             logging.debug('visiting %r' % node)
             interfaces = []
@@ -709,6 +719,7 @@ def collapse_single_interfaces(tree):
     tree = _ProcedureRelocator().visit(tree)
     return tree
 
+
 def add_missing_constructors(tree):
     for node in ft.walk(tree):
         if not isinstance(node, ft.Type):
@@ -722,19 +733,19 @@ def add_missing_constructors(tree):
 
             logging.info('adding missing constructor for %s' % node.name)
             new_node = ft.Subroutine('%s_initialise' % node.name,
-                                 node.filename,
-                                 ['Automatically generated constructor for %s' % node.name],
-                                 node.lineno,
-                                 [ft.Argument(name='this',
-                                           filename=node.filename,
-                                           doc=['Object to be constructed'],
-                                           lineno=node.lineno,
-                                           attributes=['intent(out)'],
-                                           type='type(%s)' % node.name)],
-                                 node.uses,
-                                 ['constructor', 'skip_call'],
-                                 mod_name=node.mod_name,
-                                 type_name=node.name)
+                                     node.filename,
+                                     ['Automatically generated constructor for %s' % node.name],
+                                     node.lineno,
+                                     [ft.Argument(name='this',  # self.prefix + 'this' would probably be safer
+                                                  filename=node.filename,
+                                                  doc=['Object to be constructed'],
+                                                  lineno=node.lineno,
+                                                  attributes=['intent(out)'],
+                                                  type='type(%s)' % node.name)],
+                                     node.uses,
+                                     ['constructor', 'skip_call'],
+                                     mod_name=node.mod_name,
+                                     type_name=node.name)
             new_node.method_name = '__init__'
             node.procedures.append(new_node)
     return tree
@@ -753,19 +764,19 @@ def add_missing_destructors(tree):
 
             logging.info('adding missing destructor for %s' % node.name)
             new_node = ft.Subroutine('%s_finalise' % node.name,
-                                 node.filename,
-                                 ['Automatically generated destructor for %s' % node.name],
-                                 node.lineno,
-                                 [ft.Argument(name='this',
-                                           filename=node.filename,
-                                           doc=['Object to be destructed'],
-                                           lineno=node.lineno,
-                                           attributes=['intent(inout)'],
-                                           type='type(%s)' % node.name)],
-                                 node.uses,
-                                 ['destructor', 'skip_call'],
-                                 mod_name=node.mod_name,
-                                 type_name=node.name)
+                                     node.filename,
+                                     ['Automatically generated destructor for %s' % node.name],
+                                     node.lineno,
+                                     [ft.Argument(name='this',  # self.prefix + 'this' would probably be safer
+                                                  filename=node.filename,
+                                                  doc=['Object to be destructed'],
+                                                  lineno=node.lineno,
+                                                  attributes=['intent(inout)'],
+                                                  type='type(%s)' % node.name)],
+                                     node.uses,
+                                     ['destructor', 'skip_call'],
+                                     mod_name=node.mod_name,
+                                     type_name=node.name)
             new_node.method_name = '__del__'
             node.procedures.append(new_node)
     return tree
@@ -788,13 +799,13 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
         arguments[i].attributes.append('intent(out)')
 
         new_node = ft.Subroutine(node.name,
-                              node.filename,
-                              node.doc,
-                              node.lineno,
-                              arguments,
-                              node.uses,
-                              node.attributes,
-                              mod_name=node.mod_name)
+                                 node.filename,
+                                 node.doc,
+                                 node.lineno,
+                                 arguments,
+                                 node.uses,
+                                 node.attributes,
+                                 mod_name=node.mod_name)
         if hasattr(node, 'call_name'):
             new_node.call_name = node.call_name
         if hasattr(node, 'type'):
@@ -802,6 +813,7 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
         new_node.orig_name = node.orig_name
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
+
 
 class IntentOutToReturnValues(ft.FortranTransformer):
     """
@@ -830,20 +842,21 @@ class IntentOutToReturnValues(ft.FortranTransformer):
             new_node = node  # no changes needed
         else:
             new_node = ft.Function(node.name,
-                                node.filename,
-                                node.doc,
-                                node.lineno,
-                                arguments,
-                                node.uses,
-                                node.attributes,
-                                ret_val,
-                                ret_val_doc,
-                                mod_name=node.mod_name,
-                                type_name=node.type_name)
+                                   node.filename,
+                                   node.doc,
+                                   node.lineno,
+                                   arguments,
+                                   node.uses,
+                                   node.attributes,
+                                   ret_val,
+                                   ret_val_doc,
+                                   mod_name=node.mod_name,
+                                   type_name=node.type_name)
             new_node.orig_node = node
             if hasattr(node, 'method_name'):
                 new_node.method_name = node.method_name
         return new_node
+
 
 class RenameReservedWords(ft.FortranVisitor):
     def __init__(self, types, name_map=None):
@@ -854,7 +867,7 @@ class RenameReservedWords(ft.FortranVisitor):
 
         # rename Python keywords by appending an underscore
         import keyword
-        self.name_map.update(dict((key, key + '_') for key in  keyword.kwlist))
+        self.name_map.update(dict((key, key + '_') for key in keyword.kwlist))
 
         # apply same renaming as f2py
         import numpy.f2py.crackfortran
@@ -886,8 +899,8 @@ class RenameReservedWords(ft.FortranVisitor):
     visit_Module = visit_Argument
     visit_Type = visit_Argument
 
-class RenameArgumentsPython(ft.FortranVisitor):
 
+class RenameArgumentsPython(ft.FortranVisitor):
     def __init__(self, types):
         self.types = types
 
@@ -910,15 +923,16 @@ class RenameArgumentsPython(ft.FortranVisitor):
             node.py_value = node.py_name
         return node
 
-class RenameInterfacesPython(ft.FortranVisitor):
 
+class RenameInterfacesPython(ft.FortranVisitor):
     def visit_Interface(self, node):
         for proc in node.procedures:
             if hasattr(proc, 'method_name'):
-                proc.method_name = '_'+proc.method_name
+                proc.method_name = '_' + proc.method_name
             else:
-                proc.method_name = '_'+proc.name
+                proc.method_name = '_' + proc.name
         return node
+
 
 class ReorderOptionalArgumentsPython(ft.FortranVisitor):
     """
@@ -943,6 +957,7 @@ class OnlyAndSkip(ft.FortranTransformer):
     Currently it takes a list of subroutines and a list of modules to write
     wrappers for. If empty, it does all of them.
     """
+
     def __init__(self, kept_subs, kept_mods):
         self.kept_subs = kept_subs
         self.kept_mods = kept_mods
@@ -1012,17 +1027,16 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     SetInterfaceProcedureCallNames().visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
-    # This must happen before fix_subroutine_type_arrays
-    create_super_types(tree, types)
-    # This must happen after fix_subroutine_uses_clauses, to avoid using the super-type
-    # that does not exist and use the regular type, which is used in the declaration of the super-type
-    fix_subroutine_type_arrays(tree, types)
+    create_super_types(tree, types)  # This must happen before fix_subroutine_type_arrays
+    fix_subroutine_type_arrays(tree, types)  # This must happen after fix_subroutine_uses_clauses, to avoid using the
+    # super-types that do not exist and use the regular type, which is used in the declaration of the super-type
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
     tree = convert_array_intent_out_to_intent_inout(tree)
     RenameReservedWords(types, argument_name_map).visit(tree)
     return tree
+
 
 def transform_to_f90_wrapper(tree, types, callbacks, constructors,
                              destructors, short_names, init_lines,
@@ -1087,6 +1101,7 @@ def find_referenced_modules(mods, tree):
 
     return mods
 
+
 def find_referenced_types(mods, tree):
     """
     Given a set of modules in a parse tree, find any types either defined in
@@ -1141,49 +1156,87 @@ def find_referenced_types(mods, tree):
 
 
 def create_super_types(tree, types):
-    # Yann - Gather all the dimensions of arrays of type in arguments and module variables
+    # YANN: Gather all the dimensions of arrays of type in arguments and module variables
     # Add here any other elements where arrays of derived types may appear
-    from itertools import chain
-    # For each top-level procedure and module procedures:
-    for proc in chain(tree.procedures, *(mod.procedures for mod in tree.modules)):
-        for arg in proc.arguments:
-            append_type_dimension(arg, types)
-    # Then create a super-type for each type for each dimension, inside the module where
+    append_type_dimension(tree, types)
+    # Then create a super-type for each type for each of those dimension, inside the module where
     # the type is declared in the first place.
-    # modules_indexes = {mod.name: i for i, mod in enumerate(tree.modules)}  # name to index map
-    modules_indexes = dict((mod.name, i) for (i, mod) in enumerate(tree.modules))
+    modules_indexes = dict(
+        (mod.name, i) for (i, mod) in enumerate(tree.modules))  # name to index map, compatible python 2.6
     containers = []
     for ty in types.values():
-        for dim in set(attr for attr in ty.attributes if attr.startswith('dimension')):
-            d = ArrayDimensionConverter.split_dimensions(dim)[0]
-            el = ft.Element(name='items', attributes=[dim], type='type('+ty.name+')')
-            name = ty.name + '_x' + str(d) + '_array'
-            if name not in (t.name for t in tree.modules[modules_indexes[ty.mod_name]].types):
-                super_type = ft.Type(name=name,filename=ty.filename,lineno=ty.lineno,
-                                     doc=['super-type', 'Automatically generated to handle derived type arrays as a new derived type'], elements=[el], mod_name=ty.mod_name)
-                super_type.uses = ty.uses
-                tree.modules[modules_indexes[ty.mod_name]].types.append(super_type)
-                containers.append(tree.modules[modules_indexes[ty.mod_name]].types[-1])
+        for dimensions_attribute in [attr for attr in ty.attributes if attr.startswith('dimension')]:
+            # each type might have many "dimension" attributes since "append_type_dimension"
+            dimensions = ArrayDimensionConverter.split_dimensions(dimensions_attribute)
+            if len(dimensions) == 1:  # at this point, only 1D arrays are supported
+                d = dimensions[0]
+                if str(d) == ':':
+                    continue  # at this point, only fixed-length arrays are supported
+                # populate the super type with the array of types
+                el = ft.Element(name='items', attributes=[dimensions_attribute], type='type(' + ty.name + ')')
+                name = ty.name + '_x' + str(d) + '_array'
+                # populate the tree with the super-type
+                if name not in (t.name for t in tree.modules[modules_indexes[ty.mod_name]].types):
+                    super_type = ft.Type(name=name, filename=ty.filename, lineno=ty.lineno,
+                                         doc=['super-type',
+                                              'Automatically generated to handle derived type arrays as a new derived type'],
+                                         elements=[el], mod_name=ty.mod_name)
+                    # uses clauses from the base type
+                    # super_type.uses = ty.uses  # this causes unwanted growth of the normal type "uses" when we add parameters to the super-type in the next step
+                    super_type.uses = set([(ty.mod_name, (ty.name,))])
+                    # uses clause if the dimension is a parameter (which is handled through a n=shape(array) hidden argument in the case of regular arrays)
+                    param = extract_dimensions_parameters(d, tree)
+                    if param:
+                        super_type.uses.add((param[0], (param[1],)))
+
+                    tree.modules[modules_indexes[ty.mod_name]].types.append(super_type)
+                    containers.append(tree.modules[modules_indexes[ty.mod_name]].types[-1])
+
     for ty in containers:
         types['type(%s)' % ty.name] = types[ty.name] = ty
 
-def append_type_dimension(var, types):
-    if var.type in types:
-        types[var.type].attributes += [attrib for attrib in var.attributes if
-                                       attrib.startswith('dimension')]
-        # Legality of dimension has been checked at the visit stage
+
+def append_type_dimension(tree, types):
+    # YANN: save the dimensions of all the type arrays in the base-type attributes, in order to create a super-type for each of them afterwards
+    # This might cause trouble ...
+    from itertools import chain
+    for proc in chain(tree.procedures, *(mod.procedures for mod in tree.modules)):
+        for arg in proc.arguments:
+            if arg.type in types:
+                types[arg.type].attributes += [attrib for attrib in arg.attributes if
+                                               attrib.startswith('dimension')]
+                # Legality of dimension has been checked at the visit stage
+
 
 def fix_subroutine_type_arrays(tree, types):
+    # YANN: replace dimension(x) :: type() arguments of routines by scalar super-types
     from itertools import chain
     # For each top-level procedure and module procedures:
     for proc in chain(tree.procedures, *(mod.procedures for mod in tree.modules)):
         for arg in proc.arguments:
-            dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
-            if arg.type.startswith('type') and dims != []:
-                # If the argument is an array of types, convert it to super-type
-                d = ArrayDimensionConverter.split_dimensions(dims[0])[0]
+            dimensions_attribute = [attr for attr in arg.attributes if attr.startswith('dimension')]
+            if arg.type.startswith('type') and len(dimensions_attribute) == 1:
+                # an argument should only have 0 or 1 "dimension" attributes
+                # If the argument is an 1D-array of types, convert it to super-type:
+                d = ArrayDimensionConverter.split_dimensions(dimensions_attribute[0])[0]
+                if str(d) == ':':
+                    continue
                 arg.type = arg.type[:-1] + '_x' + str(d) + '_array)'
-                # ... remove the dimension
+                # if the dimension is a parameter somewhere, add it to the uses clauses
+                param = extract_dimensions_parameters(d, tree)
+                if param:
+                    proc.uses.add((param[0], (param[1],)))
+                # ... then remove the dimension ...
                 arg.attributes = [attr for attr in arg.attributes if not attr.startswith('dimension')]
                 # ... and brand it for the final call
                 arg.doc.append('super-type')
+
+
+def extract_dimensions_parameters(d, tree):
+    # YANN: returns (module, parameter) if there is a parameter matching the dimension
+    if not d.isdigit():
+        # then: look for the dimension in the parameters
+        for mod in tree.modules:
+            for el in mod.elements:
+                if d == el.name and "parameter" in el.attributes:
+                    return (mod.name, el.name)

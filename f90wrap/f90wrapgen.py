@@ -16,18 +16,16 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-from f90wrap.six import string_types     # Python 2/3 compatibility library
-
-import copy
 import logging
-import warnings
 import os
+import warnings
 
 import numpy as np
 
-from f90wrap.transform import ArrayDimensionConverter
-from f90wrap import fortran as ft
 from f90wrap import codegen as cg
+from f90wrap import fortran as ft
+from f90wrap.six import string_types  # Python 2/3 compatibility library
+from f90wrap.transform import ArrayDimensionConverter
 
 
 class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
@@ -65,12 +63,13 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     types: `dict`
         Dictionary mapping type names to Fortran modules where they are defined
     """
+
     def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
                  kind_map, types, default_to_inout):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
-                               max_length=80,
-                               continuation='&',
-                               comment='!')
+                                  max_length=80,
+                                  continuation='&',
+                                  comment='!')
         ft.FortranVisitor.__init__(self)
         self.prefix = prefix
         self.sizeof_fortran_t = sizeof_fortran_t
@@ -87,8 +86,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         # clean up any previous wrapper files
         top_level_wrapper_file = '%s%s.f90' % (self.prefix, 'toplevel')
         f90_wrapper_files = (['%s%s.f90' % (self.prefix,
-                                           os.path.splitext(os.path.basename(mod.filename))[0])
-                                           for mod in node.modules ] +
+                                            os.path.splitext(os.path.basename(mod.filename))[0])
+                              for mod in node.modules] +
                              [top_level_wrapper_file])
 
         for f90_wrapper_file in f90_wrapper_files:
@@ -170,15 +169,15 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         for mod, only in all_uses.items():
             if only is not None:
-                self.write('use %s, only: %s' % (mod, ', '.join(only)))
+                self.write('use %s, only: %s' % (mod, ', '.join(set(only))))  # YANN: "set" to avoid derundancy
             else:
                 self.write('use %s' % mod)
 
     def write_super_type_lines(self, ty):
-        self.write('type '+ty.name)
+        self.write('type ' + ty.name)
         self.indent()
         for el in ty.elements:
-            self.write(el.type+''.join(', '+attr for attr in el.attributes)+' :: '+el.name)
+            self.write(el.type + ''.join(', ' + attr for attr in el.attributes) + ' :: ' + el.name)
         self.dedent()
         self.write('end type ' + ty.name)
         self.write()
@@ -206,11 +205,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         """
         for arg in node.arguments:
             if 'callback' in arg.attributes:
-                return 'external '+arg.name
+                return 'external ' + arg.name
 
             attributes = [attr for attr in arg.attributes if attr in ('optional', 'pointer', 'intent(in)',
-                                                                       'intent(out)', 'intent(inout)') or
-                                                                       attr.startswith('dimension') ]
+                                                                      'intent(out)', 'intent(inout)') or
+                          attr.startswith('dimension')]
             arg_dict = {'arg_type': arg.type,
                         'type_name': arg.type.startswith('type') and arg.type[5:-1] or None,
                         'arg_name': arg.name}  # self.prefix+arg.name}
@@ -229,8 +228,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             elif self.default_to_inout and all('intent' not in attr for attr in arg.attributes):
                 # No f2py instruction and no explicit intent : force f2py to make the argument intent(inout)
                 # This is put as an option to prserve backwards compatibility
-                self.write('!f2py intent(inout) '+arg.name)
-
+                self.write('!f2py intent(inout) ' + arg.name)
 
     def write_transfer_in_lines(self, node):
         """
@@ -264,9 +262,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             if not hasattr(arg, 'init_lines'):
                 continue
             exe_optional, exe = arg.init_lines
-            D = {'OLD_ARG':arg.name,
-                 'ARG':arg.name,  # self.prefix+arg.name,
-                 'PTR':arg.name + '_ptr%p'}
+            D = {'OLD_ARG': arg.name,
+                 'ARG': arg.name,  # self.prefix+arg.name,
+                 'PTR': arg.name + '_ptr%p'}
             if 'optional' in arg.attributes:
                 self.write(exe_optional % D)
             else:
@@ -291,7 +289,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         def actual_arg_name(arg):
             name = arg.name
             if ((hasattr(node, 'transfer_in') and arg.name in node.transfer_in) or
-                (hasattr(node, 'transfer_out') and arg.name in node.transfer_out)):
+                    (hasattr(node, 'transfer_out') and arg.name in node.transfer_out)):
                 name += '_ptr%p'
             if 'super-type' in arg.doc:
                 name += '%items'
@@ -308,7 +306,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         if isinstance(orig_node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
-                       {'ret_val':  actual_arg_name(orig_node.ret_val),
+                       {'ret_val': actual_arg_name(orig_node.ret_val),
                         'func_name': func_name,
                         'arg_names': ', '.join(arg_names)})
         else:
@@ -343,7 +341,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
-                                                  if node.arguments else ''})
+                    if node.arguments else ''})
         self.indent()
         self.write_uses_lines(node)
         self.write("implicit none")
@@ -467,7 +465,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
 
     def _write_dt_array_wrapper(self, t, element, dims,
-                               sizeof_fortran_t):
+                                sizeof_fortran_t):
         """
         Write fortran get/set/len routines for a (1-dimensional) derived-type array.
 
@@ -535,23 +533,31 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             inout = "out"
 
         if isinstance(t, ft.Type):
-            this = 'this'
+            this = self.prefix + 'this'
         else:
             this = 'dummy_this'
+        safe_i = self.prefix + 'i'  # YANN: i could be in the "uses" clauses
 
-        self.write('subroutine %s%s__array_%sitem__%s(%s, i, %s)' % (self.prefix, t.name,
-                                                                     getset, el.name,
-                                                                     this,
-                                                                     el.name+'item'))
+        self.write('subroutine %s%s__array_%sitem__%s(%s, %s, %s)' % (self.prefix, t.name,
+                                                                      getset, el.name,
+                                                                      this,
+                                                                      safe_i,
+                                                                      el.name + 'item'))
         self.indent()
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
-            mod = self.types[t.name].mod_name
-            if 'super-type' not in t.doc:
-                extra_uses[mod] = [t.name]
+            if 'super-type' in t.doc:
+                # YANN: propagate parameter uses
+                for use in t.uses:
+                    if use[0] in extra_uses and use[1][0] not in extra_uses[use[0]]:
+                        extra_uses[use[0]].append(use[1][0])
+                    else:
+                        extra_uses[use[0]] = [use[1][0]]
+            else:
+                extra_uses[t.mod_name] = [t.name]
         mod = self.types[el.type].mod_name
         el_tname = ft.strip_type(el.type)
         if mod in extra_uses:
@@ -575,18 +581,18 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             array_name = 'this_ptr%%p%%%s' % el.name
         else:
             array_name = '%s_%s' % (t.name, el.name)
-        self.write('integer, intent(in) :: i')
-        self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name+'item', sizeof_fortran_t))
+        self.write('integer, intent(in) :: %s' % (safe_i))
+        self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name + 'item', sizeof_fortran_t))
         self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
         self.write()
         if isinstance(t, ft.Type):
-            self.write('this_ptr = transfer(this, this_ptr)')
+            self.write('this_ptr = transfer(%s, this_ptr)' % (this))
 
         if 'allocatable' in el.attributes:
             self.write('if (allocated(%s)) then' % array_name)
             self.indent()
 
-        self.write('if (i < 1 .or. i > size(%s)) then' % array_name)
+        self.write('if (%s < 1 .or. %s > size(%s)) then' % (safe_i, safe_i, array_name))
         self.indent()
         self.write('call %s("array index out of range")' % self.abort_func)
         self.dedent()
@@ -594,11 +600,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.indent()
 
         if getset == "get":
-            self.write('%s_ptr%%p => %s(i)' % (el.name, array_name))
-            self.write('%s = transfer(%s_ptr,%s)' % (el.name+'item', el.name, el.name+'item'))
+            self.write('%s_ptr%%p => %s(%s)' % (el.name, array_name, safe_i))
+            self.write('%s = transfer(%s_ptr,%s)' % (el.name + 'item', el.name, el.name + 'item'))
         else:
-            self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name+'item', el.name))
-            self.write('%s(i) = %s_ptr%%p' % (array_name, el.name))
+            self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name + 'item', el.name))
+            self.write('%s(%s) = %s_ptr%%p' % (array_name, safe_i, el.name))
 
         self.dedent()
         self.write('endif')
@@ -616,7 +622,6 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                                                               getset, el.name))
         self.write()
 
-
     def _write_array_len(self, t, el, sizeof_fortran_t):
         """
         Write a subroutine which returns the length of a derived-type array
@@ -633,19 +638,28 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             The size, in bytes, of a pointer to a fortran derived type ??
         """
         if isinstance(t, ft.Type):
-            this = 'this'
+            this = self.prefix + 'this'
         else:
             this = 'dummy_this'
+        safe_n = self.prefix + 'n'  # YANN: "n" could be in the "uses"
 
-        self.write('subroutine %s%s__array_len__%s(%s, n)' % (self.prefix, t.name, el.name, this))
+        self.write('subroutine %s%s__array_len__%s(%s, %s)' % (self.prefix, t.name, el.name, this, safe_n))
         self.indent()
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
-            if 'super-type' not in t.doc:
+            if 'super-type' in t.doc:
+                # YANN: propagate parameter uses
+                for use in t.uses:
+                    if use[0] in extra_uses and use[1][0] not in extra_uses[use[0]]:
+                        extra_uses[use[0]].append(use[1][0])
+                    else:
+                        extra_uses[use[0]] = [use[1][0]]
+            else:
                 extra_uses[self.types[t.name].mod_name] = [t.name]
+
         mod = self.types[el.type].mod_name
         el_tname = ft.strip_type(el.type)
         if mod in extra_uses:
@@ -660,12 +674,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
         self.write_type_lines(el.type)
-        self.write('integer, intent(out) :: n')
+        self.write('integer, intent(out) :: %s' % (safe_n))
         self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
             self.write()
-            self.write('this_ptr = transfer(this, this_ptr)')
+            self.write('this_ptr = transfer(%s, this_ptr)' % (this))
             array_name = 'this_ptr%%p%%%s' % el.name
         else:
             array_name = '%s_%s' % (t.name, el.name)
@@ -674,20 +688,19 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('if (allocated(%s)) then' % array_name)
             self.indent()
 
-        self.write('n = size(%s)' % array_name)
+        self.write('%s = size(%s)' % (safe_n, array_name))
 
         if 'allocatable' in el.attributes:
             self.dedent()
             self.write('else')
             self.indent()
-            self.write('n = 0')
+            self.write('%s = 0' % (safe_n))
             self.dedent()
             self.write('end if')
 
         self.dedent()
         self.write('end subroutine %s%s__array_len__%s' % (self.prefix, t.name, el.name))
         self.write()
-
 
     def _write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
         """
@@ -720,7 +733,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         elif isinstance(t, ft.Module):
             this = ''
         else:
-            raise ValueError("Don't know how to write scalar wrappers for %s type %s" (t, type(t)))
+            raise ValueError("Don't know how to write scalar wrappers for %s type %s"(t, type(t)))
 
         # Get appropriate use statements
         extra_uses = {}
@@ -741,7 +754,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         localvar = self.prefix + el.name
 
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
-                                                    getset, el.name, this, localvar))
+                                                      getset, el.name, this, localvar))
         self.indent()
 
         self.write_uses_lines(el, extra_uses)
@@ -759,7 +772,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         # Return/set by value
         attributes = [attr for attr in el.attributes if attr not in
-                      ['pointer', 'allocatable', 'public', 'parameter', 'save'] ]
+                      ['pointer', 'allocatable', 'public', 'parameter', 'save']]
 
         if el.type.startswith('type'):
             # For derived types elements, treat as opaque reference
@@ -807,5 +820,3 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
                                                     el.name))
         self.write()
-
-
