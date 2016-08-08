@@ -17,6 +17,7 @@
 # HF X
 # HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+import os
 import sys
 from f90wrap import __version__
 major, minor = sys.version_info[0:2]
