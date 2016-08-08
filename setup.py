@@ -54,5 +54,5 @@ setup(name='f90wrap',
       author='James Kermode',
       author_email='james.kermode@gmail.com',
       url='https://github.com/jameskermode/f90wrap',
-      download_url = 'https://github.com/jameskermode/f90wrap/tarball/v0.1.0',
+      download_url = 'https://github.com/jameskermode/f90wrap/archive/v0.1.0.tar.gz,
       ext_modules=[fortran_t, arraydata_ext])
