@@ -26,14 +26,6 @@ if (major, minor) < (2, 4):
     sys.exit(1)
 
 try:
-    import numpy
-    if not tuple([int(x) for x in numpy.__version__.split('.')[0:2]]) >= (1, 3):
-        raise ImportError
-except ImportError:
-    sys.stderr.write('Numpy 1.3 (http://www.numpy.org) or later needed to use this package\n')
-    sys.exit(1)
-
-try:
     import setuptools
 except ImportError:
     pass
