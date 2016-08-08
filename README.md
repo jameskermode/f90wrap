@@ -102,7 +102,7 @@ To use f2py to compile these wrappers into an extension module, use:
 where `_MODULE` is the name of the low-level extension module.
 
 Optionally, you can replace `f2py` with `f2py-f90wrap`, which is a
-slightly modified version of `f2py` includeed in this distribution
+slightly modified version of `f2py` included in this distribution
 that introduces the following features:
 
 1.  Allow the Fortran `present()` intrinsic function to work correctly with
@@ -119,8 +119,8 @@ that introduces the following features:
 Notes
 -----
 
-- Unlike standard `f2py`, `f90wrap` converts all `intent(out)` arrays to 
-`intent(in, out)`. This was a deliberate design decision to allow allocatable and automatic arrays of unknown output size to be used. It’s hard in general to work out what size array needs to be allocated, so relying on the the user to pre-allocate from Python is the safest solution.
+- Unlike standard `f2py`, `f90wrap` converts all `intent(out)` arrays to
+`intent(in, out)`. This was a deliberate design decision to allow allocatable and automatic arrays of unknown output size to be used. It is hard in general to work out what size array needs to be allocated, so relying on the the user to pre-allocate from Python is the safest solution.
 - Scalar arguments without `intent` are treated as `intent(in)` by `f2py`. To have `inout` scalars, you need to call `f90wrap` with the `--default-to-inout` flag and declare the python variables as 1-length numpy arrays (`numpy.zeros(1)` for example).
 - Pointer arguments are not supported.
 - Arrays of derived types are currently not fully supported: a workaround is provided for 1D-fixed-length arrays, i.e. `type(a), dimension(b) :: c`. In this case, the super-type `Type_a_Xb_Array` will be created, and the array of types can be accessed through `c.items`. Note that dimension b can not be `:`, but can be a parameter.
@@ -224,5 +224,3 @@ Contributors
 - David Verelst [davidovitch](https://github.com/davidovitch)
 - James Orr [jamesorr](https://github.com/jamesorr)
 - [yvesch](https://github.com/yvesch)
-
-

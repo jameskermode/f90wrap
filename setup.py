@@ -46,13 +46,21 @@ arraydata_ext = Extension(name='f90wrap.arraydata',
                           sources=['f90wrap/arraydatamodule.c'] + f2py_info['sources'],
                           include_dirs=f2py_info['include_dirs'])
 
+description = 'Fortran to Python interface generator with derived type support'
+long_description = description
+if os.path.exists('README.md'):
+    long_description = open('README.md', 'r').read()
+elif os.path.exists('README.rst'):
+    long_description = open('README.rst', 'r').read()
+
 setup(name='f90wrap',
       packages=['f90wrap'],
       scripts=['scripts/f90doc', 'scripts/f90wrap', 'scripts/f2py-f90wrap'],
-      version='v0.1.0',
-      description='Fortran to Python interface generator with derived type support',
+      version='0.1.2',
+      description=description,
+      long_description=long_description,
       author='James Kermode',
       author_email='james.kermode@gmail.com',
       url='https://github.com/jameskermode/f90wrap',
-      download_url = 'https://github.com/jameskermode/f90wrap/archive/v0.1.0.tar.gz',
+      download_url = 'https://github.com/jameskermode/f90wrap/archive/v0.1.2.tar.gz',
       ext_modules=[fortran_t, arraydata_ext])
