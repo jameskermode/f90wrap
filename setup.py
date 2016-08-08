@@ -57,11 +57,12 @@ elif os.path.exists('README.rst'):
 setup(name='f90wrap',
       packages=['f90wrap'],
       scripts=['scripts/f90doc', 'scripts/f90wrap', 'scripts/f2py-f90wrap'],
-      version='0.1.2',
+      ext_modules=[fortran_t, arraydata_ext])
+      version='0.1.3',
       description=description,
       long_description=long_description,
       author='James Kermode',
       author_email='james.kermode@gmail.com',
       url='https://github.com/jameskermode/f90wrap',
-      download_url = 'https://github.com/jameskermode/f90wrap/archive/v0.1.2.tar.gz',
-      ext_modules=[fortran_t, arraydata_ext])
+      download_url='https://github.com/jameskermode/f90wrap/archive/v0.1.3.tar.gz',
+      install_requires=['numpy>=1.3.0'])
