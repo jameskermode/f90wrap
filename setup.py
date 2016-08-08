@@ -57,7 +57,7 @@ elif os.path.exists('README.rst'):
 setup(name='f90wrap',
       packages=['f90wrap'],
       scripts=['scripts/f90doc', 'scripts/f90wrap', 'scripts/f2py-f90wrap'],
-      ext_modules=[fortran_t, arraydata_ext])
+      ext_modules=[fortran_t, arraydata_ext],
       version='0.1.3',
       description=description,
       long_description=long_description,
