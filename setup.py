@@ -53,5 +53,5 @@ setup(name='f90wrap',
       description='Fortran to Python interface generator with derived type support',
       author='James Kermode',
       author_email='james.kermode@gmail.com',
-      url='http://www.jrkermode.co.uk/f90wrap',
+      url='https://github.com/jameskermode/f90wrap',
       ext_modules=[fortran_t, arraydata_ext])
