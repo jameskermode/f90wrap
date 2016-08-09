@@ -41,7 +41,9 @@ Add support for Fortran derived types and interfaces to f2py by
 wrapping Fortran code with a simple f90 interface layer.
 
 (c) James Kermode 2011 <james.kermode@gmail.com>"""
-__version__ = '0.1.0'
+
+__version__ = '0.1.4'
+
 import sys
 major, minor = sys.version_info[0:2]
 
