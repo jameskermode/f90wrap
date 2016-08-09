@@ -41,9 +41,9 @@ arraydata_ext = Extension(name='f90wrap.arraydata',
 
 description = 'Fortran to Python interface generator with derived type support'
 long_description = description
-if os.path.exists('README.md'):
+if os.path.exists('README.rst'):
     long_description = open('README.rst', 'r').read()
-elif os.path.exists('README.rst'):
+elif os.path.exists('README.md'):
     long_description = open('README.md', 'r').read()
 
 setup(name='f90wrap',
