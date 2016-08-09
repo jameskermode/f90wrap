@@ -29,12 +29,11 @@ Dependencies
 Installation
 ------------
 
-Installation is as follows:
+For the latest stable release, install with either `pip` or `conda`:
 
-    git clone https://github.com/jameskermode/f90wrap
-    cd f90wrap
-    python setup.py install [--prefix PREFIX]
-
+```
+pip install f90wrap
+```
 
 f90wrap can also be installed using `conda` via the conda-forge channel:
 
@@ -48,12 +47,12 @@ Once the conda-forge channel has been enabled, f90wrap can be installed with:
 conda install f90wrap
 ```
 
-It is possible to list all of the versions of f90wrap available on your platform with:
+For the development version, installation is as follows:
 
-```
-conda search f90wrap --channel conda-forge
-```
-
+    git clone https://github.com/jameskermode/f90wrap
+    cd f90wrap
+    python setup.py install [--prefix PREFIX]
+    
 
 Examples and Testing
 --------------------
