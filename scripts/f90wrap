@@ -110,6 +110,8 @@ USAGE
                             help="""File containing Python dictionary to rename Fortran arguments""")
         parser.add_argument('--short-names',
                             help="""File containing Python dictionary mapping full type names to abbreviations""")
+        parser.add_argument('--py-mod-names',
+                            help="File containing Python dictionary mapping Fortran module names to Python ones")
         parser.add_argument('-m', '--mod-name', default='mod',
                             help="Name of output extension module (without .so extension).")
         parser.add_argument('-M', '--move-methods', action='store_true',
@@ -170,6 +172,12 @@ USAGE
         print('Initialisation lines for derived types read from file "%s":' % args.init_lines)
         pprint.pprint(init_lines)
         print()
+
+        py_mod_names = {}
+        if args.py_mod_names:
+            py_mod_names = eval(open(args.py_mod_names).read())
+        print('Python module name remapping from file "%s":' % args.py_mod_names)
+        pprint.pprint(py_mod_names)
 
         argument_name_map = {}
         if args.argument_name_map:
@@ -248,7 +256,8 @@ USAGE
         pywrap.PythonWrapperGenerator(args.prefix, args.mod_name,
                                       types, make_package=args.package,
                                       kind_map=kind_map,
-                                      init_file=args.init_file).visit(py_tree)
+                                      init_file=args.init_file,
+                                      py_mod_name=py_mod_mame.get(mod_name, None)).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
                                   args.abort_func, kind_map, types, args.default_to_inout).visit(f90_tree)
         return 0

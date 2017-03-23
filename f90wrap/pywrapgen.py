@@ -131,14 +131,17 @@ def format_doc_string(node):
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
-                 make_package=False, kind_map=None, init_file=None):
+                 make_package=False, kind_map=None, init_file=None, py_mod_name):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\',
                                comment='#')
         ft.FortranVisitor.__init__(self)
         self.prefix = prefix
-        self.py_mod_name = mod_name
+        if py_mod_name is not None:
+            self.py_mod_name = py_mod_name
+        else:
+            self.py_mod_name = mod_name
         if f90_mod_name is None:
             f90_mod_name = '_' + mod_name
         self.f90_mod_name = f90_mod_name
@@ -354,7 +357,7 @@ except ValueError:
             for arg in node.arguments:
                 if 'optional' in arg.attributes and '._handle' in arg.py_value:
                     dct['f90_arg_names'] = dct['f90_arg_names'].replace(arg.py_value,
-                                                                        ('None if %(arg_py_name)s is None else %(arg_py_name)s._handle') % 
+                                                                        ('None if %(arg_py_name)s is None else %(arg_py_name)s._handle') %
                                                                         {'arg_py_name': arg.py_name})
             call_line = '%(call)s%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
             self.write(call_line)
