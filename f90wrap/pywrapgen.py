@@ -131,7 +131,7 @@ def format_doc_string(node):
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
-                 make_package=False, kind_map=None, init_file=None, py_mod_name):
+                 make_package=False, kind_map=None, init_file=None, py_mod_name=None):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\',
