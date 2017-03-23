@@ -369,7 +369,7 @@ def fix_subroutine_uses_clauses(tree, types):
 
     for mod, sub, arguments in ft.walk_procedures(tree):
         sub.uses = set()
-        sub.mod_name = None
+        #sub.mod_name = None
         if mod is not None:
             sub_name = sub.name
             if hasattr(sub, 'call_name'):
@@ -652,7 +652,7 @@ class MethodFinder(ft.FortranTransformer):
             if interface is None:
                 # just a regular method - move into typ.procedures
                 typ.procedures.append(node)
-                logging.debug('added method %s to type %s' %
+                logging.info('added method %s to type %s' %
                               (node.method_name, typ.name))
             else:
                 # this method was originally inside an interface,
@@ -660,8 +660,8 @@ class MethodFinder(ft.FortranTransformer):
                 for intf in typ.interfaces:
                     if intf.name == interface.name:
                         intf.procedures.append(node)
-                        logging.debug('added method %s to interface %s in type %s' %
-                                      (node.method_name, intf.name, typ.name))
+                        logging.info('added method %s to interface %s in type %s module %r' %
+                                      (node.method_name, intf.name, typ.name, node.mod_name))
                         break
                 else:
                     intf = ft.Interface(interface.name,
@@ -669,9 +669,9 @@ class MethodFinder(ft.FortranTransformer):
                                         interface.doc,
                                         interface.lineno,
                                         [node])
-                    typ.interfaces.append(intf)
-                    logging.debug('added method %s to new interface %s in type %s' %
-                                  (node.method_name, intf.name, typ.name))
+                    intf.mod_name = node.mod_name
+                    logging.info('added method %s to new interface %s in type %s module %r' %
+                                  (node.method_name, intf.name, typ.name, node.mod_name))
 
             # remove method from parent since we've added it to Type
             return None
@@ -1026,11 +1026,12 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
+    tree = fix_subroutine_uses_clauses(tree, types)
     tree = MethodFinder(types, constructors, destructors, short_names,
                         move_methods, shorten_routine_names).visit(tree)
     SetInterfaceProcedureCallNames().visit(tree)
     tree = collapse_single_interfaces(tree)
-    tree = fix_subroutine_uses_clauses(tree, types)
+    tree = fix_subroutine_uses_clauses(tree, types) # do it again, to fix interfaces
     create_super_types(tree, types)  # This must happen before fix_subroutine_type_arrays
     fix_subroutine_type_arrays(tree, types)  # This must happen after fix_subroutine_uses_clauses, to avoid using the
     # super-types that do not exist and use the regular type, which is used in the declaration of the super-type

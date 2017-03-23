@@ -337,7 +337,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         call_name = node.name
         if hasattr(node, 'call_name'):
             call_name = node.call_name
-        logging.info('F90WrapperGenerator visiting routine %s call_name %s' % (node.name, call_name))
+        logging.info('F90WrapperGenerator visiting routine %s call_name %s mod_name %r' % (node.name, call_name, node.mod_name))
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
@@ -347,7 +347,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write("implicit none")
 
         if node.mod_name is None:
-            self.write('external %s' % node.name)
+            self.write('external %s' % call_name)
             if hasattr(node, 'orig_node') and isinstance(node.orig_node, ft.Function):
                 self.write('%s %s' % (node.orig_node.ret_val.type, node.name))
 
