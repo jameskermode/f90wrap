@@ -369,13 +369,13 @@ def fix_subroutine_uses_clauses(tree, types):
 
     for mod, sub, arguments in ft.walk_procedures(tree):
         sub.uses = set()
-        #sub.mod_name = None
         if mod is not None:
             sub_name = sub.name
             if hasattr(sub, 'call_name'):
                 sub_name = sub.call_name
-            sub.uses.add((mod.name, (sub_name,)))
-            sub.mod_name = mod.name
+            if sub.mod_name is None:
+                sub.mod_name = mod.name
+            sub.uses.add((sub.mod_name, (sub_name,)))
 
         for arg in arguments:
             if arg.type.startswith('type') and ft.strip_type(arg.type) in types:
@@ -442,7 +442,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             if typename in init_lines:
                 use, (exe, exe_optional) = init_lines[typename]
                 if use is not None:
-                    sub.uses.add((use, (typename,)))
+                    sub.uses.add(use)
                 arg.init_lines = (exe_optional, exe)
 
             if 'intent(out)' in arg.attributes:
