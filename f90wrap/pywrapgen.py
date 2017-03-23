@@ -131,17 +131,15 @@ def format_doc_string(node):
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
-                 make_package=False, kind_map=None, init_file=None, py_mod_name=None):
+                 make_package=False, kind_map=None, init_file=None, py_mod_names=None):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\',
                                comment='#')
         ft.FortranVisitor.__init__(self)
         self.prefix = prefix
-        if py_mod_name is not None:
-            self.py_mod_name = py_mod_name
-        else:
-            self.py_mod_name = mod_name
+        self.py_mod_name = mod_name
+        self.py_mod_names = py_mod_names
         if f90_mod_name is None:
             f90_mod_name = '_' + mod_name
         self.f90_mod_name = f90_mod_name
@@ -259,7 +257,8 @@ except ValueError:
     func()
             ''')
             if len(self.code) > 0:
-                py_wrapper_file = open(os.path.join(self.py_mod_name, node.name + '.py'), 'w')
+                py_mod_name = self.py_mod_names.get(node.name, node.name)
+                py_wrapper_file = open(os.path.join(self.py_mod_name, py_mod_name + '.py'), 'w')
                 py_wrapper_file.write(str(self))
                 py_wrapper_file.close()
                 self.py_mods.append(node.name)

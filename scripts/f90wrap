@@ -257,7 +257,7 @@ USAGE
                                       types, make_package=args.package,
                                       kind_map=kind_map,
                                       init_file=args.init_file,
-                                      py_mod_name=py_mod_names.get(mod_name, None)).visit(py_tree)
+                                      py_mod_names=py_mod_names).visit(py_tree)
         fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
                                   args.abort_func, kind_map, types, args.default_to_inout).visit(f90_tree)
         return 0
