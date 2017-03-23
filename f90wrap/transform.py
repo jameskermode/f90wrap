@@ -874,6 +874,9 @@ class RenameReservedWords(ft.FortranVisitor):
         import numpy.f2py.crackfortran
         self.name_map.update(numpy.f2py.crackfortran.badnames)
 
+        # avoid clashes with C intrinsic functions
+        self.name_map['inverse'] = 'inverse_'
+
         # remove some of these which are not Python reserved words
         del self.name_map['stdout']
         del self.name_map['stderr']
