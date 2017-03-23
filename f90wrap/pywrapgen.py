@@ -184,7 +184,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         if self.make_package:
             for py_mod in self.py_mods:
-                self.imports.add((self.py_mod_name + '.' + py_mod, None))
+                self.imports.add((self.py_mod_name + '.' +
+                                  self.py_mod_names.get(py_mod, py_mod), None))
+        self.write('from __future__ import print_function, absolute_import, division')
         self.write_imports(0)
 
         if self.make_package:
