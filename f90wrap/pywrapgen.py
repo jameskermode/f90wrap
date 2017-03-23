@@ -24,6 +24,9 @@ from f90wrap.transform import ArrayDimensionConverter
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
+def normalise_class_name(name, name_map):
+    return name_map.get(name.lower(), name.title())
+
 def format_call_signature(node):
     if isinstance(node, ft.Procedure):
         sig = ''
@@ -131,7 +134,8 @@ def format_doc_string(node):
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
-                 make_package=False, kind_map=None, init_file=None, py_mod_names=None):
+                 make_package=False, kind_map=None, init_file=None,
+                 py_mod_names=None, class_names=None):
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
                                max_length=80,
                                continuation='\\',
@@ -140,6 +144,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.prefix = prefix
         self.py_mod_name = mod_name
         self.py_mod_names = py_mod_names
+        self.class_names = class_names
         if f90_mod_name is None:
             f90_mod_name = '_' + mod_name
         self.f90_mod_name = f90_mod_name
@@ -199,7 +204,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
     def visit_Module(self, node):
         logging.info('PythonWrapperGenerator visiting module %s' % node.name)
-        cls_name = node.name.title()
+        cls_name = normalise_class_name(node.name, self.class_names)
         node.array_initialisers = []
         node.dt_array_initialisers = []
         self.current_module = node.name
@@ -366,7 +371,7 @@ except ValueError:
                 # convert any derived type return values to Python objects
                 for ret_val in node.ret_val:
                     if ret_val.type.startswith('type'):
-                        cls_name = ft.strip_type(ret_val.type).title()
+                        cls_name = normalise_class_name(ft.strip_type(ret_val.type), self.class_names)
                         cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name
                         if self.make_package:
                             if cls_mod_name != self.current_module:
@@ -422,7 +427,7 @@ except ValueError:
     def visit_Type(self, node):
         logging.info('PythonWrapperGenerator visiting type %s' % node.name)
         node.dt_array_initialisers = []
-        cls_name = node.name.title()
+        cls_name = normalise_class_name(node.name, self.class_names)
         self.write('class %s(f90wrap.runtime.FortranDerivedType):' % cls_name)
         self.indent()
         self.write(format_doc_string(node))
@@ -521,7 +526,7 @@ except ValueError:
         self.write()
 
     def write_dt_wrappers(self, node, el, properties):
-        cls_name = ft.strip_type(el.type).title()
+        cls_name = normalise_class_name(ft.strip_type(el.type), self.class_names)
         cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
         dct = dict(el_name=el.name,
                    el_name_get=el.name,
@@ -641,7 +646,7 @@ return %(el_name)s""" % dct)
 
         func_name = 'init_array_%s' % el.name
         node.dt_array_initialisers.append(func_name)
-        cls_name = ft.strip_type(el.type).title()
+        cls_name = normalise_class_name(ft.strip_type(el.type), self.class_names)
         cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
 
         dct = dict(el_name=el.name,
