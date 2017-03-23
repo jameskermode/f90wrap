@@ -442,7 +442,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             if typename in init_lines:
                 use, (exe, exe_optional) = init_lines[typename]
                 if use is not None:
-                    sub.uses.add((use, [typename]))
+                    sub.uses.add((use, (typename,)))
                 arg.init_lines = (exe_optional, exe)
 
             if 'intent(out)' in arg.attributes:
