@@ -155,7 +155,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         default_imports = [(self.f90_mod_name, None),
                            ('f90wrap.runtime', None),
                            ('logging', None)]
-        imp_lines = []
+        imp_lines = ['from __future__ import print_function, absolute_import, division']
         for (mod, symbol) in default_imports + list(self.imports):
             if symbol is None:
                 imp_lines.append('import %s' % mod)
@@ -186,7 +186,6 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             for py_mod in self.py_mods:
                 self.imports.add((self.py_mod_name + '.' +
                                   self.py_mod_names.get(py_mod, py_mod), None))
-        self.write('from __future__ import print_function, absolute_import, division')
         self.write_imports(0)
 
         if self.make_package:
