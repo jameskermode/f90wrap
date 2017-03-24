@@ -1,7 +1,7 @@
 from issue50 import module_test as tp
 from numpy import zeros, ones, float32, abs, max
 
-a = tp.Real_Array()
+a = tp.real_array()
 print("This is the freshly allocated array : " + str(a.item))
 a.item = ones(6, dtype=float32) 
 print("This is sent to fortran : " + str(a.item))

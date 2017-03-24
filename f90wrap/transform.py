@@ -170,11 +170,12 @@ def remove_private_symbols(node):
 
 
 class UnwrappablesRemover(ft.FortranTransformer):
-    def __init__(self, callbacks, types, constructors, destructors):
+    def __init__(self, callbacks, types, constructors, destructors, remove_optional_arguments):
         self.callbacks = callbacks
         self.types = types
         self.constructors = constructors
         self.destructors = destructors
+        self.remove_optional_arguments = remove_optional_arguments
 
     def visit_Interface(self, node):
         # don't wrap operator overloading routines
@@ -256,6 +257,11 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
         if not 'optional' in node.attributes:
             return self.generic_visit(node)
+
+        if node.name in self.remove_optional_arguments:
+            warnings.warn('removing optional argument %s' %
+                          node.name)
+            return None
 
         # remove optional allocatable/pointer arguments
         if 'allocatable' in node.attributes or 'pointer' in node.attributes:
@@ -592,13 +598,14 @@ class ArrayDimensionConverter(ft.FortranVisitor):
 
 class MethodFinder(ft.FortranTransformer):
     def __init__(self, types, constructor_names, destructor_names, short_names,
-                 move_methods, shorten_routine_names=True):
+                 move_methods, shorten_routine_names=True, modules_for_type=None):
         self.types = types
         self.constructor_names = constructor_names
         self.destructor_names = destructor_names
         self.short_names = short_names
         self.move_methods = move_methods
         self.shorten_routine_names = shorten_routine_names
+        self.modules_for_type = modules_for_type
 
     def visit_Interface(self, node):
         new_procs = []
@@ -650,6 +657,11 @@ class MethodFinder(ft.FortranTransformer):
             node.type_name = typ.name
 
             if interface is None:
+                if node.mod_name not in self.modules_for_type[typ.mod_name]:
+                    # procedure looks like a method but
+                    # defined in a different module - leave it where it is
+                    return node
+
                 # just a regular method - move into typ.procedures
                 typ.procedures.append(node)
                 logging.info('added method %s to type %s' %
@@ -1009,7 +1021,8 @@ class SetInterfaceProcedureCallNames(ft.FortranVisitor):
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
                                  only_subs, only_mods, argument_name_map,
-                                 move_methods, shorten_routine_names):
+                                 move_methods, shorten_routine_names,
+                                 modules_for_type, remove_optional_arguments):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
@@ -1019,16 +1032,17 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
      * Removal of unwrappable routines and optional arguments
      * Addition of missing constructor and destructor wrappers
      * Conversion of all functions to subroutines
-     * Updatting call names of procedures within interfaces
+     * Updating call names of procedures within interfaces
      * Update of subroutine uses clauses
     """
 
     tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
     tree = remove_private_symbols(tree)
-    tree = UnwrappablesRemover(callbacks, types, constructors, destructors).visit(tree)
+    tree = UnwrappablesRemover(callbacks, types, constructors,
+                               destructors, remove_optional_arguments).visit(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
     tree = MethodFinder(types, constructors, destructors, short_names,
-                        move_methods, shorten_routine_names).visit(tree)
+                        move_methods, shorten_routine_names, modules_for_type).visit(tree)
     SetInterfaceProcedureCallNames().visit(tree)
     tree = collapse_single_interfaces(tree)
     tree = fix_subroutine_uses_clauses(tree, types) # do it again, to fix interfaces

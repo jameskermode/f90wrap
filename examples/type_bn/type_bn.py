@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, division
 import _type_bn
 import f90wrap.runtime
 import logging
@@ -10,7 +11,7 @@ class Module_Structure(f90wrap.runtime.FortranModule):
     Defined at type_bn.f90 lines 1-5
     
     """
-    class Type_Face(f90wrap.runtime.FortranDerivedType):
+    class type_face(f90wrap.runtime.FortranDerivedType):
         """
         Type(name=type_face)
         

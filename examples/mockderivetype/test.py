@@ -5,7 +5,7 @@ from mockdt import (define_a_type,
                     use_a_type,
                     top_level)
 
-a = define_a_type.Atype() # calls initialise()
+a = define_a_type.atype() # calls initialise()
 
 a.rl = 3.0 # calls set()
 assert(a.rl == 3.0)
@@ -17,7 +17,7 @@ assert(np.all(a.vec == 1.0))
 
 a.dtype.rl = 1.0 # calls set()
 
-my_l2 = leveltwomod.Leveltwo(4.0) # calls initialise()
+my_l2 = leveltwomod.leveltwo(4.0) # calls initialise()
 a.dtype = my_l2 # calls set()
 assert(a.dtype.rl == my_l2.rl)
 

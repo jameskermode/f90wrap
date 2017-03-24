@@ -31,3 +31,13 @@ from f90wrap.sizeof_fortran_t import sizeof_fortran_t as _sizeof_fortran_t
 sizeof_fortran_t = _sizeof_fortran_t()
 empty_handle = [0]*sizeof_fortran_t
 empty_type = FortranDerivedType.from_handle(empty_handle)
+
+_f90wrap_classes = {}
+
+def register_class(cls, cls_name):
+    global _f90wrap_classes
+    _f90wrap_classes[cls_name] = cls
+
+def lookup_class(cls_name):
+    global _f90wrap_classes
+    return _f90wrap_classes[cls_name]

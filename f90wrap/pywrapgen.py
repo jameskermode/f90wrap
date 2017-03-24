@@ -372,13 +372,14 @@ except ValueError:
                 for ret_val in node.ret_val:
                     if ret_val.type.startswith('type'):
                         cls_name = normalise_class_name(ft.strip_type(ret_val.type), self.class_names)
+                        cls_name = 'f90wrap.runtime.lookup_class("%s")' % cls_name
                         cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name
                         cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
-                        if self.make_package:
-                            if cls_mod_name != self.current_module:
-                                self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
-                        else:
-                            cls_name = cls_mod_name + '.' + cls_name
+                        # if self.make_package:
+                        #     if cls_mod_name != self.current_module:
+                        #         self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
+                        # else:
+                        #     cls_name = cls_mod_name + '.' + cls_name
                         self.write('%s = %s.from_handle(%s)' %
                                    (ret_val.name, cls_name, ret_val.name))
                 self.write('return %(result)s' % dct)
@@ -451,6 +452,9 @@ except ValueError:
         self.write('_dt_array_initialisers = [%s]' % (', '.join(node.dt_array_initialisers)))
         self.write()
         self.dedent()
+        self.write()
+        self.write('f90wrap.runtime.register_class(%s, "%s")' % (cls_name, cls_name))
+        self.write()
 
 
     def write_scalar_wrappers(self, node, el, properties):

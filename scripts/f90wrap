@@ -65,7 +65,7 @@ def main(argv=None):
     program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     program_license = '''%s
 
-   Copyright James Kermode 2011-2015
+   Copyright James Kermode 2011-2017
 
    These portions of the source code are released under the GNU General
    Public License, version 2, http://www.gnu.org/copyleft/gpl.html
@@ -114,6 +114,8 @@ USAGE
                             help="File containing Python dictionary mapping Fortran module names to Python ones")
         parser.add_argument('--class-names',
                             help="File containing Python dictionary mapping Fortran type names to Python classes")
+        parser.add_argument('--joint-modules',
+                            help="File containing Python dictionary mapping modules defining times to list of additional modules defining methods")
         parser.add_argument('-m', '--mod-name', default='mod',
                             help="Name of output extension module (without .so extension).")
         parser.add_argument('-M', '--move-methods', action='store_true',
@@ -128,6 +130,7 @@ USAGE
         parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude from wrapper")
         parser.add_argument('--default-to-inout', action='store_true', default=False,
                             help="Sets all arguments without intent to intent(inout)")
+        parser.add_argument("--conf-file", help="Use Python configuration script to set options")
 
         args = parser.parse_args()
 
@@ -136,10 +139,62 @@ USAGE
         else:
             logging.root.setLevel(logging.INFO)
 
+        # set defaults, to be overriden by command line args and config file
         kind_map = {}
+        short_names = {}
+        string_lengths = {}
+        init_lines = {}
+        py_mod_names = {}
+        class_names = {}
+        argument_name_map = {}
+        only = None
+        skip = None
+        joint_modules = {}
+        callback = []
+        remove_optional_arguments = []
+
+        # bring command line arguments into global scope so we can override them
+        globals().update(args.__dict__)
+
+        # read command line arguments
         if args.kind_map:
             kind_map = eval(open(args.kind_map).read())
-        print('Kind map read from file "%r" : (also saved to .f2py_f2cmap)' % args.kind_map)
+        constructors = args.constructors
+        destructors = args.destructors
+
+        if args.short_names:
+            short_names = eval(open(args.short_names).read())
+
+        if args.string_lengths:
+            string_lengths = eval(open(args.string_lengths).read())
+
+        if args.init_lines:
+            init_lines = eval(open(args.init_lines).read())
+
+        if args.py_mod_names:
+            py_mod_names = eval(open(args.py_mod_names).read())
+
+        if args.class_names:
+            class_names = eval(open(args.class_names).read())
+
+        if args.argument_name_map:
+            argument_name_map = eval(open(args.argument_name_map).read())
+
+        if args.only:
+            only = args.only
+
+        if args.skip:
+            skip = args.skip
+
+        if args.joint_modules:
+            joint_modules = eval(open(args.joint_modules).read())
+
+        # finally, read config file, allowing it to override command line args
+        if args.conf_file:
+            print("Executing config file %s" % args.conf_file)
+            exec(open(args.conf_file).read())
+
+        print('Kind map (also saved to .f2py_f2cmap)')
         pprint.pprint(kind_map)
         f2py_f2cmap = open('.f2py_f2cmap', 'w')
         pprint.pprint(kind_map, f2py_f2cmap)
@@ -147,47 +202,32 @@ USAGE
         print()
 
         print('Constructors:')
-        print(args.constructors)
+        print(constructors)
         print()
 
         print('Destructors:')
-        print(args.destructors)
+        print(destructors)
         print()
 
-        short_names = {}
-        if args.short_names:
-            short_names = eval(open(args.short_names).read())
-        print('Short names for derived types read from file "%s"' % args.short_names)
+        print('Short names for derived types:')
         pprint.pprint(short_names)
         print()
 
-        string_lengths = {}
-        if args.string_lengths:
-            string_lengths = eval(open(args.string_lengths).read())
-        print('String lengths read from file "%s":' % args.string_lengths)
+        print('String lengths:')
         pprint.pprint(string_lengths)
         print()
 
-        init_lines = {}
-        if args.init_lines:
-            init_lines = eval(open(args.init_lines).read())
-        print('Initialisation lines for derived types read from file "%s":' % args.init_lines)
+        print('Initialisation lines for derived types')
         pprint.pprint(init_lines)
         print()
 
-        py_mod_names = {}
-        if args.py_mod_names:
-            py_mod_names = eval(open(args.py_mod_names).read())
-        print('Python module name remapping from file "%s":' % args.py_mod_names)
+        print('Python module name remapping')
         pprint.pprint(py_mod_names)
 
-        class_names = {}
-        if args.class_names:
-            class_names = eval(open(args.class_names).read())
+        print('Class names remapping')
+        pprint.pprint(class_names)
+        print()
 
-        argument_name_map = {}
-        if args.argument_name_map:
-            argument_name_map = eval(open(args.argument_name_map).read())
         print('Argument name map:')
         pprint.pprint(argument_name_map)
         print()
@@ -216,37 +256,46 @@ USAGE
         # Find all modules and subroutines the user wishes to keep
         kept_subs = []
         kept_mods = set()
-        if args.only:
+        if only:
             for mod, sub, arg in fortran.walk_procedures(tree):
-                if sub.name in args.only:
+                if sub.name in only:
                     kept_subs.extend([sub])
                     if mod is not None:
                         kept_mods.add(mod)
-        elif args.skip:
+        elif skip:
             for mod, sub, arg in fortran.walk_procedures(tree):
-                if sub.name not in args.skip:
+                if sub.name not in skip:
                     kept_subs.extend([sub])
                     if mod is not None:
                         kept_mods.add(mod)
 
-        if len(kept_subs) == 0 and args.only:
+        if len(kept_subs) == 0 and only:
             warnings.warn("None of the supplied procedures were found")
 
         # Find (recursively) all used modules
         kept_mods = tf.find_referenced_modules(kept_mods, tree)
 
+        modules_for_type = {}
+        for type_name, typ in types.items():
+            modules_for_type[typ.mod_name] = typ.mod_name
+        modules_for_type.update(joint_modules)
+        print('Modules for each type:')
+        pprint.pprint(modules_for_type)
+
         tree = tf.transform_to_generic_wrapper(tree,
                                                types,
-                                               args.callback,
-                                               args.constructors,
-                                               args.destructors,
+                                               callback,
+                                               constructors,
+                                               destructors,
                                                short_names,
                                                init_lines,
                                                kept_subs,
                                                kept_mods,
                                                argument_name_map,
-                                               args.move_methods,
-                                               args.shorten_routine_names)
+                                               move_methods,
+                                               shorten_routine_names,
+                                               modules_for_type,
+                                               remove_optional_arguments)
 
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
@@ -254,24 +303,24 @@ USAGE
         py_tree = tf.transform_to_py_wrapper(py_tree, types)
 
         f90_tree = tf.transform_to_f90_wrapper(f90_tree, types,
-                                               args.callback,
-                                               args.constructors,
-                                               args.destructors,
+                                               callback,
+                                               constructors,
+                                               destructors,
                                                short_names,
                                                init_lines,
                                                string_lengths,
-                                               args.default_string_length,
+                                               default_string_length,
                                                sizeof_fortran_t=fsize,
                                                kind_map=kind_map)
 
-        pywrap.PythonWrapperGenerator(args.prefix, args.mod_name,
-                                      types, make_package=args.package,
+        pywrap.PythonWrapperGenerator(prefix, mod_name,
+                                      types, make_package=package,
                                       kind_map=kind_map,
                                       init_file=args.init_file,
                                       py_mod_names=py_mod_names,
                                       class_names=class_names).visit(py_tree)
-        fwrap.F90WrapperGenerator(args.prefix, fsize, string_lengths,
-                                  args.abort_func, kind_map, types, args.default_to_inout).visit(f90_tree)
+        fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
+                                  abort_func, kind_map, types, default_to_inout).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:

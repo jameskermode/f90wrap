@@ -48,7 +48,7 @@ print(md.precision.get_one(),md.precision.get_two(), md.precision.get_three(),\
 #Create "Solveroptions" derived type, defined in mod defineallproperties
 #=======================================================================
 
-Options =  md.defineallproperties.Solveroptionsdef()
+Options =  md.defineallproperties.SolverOptionsDef()
 
 print(type(Options.airframevib))
 Options.airframevib = 0

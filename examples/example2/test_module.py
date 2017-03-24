@@ -43,7 +43,7 @@ print(precision.one,precision.two, precision.three,precision.four)
 #           Declare the SolverOptions derived type
 #=======================================================================
 
-Options =  Defineallproperties.Solveroptionsdef()
+Options =  Defineallproperties.SolverOptionsDef()
 
 print(type(Options.airframevib))
 Options.airframevib = 0
