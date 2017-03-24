@@ -207,7 +207,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         cls_name = normalise_class_name(node.name, self.class_names)
         node.array_initialisers = []
         node.dt_array_initialisers = []
-        self.current_module = node.name
+        self.current_module = self.py_mod_names.get(node.name, node.name)
 
         if self.make_package:
             self.code = []
@@ -373,6 +373,7 @@ except ValueError:
                     if ret_val.type.startswith('type'):
                         cls_name = normalise_class_name(ft.strip_type(ret_val.type), self.class_names)
                         cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name
+                        cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
                         if self.make_package:
                             if cls_mod_name != self.current_module:
                                 self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
@@ -454,6 +455,7 @@ except ValueError:
 
     def write_scalar_wrappers(self, node, el, properties):
         dct = dict(el_name=el.name,
+                   el_orig_name=el.orig_name,
                    el_name_get=el.name,
                    el_name_set=el.name,
                    mod_name=self.f90_mod_name,
@@ -497,7 +499,7 @@ except ValueError:
         self.dedent()
         self.write()
         if 'parameter' in el.attributes and isinstance(node, ft.Module) and self.make_package:
-            self.write('%(el_name)s = %(el_name_get)s()' % dct)
+            self.write('%(el_orig_name)s = %(el_name_get)s()' % dct)
             self.write()
 
         if 'parameter' not in el.attributes:
@@ -527,7 +529,8 @@ except ValueError:
 
     def write_dt_wrappers(self, node, el, properties):
         cls_name = normalise_class_name(ft.strip_type(el.type), self.class_names)
-        cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
+        mod_name = self.types[ft.strip_type(el.type)].mod_name
+        cls_mod_name = self.py_mod_names.get(mod_name, mod_name)
         dct = dict(el_name=el.name,
                    el_name_get=el.name,
                    el_name_set=el.name,
@@ -647,7 +650,8 @@ return %(el_name)s""" % dct)
         func_name = 'init_array_%s' % el.name
         node.dt_array_initialisers.append(func_name)
         cls_name = normalise_class_name(ft.strip_type(el.type), self.class_names)
-        cls_mod_name = self.types[ft.strip_type(el.type)].mod_name
+        mod_name = self.types[ft.strip_type(el.type)].mod_name
+        cls_mod_name = self.py_mod_names.get(mod_name, mod_name)
 
         dct = dict(el_name=el.name,
                    func_name=func_name,

@@ -184,8 +184,6 @@ USAGE
         class_names = {}
         if args.class_names:
             class_names = eval(open(args.class_names).read())
-        print('Class name remapping from file "%s":' % args.class_names)
-        pprint.pprint(class_names)
 
         argument_name_map = {}
         if args.argument_name_map:
@@ -209,6 +207,11 @@ USAGE
         print('Derived types detected in Fortran source files:')
         pprint.pprint(types)
         print()
+
+        for type_name, typ in types.items():
+            class_names[type_name] = typ.orig_name
+        print('Class name mapping:')
+        pprint.pprint(class_names)
 
         # Find all modules and subroutines the user wishes to keep
         kept_subs = []
