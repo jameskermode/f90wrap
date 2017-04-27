@@ -763,7 +763,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
 
-        if el.type.startswith('type'):
+        if el.type.startswith('type') and not (el.type == 'type('+t.name+')'):
             self.write_type_lines(el.type)
 
         if isinstance(t, ft.Type):
