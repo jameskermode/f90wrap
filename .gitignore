@@ -1,5 +1,6 @@
 .DS_Store
 build
+*src.linux*
 *~
 *.fpp
 *.o
@@ -8,11 +9,15 @@ build
 *.so
 f90wrap*.f90
 *.pyc
-.pydevproject
+*f2py_f2cmap
+*_pkg*
 examples/mockderivetype/mockdt.py
 define_a_type.py
 leveltwomod.py
 use_a_type.py
+examples/example-arrays/ExampleArray.py
+# ignore dev tool specific files
+.pydevproject
 org.eclipse.core.resources.prefs
 docs/_build
 src.*
