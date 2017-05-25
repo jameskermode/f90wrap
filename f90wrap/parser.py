@@ -589,7 +589,7 @@ def check_subt(cl, file, grab_hold_doc=True):
     global hold_doc
 
     out = Subroutine()
-
+        
     if re.match(subt, cl) != None:
 
         out.filename = file.filename
@@ -621,7 +621,7 @@ def check_subt(cl, file, grab_hold_doc=True):
         # get argument list
 
         if has_args:
-
+            cl = cl[:cl.find(')', 0)+1]
             cl = re.sub('\w+', '', cl, count=1)
             argl = re.split('[\W]+', cl)
 

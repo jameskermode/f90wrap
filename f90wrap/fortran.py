@@ -831,8 +831,8 @@ def fortran_array_type(typename, kind_map):
 
     # convert from C type names to numpy dtype strings
     c_type_to_numpy_type = {
-        'char' : 'string',
-        'signed_char' : 'string',
+        'char' : 'uint8',
+        'signed_char' : 'int8',
         'short' : 'int16',
         'int' : 'int32',
         'long_long' : 'int64',
@@ -842,7 +842,7 @@ def fortran_array_type(typename, kind_map):
         'complex_float' : 'complex64',
         'complex_double' : 'complex128',
         'complex_long_double' : 'complex256',
-        'string' : 'string',
+        'string' : 'str',
     }
 
     if c_type not in c_type_to_numpy_type:
