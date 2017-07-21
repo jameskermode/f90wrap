@@ -34,9 +34,16 @@ empty_type = FortranDerivedType.from_handle(empty_handle)
 
 _f90wrap_classes = {}
 
-def register_class(cls, cls_name):
-    global _f90wrap_classes
-    _f90wrap_classes[cls_name] = cls
+class register_class(object):
+    def __init__(self, cls_name):
+        self.cls_name = cls_name
+
+    def __call__(self, cls):
+        global _f90wrap_classes
+        if self.cls_name in _f90wrap_classes:
+            raise RuntimeError("Duplicate Fortran class name {0}".format(self.cls_name))
+        _f90wrap_classes[self.cls_name] = cls
+        return cls
 
 def lookup_class(cls_name):
     global _f90wrap_classes
