@@ -126,11 +126,14 @@ class Program(Fortran):
     _fields = ['procedures']
 
     def __init__(self, name='', filename='', doc=None, lineno=0,
-                 procedures=None):
+                 procedures=None, uses=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         if procedures is None:
             procedures = []
         self.procedures = procedures
+        if uses is None:
+            uses = []
+        self.uses = uses        
 
 
 class Module(Fortran):
@@ -332,7 +335,7 @@ class Interface(Fortran):
         The name of the module in which the interface is found, if any.
 
     type_name : `str` , default ``None``
-        The name of the type in which the interface is defined, if any.        
+        The name of the type in which the interface is defined, if any.
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Interface.") + __doc__
     _fields = ['procedures']
