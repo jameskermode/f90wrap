@@ -8,12 +8,16 @@ Created on Tue Jul 28 15:19:03 2015
 from __future__ import print_function
 
 import unittest
-
 import numpy as np
 
-import ExampleDerivedTypes
-import ExampleDerivedTypes_pkg
+import sys
 
+pkg = False
+if sys.argv[0].endswith('tests_pkg.py'):
+    pkg = True
+    import ExampleDerivedTypes_pkg
+else:
+    import ExampleDerivedTypes
 
 class BaseTests(object):
 
@@ -232,12 +236,13 @@ class BaseTests(object):
         self.assertEqual(len(dt.pi), n)
 
 
-class LibTests(unittest.TestCase, BaseTests):
-    lib = ExampleDerivedTypes
 
-
-class LibTestsPkg(unittest.TestCase, BaseTests):
-    lib = ExampleDerivedTypes_pkg
+if pkg:
+    class LibTestsPkg(unittest.TestCase, BaseTests):
+        lib = ExampleDerivedTypes_pkg
+else:
+    class LibTests(unittest.TestCase, BaseTests):
+        lib = ExampleDerivedTypes
 
 
 if __name__ == '__main__':

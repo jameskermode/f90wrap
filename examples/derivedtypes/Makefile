@@ -137,4 +137,4 @@ _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 
 test: all
 	${PYTHON} tests.py
-
+	${PYTHON} tests_pkg.py
