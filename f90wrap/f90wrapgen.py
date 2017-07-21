@@ -310,9 +310,15 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                         'func_name': func_name,
                         'arg_names': ', '.join(arg_names)})
         else:
-            self.write('call %(sub_name)s(%(arg_names)s)' %
-                       {'sub_name': func_name,
-                        'arg_names': ', '.join(arg_names)})
+            if func_name == 'assignment(=)':
+                assert len(arg_names) == 2
+                self.write('%(lhs)s = %(rhs)s' %
+                            {'lhs': arg_names[0],
+                             'rhs': arg_names[1]})
+            else:
+                self.write('call %(sub_name)s(%(arg_names)s)' %
+                           {'sub_name': func_name,
+                            'arg_names': ', '.join(arg_names)})
 
     def write_transfer_out_lines(self, node):
         """
