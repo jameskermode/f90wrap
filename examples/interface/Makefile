@@ -19,6 +19,7 @@ package: example.o
 
 test: mod package
 	python test.py
+	python test_pkg.py
 
 clean:
 	-rm -r examplepkg
