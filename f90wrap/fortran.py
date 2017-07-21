@@ -327,16 +327,24 @@ class Interface(Fortran):
     """
     procedures : list of :class:`fortran.Procedure`
         The procedures listed in the interface.
+
+    mod_name : `str` , default ``None``
+        The name of the module in which the interface is found, if any.
+
+    type_name : `str` , default ``None``
+        The name of the type in which the interface is defined, if any.        
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Interface.") + __doc__
     _fields = ['procedures']
 
     def __init__(self, name='', filename='', doc=None,
-                 lineno=0, procedures=None):
+                 lineno=0, procedures=None, mod_name=None, type_name=None):
         Fortran.__init__(self, name, filename, doc, lineno)
-        if procedures is None: procedures = []
+        if procedures is None:
+            procedures = []
         self.procedures = procedures
-
+        self.mod_name = mod_name
+        self.type_name = type_name
 
 
 def iter_fields(node):
@@ -398,7 +406,7 @@ def find_procedure_module(tree, node):
             if node in typ.procedures:
                 return mod
             for intf in typ.interfaces:
-                if node in typ.procedures:
+                if node in intf.procedures:
                     return mod
     return None
 

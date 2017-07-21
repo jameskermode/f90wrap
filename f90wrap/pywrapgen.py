@@ -388,14 +388,21 @@ except ValueError:
             self.write()
 
     def visit_Interface(self, node):
+        logging.info('PythonWrapperGenerator visiting interface %s' % node.name)
+
         # first output all the procedures within the interface
         self.generic_visit(node)
-
+        cls_name = None
+        if node.type_name is not None:
+            cls_name = normalise_class_name(ft.strip_type(node.type_name),
+                                            self.class_names)
         proc_names = []
         for proc in node.procedures:
             proc_name = ''
             if not self.make_package:
                 proc_name += proc.mod_name.title()+'.'
+            elif cls_name is not None:
+                proc_name += cls_name+'.'
             if hasattr(proc, 'method_name'):
                 proc_name += proc.method_name
             else:
@@ -430,6 +437,7 @@ except ValueError:
         logging.info('PythonWrapperGenerator visiting type %s' % node.name)
         node.dt_array_initialisers = []
         cls_name = normalise_class_name(node.name, self.class_names)
+        self.write('@f90wrap.runtime.register_class("%s")' % cls_name)
         self.write('class %s(f90wrap.runtime.FortranDerivedType):' % cls_name)
         self.indent()
         self.write(format_doc_string(node))
@@ -452,8 +460,6 @@ except ValueError:
         self.write('_dt_array_initialisers = [%s]' % (', '.join(node.dt_array_initialisers)))
         self.write()
         self.dedent()
-        self.write()
-        self.write('f90wrap.runtime.register_class(%s, "%s")' % (cls_name, cls_name))
         self.write()
 
 

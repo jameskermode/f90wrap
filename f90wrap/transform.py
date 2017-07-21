@@ -680,8 +680,10 @@ class MethodFinder(ft.FortranTransformer):
                                         interface.filename,
                                         interface.doc,
                                         interface.lineno,
-                                        [node])
-                    intf.mod_name = node.mod_name
+                                        [node],
+                                        mod_name=node.mod_name,
+                                        type_name=typ.name)
+                    typ.interfaces.append(intf)
                     logging.info('added method %s to new interface %s in type %s module %r' %
                                   (node.method_name, intf.name, typ.name, node.mod_name))
 
