@@ -311,7 +311,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                         'arg_names': ', '.join(arg_names)})
         else:
             if func_name == 'assignment(=)':
-                assert len(arg_names) == 2
+                if len(arg_names) != 2:
+                    raise RuntimeError("assignment(=) interface with len(arg_names) != 2")
+                arg_names = [arg_name.split('=')[1] for arg_name in arg_names]
                 self.write('%(lhs)s = %(rhs)s' %
                             {'lhs': arg_names[0],
                              'rhs': arg_names[1]})

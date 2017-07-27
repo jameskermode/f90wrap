@@ -409,7 +409,7 @@ except ValueError:
                 proc_name += proc.name
             proc_names.append(proc_name)
 
-        dct = dict(intf_name=node.name,
+        dct = dict(intf_name=node.method_name,
                    proc_names='[' + ', '.join(proc_names) + ']')
         if not self.make_package:
             # procedures outside of derived types become static methods

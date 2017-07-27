@@ -949,8 +949,20 @@ class RenameInterfacesPython(ft.FortranVisitor):
                 proc.method_name = '_' + proc.method_name
             else:
                 proc.method_name = '_' + proc.name
+        node.method_name = node.name
+        if node.name == 'assignment(=)':
+            node.method_name = 'assignment'
+        elif node.name == 'operator(+)':
+            node.method_name = '__add__'
+        elif node.name == 'operator(-)':
+            node.method_name = '__sub__'
+        elif node.name == 'operator(*)':
+            node.method_name = '__mul__'
+        elif node.method_name == 'operator(/)':
+            node.method_name = '__div__'
+        elif '(' in node.name:
+            raise RuntimeError("unsupported operator overload '%s'" % node.name)
         return node
-
 
 class ReorderOptionalArgumentsPython(ft.FortranVisitor):
     """
