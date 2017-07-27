@@ -913,7 +913,7 @@ class RenameReservedWords(ft.FortranVisitor):
         return self.generic_visit(node)
 
     visit_Procedure = visit_Argument
-    # visit_Element = visit_Argument
+    visit_Element = visit_Argument
     visit_Module = visit_Argument
     visit_Type = visit_Argument
 
