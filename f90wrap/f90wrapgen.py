@@ -746,7 +746,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         # Get appropriate use statements
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
+            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
         elif isinstance(t, ft.Type):
             extra_uses[self.types[t.name].mod_name] = [t.name]
         if el.type.startswith('type'):
@@ -759,10 +759,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         # Prepend prefix to element name
         #   -- Since some cases require a safer localvar name, we always transform it
-        localvar = self.prefix + el.name
+        localvar = self.prefix + el.orig_name
 
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
-                                                      getset, el.name, this, localvar))
+                                                      getset, el.orig_name, this, localvar))
         self.indent()
 
         self.write_uses_lines(el, extra_uses)
@@ -786,24 +786,24 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             # For derived types elements, treat as opaque reference
             self.write('integer, intent(%s) :: %s(%d)' % (inout, localvar, sizeof_fortran_t))
 
-            self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
+            self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.orig_name))
             self.write()
             if isinstance(t, ft.Type):
                 self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write('%s_ptr%%p => this_ptr%%p%%%s' % (el.name, el.name))
+                    self.write('%s_ptr%%p => this_ptr%%p%%%s' % (el.orig_name, el.orig_name))
                 else:
-                    self.write('%s_ptr%%p => %s_%s' % (el.name, t.name, el.name))
-                self.write('%s = transfer(%s_ptr,%s)' % (localvar, el.name, localvar))
+                    self.write('%s_ptr%%p => %s_%s' % (el.orig_name, t.name, el.orig_name))
+                self.write('%s = transfer(%s_ptr,%s)' % (localvar, el.orig_name, localvar))
             else:
-                self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name,
+                self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.orig_name,
                                                              localvar,
-                                                             el.name))
+                                                             el.orig_name))
                 if isinstance(t, ft.Type):
-                    self.write('this_ptr%%p%%%s = %s_ptr%%p' % (el.name, el.name))
+                    self.write('this_ptr%%p%%%s = %s_ptr%%p' % (el.orig_name, el.orig_name))
                 else:
-                    self.write('%s_%s = %s_ptr%%p' % (t.name, el.name, el.name))
+                    self.write('%s_%s = %s_ptr%%p' % (t.name, el.orig_name, el.orig_name))
         else:
             if attributes != []:
                 self.write('%s, %s, intent(%s) :: %s' % (el.type,
@@ -816,15 +816,15 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                 self.write('this_ptr = transfer(this, this_ptr)')
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write('%s = this_ptr%%p%%%s' % (localvar, el.name))
+                    self.write('%s = this_ptr%%p%%%s' % (localvar, el.orig_name))
                 else:
-                    self.write('%s = %s_%s' % (localvar, t.name, el.name))
+                    self.write('%s = %s_%s' % (localvar, t.name, el.orig_name))
             else:
                 if isinstance(t, ft.Type):
-                    self.write('this_ptr%%p%%%s = %s' % (el.name, localvar))
+                    self.write('this_ptr%%p%%%s = %s' % (el.orig_name, localvar))
                 else:
-                    self.write('%s_%s = %s' % (t.name, el.name, localvar))
+                    self.write('%s_%s = %s' % (t.name, el.orig_name, localvar))
         self.dedent()
         self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
-                                                    el.name))
+                                                    el.orig_name))
         self.write()
