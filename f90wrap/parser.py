@@ -253,6 +253,7 @@ class F90File(object):
                             cont2_index = -1
                     except:
                         cont2_index = -1
+                    comm_index = cline.find('!')
 
             # split by '!', if necessary
             comm_index = cline.find('!')
