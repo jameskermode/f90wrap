@@ -1,9 +1,11 @@
+#!/usr/bin/env python
+
 #  f90wrap: F90 to Python interface generator with derived type support
 #
 #  Copyright James Kermode 2011-2018
 #
 #  This file is part of f90wrap
-   For the latest version see github.com/jameskermode/f90wrap
+#  For the latest version see github.com/jameskermode/f90wrap
 #
 #  f90wrap is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Lesser General Public License as published by
@@ -20,24 +22,6 @@
 # 
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
-#!/usr/bin/env python
-# HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-# HF X
-# HF X   f90wrap: F90 to Python interface generator with derived type support
-# HF X
-# HF X   Copyright James Kermode 2014
-# HF X
-# HF X   These portions of the source code are released under the GNU General
-# HF X   Public License, version 2, http://www.gnu.org/copyleft/gpl.html
-# HF X
-# HF X   If you would like to license the source code under different terms,
-# HF X   please contact James Kermode, james.kermode@gmail.com
-# HF X
-# HF X   When using this software, please cite the following reference:
-# HF X
-# HF X   http://www.jrkermode.co.uk/f90wrap
-# HF X
-# HF XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 import os
 import sys
