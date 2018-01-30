@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 
@@ -754,7 +754,11 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
         elif isinstance(t, ft.Type):
             extra_uses[self.types[t.name].mod_name] = [t.name]
-        if el.type.startswith('type'):
+
+        # Check if the type has recursive definition:
+        same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
+
+        if el.type.startswith('type') and not same_type:
             mod = self.types[el.type].mod_name
             el_tname = ft.strip_type(el.type)
             if mod in extra_uses:
