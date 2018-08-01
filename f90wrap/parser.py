@@ -245,7 +245,9 @@ class F90File(object):
                     cont2 = self.lines[1].strip()
                     if cont2.startswith('&'):
                         cont2 = cont2[1:].strip()
-                    cont = cont + cont2
+                    # Skip interleaved comments
+                    if not cont2.startswith('!'):
+                        cont = cont + cont2
                     self.lines = [cont] + self.lines[2:]
                     self._lineno = self._lineno + 1
                     cline = self.lines[0].strip()

@@ -23,17 +23,17 @@ contains
 
     end subroutine routine_with_multiline_args
 
-    ! subroutine routine_with_commented_args(&
-    !      ! Some arbitrary comment...
-    !      & a, b, &
-    !      ! ... to highlight Fortran line continuation.
-    !      & c, d)
-    !   integer, intent(in) :: a, b
-    !   integer, intent(out) :: c, d
+    subroutine routine_with_commented_args(&
+         ! Some arbitrary comment...
+         & a, b, &
+         ! ... to highlight Fortran line continuation.
+         & c, d)
+      integer, intent(in) :: a, b
+      integer, intent(out) :: c, d
 
-    !   c = a + b
-    !   d = a * b
+      c = a + b
+      d = a * b
 
-    ! end subroutine routine_with_commented_args
+    end subroutine routine_with_commented_args
 
 end module subroutine_mod
