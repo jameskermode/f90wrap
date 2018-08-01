@@ -238,16 +238,18 @@ class F90File(object):
                 comm_index = cline.find('!')
                 while (cont_index != -1 and (comm_index == -1 or comm_index > cont_index)) or \
                         (cont2_index != -1):
-                    if cont_index != -1:
-                        cont = cline[:cont_index].strip()
-                    else:
-                        cont = cline.strip()
                     cont2 = self.lines[1].strip()
                     if cont2.startswith('&'):
                         cont2 = cont2[1:].strip()
-                    # Skip interleaved comments
+
+                    # Skip interleaved comments starting with `!`
+                    if cont_index != -1 and not cont2.startswith('!'):
+                        cont = cline[:cont_index].strip()
+                    else:
+                        cont = cline.strip()
                     if not cont2.startswith('!'):
                         cont = cont + cont2
+
                     self.lines = [cont] + self.lines[2:]
                     self._lineno = self._lineno + 1
                     cline = self.lines[0].strip()
