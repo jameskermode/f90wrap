@@ -97,15 +97,15 @@ contains
         dertype%chi(m-2,n-1) = -10.0_idp
     end subroutine return_dertype_pointer_arrays
 
-!    subroutine modify_dertype_pointer_arrays(dertype)
-!        use datatypes, only: pointer_arrays
-!        TYPE(pointer_arrays), INTENT(inout) :: dertype
-!        INTEGER :: i, j, m, n
-!        m = dertype%chi_shape(1)
-!        n = dertype%chi_shape(2)
-!        dertype%chi(:,:) = dertype%chi(:,:)*dertype%chi(:,:)
-!        dertype%chi(m-2, n-1) = -9.0_idp
-!    end subroutine modify_dertype_pointer_arrays
+   subroutine modify_dertype_pointer_arrays(dertype)
+       use datatypes, only: pointer_arrays
+       TYPE(pointer_arrays), INTENT(inout) :: dertype
+       INTEGER :: i, j, m, n
+       m = dertype%chi_shape(1)
+       n = dertype%chi_shape(2)
+       dertype%chi(:,:) = dertype%chi(:,:)*dertype%chi(:,:)
+       dertype%chi(m-2, n-1) = -9.0_idp
+   end subroutine modify_dertype_pointer_arrays
 
    subroutine return_dertype_alloc_arrays(m, n, dertype)
         use datatypes_allocatable, only: alloc_arrays

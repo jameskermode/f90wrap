@@ -187,19 +187,31 @@ class BaseTests(object):
         expected[m-3, n-2] = -1.0
         np.testing.assert_allclose(dt.chi, expected)
 
-#    def test_modify_dertype_pointer_arrays(self):
-#
-#        # create an array
-#        dt = self.lib.datatypes.Pointer_Arrays()
-#        m, n = 9, 5
-#        dt.chi = np.mgrid[0:m,0:n][0]
-#        dt.chi_shape = np.array([m,n], dtype=np.int32)
-#        self.lib.library.modify_dertype_pointer_arrays(dt)
-#
-#        expected = np.ones((m, n), order='F', dtype=np.float64) * 81.0
-#        expected[0, 0] = 2500.0
-#        expected[m-3, n-2] = -9.0
-#        np.testing.assert_allclose(dt.chi, expected)
+    def test_modify_dertype_pointer_arrays(self):
+        # the array can only be created from Fortran and this will fail
+        # dt = self.lib.datatypes.Pointer_Arrays()
+        # m, n = 9, 5
+        # dt.chi = np.mgrid[0:m,0:n][0]
+        # dt.chi_shape = np.array([m,n], dtype=np.int32)
+
+        # create an array in Fortran
+        m, n = 9, 5
+        dt = self.lib.library.return_dertype_pointer_arrays(m, n)
+        # the shape of the 2D array is also part of the derived type
+        # so we do not have to pass the shape of the array again when modifying
+        # the those arrays in other subroutines
+        dt.chi_shape = np.array([m, n], dtype=np.int32)
+        # we can also place a new array in here as long as we keep the same
+        # data type
+        dt.chi = np.ndarray((m,n), dtype=np.float64)
+        dt.chi[:,:] = 9.0
+        dt.chi[0,0] = 50.0
+        self.lib.library.modify_dertype_pointer_arrays(dt)
+
+        expected = np.ones((m, n), order='F', dtype=np.float64) * 81.0
+        expected[0, 0] = 2500.0
+        expected[m-3, n-2] = -9.0
+        np.testing.assert_allclose(dt.chi, expected)
 
     def test_modify_dertype_alloc_arrays(self):
 
