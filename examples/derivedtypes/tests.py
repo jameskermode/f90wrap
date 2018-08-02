@@ -170,19 +170,13 @@ class BaseTests(object):
         self.assert_(isinstance(ndt.mu.delta, float))
         self.assert_(isinstance(ndt.nu, self.lib.datatypes.fixed_shape_arrays))
 
-    # this test will fail because pointer/alloc arrays as arguments are not
-    # supported.
-    # expectedFailure only added to unittest module in Python 2.7
-    # @unittest.expectedFailure
-    # def test_return_dertype_pointer_arrays(self):
-    #     m, n = 9, 5
-    #     dt = self.lib.library.return_dertype_pointer_arrays(m, n)
-    #     self.assert_(isinstance(dt, self.lib.datatypes.Pointer_Arrays))
-    #     expected = np.ones((m, n), order='F', dtype=np.float64) * 100.0
-    #     expected[m-3, n-2] = -10.0
-    #     # it seems dt.chi can not be accessed from Python
-    #     # expected failure
-    #     np.testing.assert_allclose(dt.chi, expected)
+    def test_return_dertype_pointer_arrays(self):
+        m, n = 9, 5
+        dt = self.lib.library.return_dertype_pointer_arrays(m, n)
+        self.assert_(isinstance(dt, self.lib.datatypes.pointer_arrays))
+        expected = np.ones((m, n), order='F', dtype=np.float64) * 100.0
+        expected[m-3, n-2] = -10.0
+        np.testing.assert_allclose(dt.chi, expected)
 
     def test_return_dertype_alloc_arrays(self):
         m, n = 9, 5

@@ -314,11 +314,6 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 # Get the number of dimensions of the element (if any)
                 dims = [attr for attr in element.attributes if attr.startswith(
                     'dimension')]  # dims = filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
-                # Skip this if the type is not do-able
-                if 'pointer' in element.attributes and dims != []:
-                    warnings.warn('removing %s.%s due to pointer attribute' %
-                                  (node.name, element.name))
-                    continue
                 if element.type.lower() == 'type(c_ptr)':
                     warnings.warn('removing %s.%s as type(c_ptr) unsupported' %
                                   (node.name, element.name))

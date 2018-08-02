@@ -90,11 +90,9 @@ contains
         use datatypes, only: pointer_arrays
         INTEGER, INTENT(in) :: m, n
         TYPE(pointer_arrays), INTENT(out) :: dertype
-        REAL(idp), DIMENSION(:,:), ALLOCATABLE, TARGET :: chi
         INTEGER :: i, j
 
-        ALLOCATE(chi(m,n))
-        dertype%chi => chi
+        ALLOCATE(dertype%chi(m,n))
         dertype%chi(:,:) = 100.0_idp
         dertype%chi(m-2,n-1) = -10.0_idp
     end subroutine return_dertype_pointer_arrays
