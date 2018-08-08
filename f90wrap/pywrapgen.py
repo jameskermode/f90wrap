@@ -377,6 +377,7 @@ except ValueError:
                 for ret_val in node.ret_val:
                     if ret_val.type.startswith('type'):
                         cls_name = normalise_class_name(ft.strip_type(ret_val.type), self.class_names)
+                        cls_name = self.py_mod_name + '.' + cls_name
                         cls_name = 'f90wrap.runtime.lookup_class("%s")' % cls_name
                         cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name
                         cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
@@ -442,7 +443,7 @@ except ValueError:
         logging.info('PythonWrapperGenerator visiting type %s' % node.name)
         node.dt_array_initialisers = []
         cls_name = normalise_class_name(node.name, self.class_names)
-        self.write('@f90wrap.runtime.register_class("%s")' % cls_name)
+        self.write('@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name))
         self.write('class %s(f90wrap.runtime.FortranDerivedType):' % cls_name)
         self.indent()
         self.write(format_doc_string(node))
