@@ -186,10 +186,10 @@ USAGE
             argument_name_map = eval(open(args.argument_name_map).read())
 
         if args.only:
-            only = args.only
+            only = args.only.lower()
 
         if args.skip:
-            skip = args.skip
+            skip = args.skip.lower()
 
         if args.joint_modules:
             joint_modules = eval(open(args.joint_modules).read())

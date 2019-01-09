@@ -18,3 +18,4 @@ docs/_build
 src.*
 .f2py_f2cmap
 .ipynb_checkpoints
+.idea/
