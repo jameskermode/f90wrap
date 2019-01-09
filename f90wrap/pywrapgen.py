@@ -295,7 +295,7 @@ except ValueError:
 
         # special case for constructors: return value is 'self' argument,
         # plus we add an extra optional argument
-        args = node.ret_val + node.arguments + [handle_arg]
+        args = node.arguments + [handle_arg]
 
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
@@ -305,7 +305,7 @@ except ValueError:
                                                      for arg in args ]),
                    f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]))
 
-        self.write("def __init__(%(py_arg_names)s):" % dct)
+        self.write("def __init__(self, %(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
         self.write('f90wrap.runtime.FortranDerivedType.__init__(self)')
