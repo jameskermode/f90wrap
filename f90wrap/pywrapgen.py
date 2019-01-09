@@ -308,6 +308,12 @@ except ValueError:
         self.write("def __init__(self, %(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
+        for arg in node.arguments:
+            if 'optional' in arg.attributes and '._handle' in arg.py_value:
+                dct['f90_arg_names'] = dct['f90_arg_names'].replace(arg.py_value,
+                                                                    ('(None if %(arg_py_name)s is None else %('
+                                                                     'arg_py_name)s._handle)') %
+                                                                    {'arg_py_name': arg.py_name})
         self.write('f90wrap.runtime.FortranDerivedType.__init__(self)')
 
         self.write('result = %(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct)
