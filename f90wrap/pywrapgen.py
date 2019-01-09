@@ -309,7 +309,9 @@ except ValueError:
         self.indent()
         self.write(format_doc_string(node))
         self.write('f90wrap.runtime.FortranDerivedType.__init__(self)')
-        self.write('self._handle = %(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct)
+
+        self.write('result = %(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct)
+        self.write('self._handle = result[0] if isinstance(result, tuple) else result')
         self.dedent()
         self.write()
 
