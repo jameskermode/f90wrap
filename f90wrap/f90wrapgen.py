@@ -366,7 +366,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
 
         self.write()
         for tname in node.types:
-            if 'super-type' in self.types[tname].doc:
+            if tname in self.types and 'super-type' in self.types[tname].doc:
                 self.write_super_type_lines(self.types[tname])
             self.write_type_lines(tname)
         self.write_arg_decl_lines(node)
