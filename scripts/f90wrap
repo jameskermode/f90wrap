@@ -191,7 +191,7 @@ USAGE
             only = args.only.lower()
 
         if args.skip:
-            skip = args.skip.lower()
+            skip = [s.lower() for s in args.skip]
 
         if args.joint_modules:
             joint_modules = eval(open(args.joint_modules).read())
