@@ -320,8 +320,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
                     raise RuntimeError("assignment(=) interface with len(arg_names) != 2")
                 arg_names = [arg_name.split('=')[1] for arg_name in arg_names]
                 self.write('%(lhs)s = %(rhs)s' %
-                            {'lhs': arg_names[0],
-                             'rhs': arg_names[1]})
+                           {'lhs': arg_names[0],
+                            'rhs': arg_names[1]})
             else:
                 self.write('call %(sub_name)s(%(arg_names)s)' %
                            {'sub_name': func_name,
@@ -350,7 +350,8 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         call_name = node.name
         if hasattr(node, 'call_name'):
             call_name = node.call_name
-        logging.info('F90WrapperGenerator visiting routine %s call_name %s mod_name %r' % (node.name, call_name, node.mod_name))
+        logging.info(
+            'F90WrapperGenerator visiting routine %s call_name %s mod_name %r' % (node.name, call_name, node.mod_name))
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
                     'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
@@ -421,7 +422,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         else:
             this = 'dummy_this, '
 
-        self.write('subroutine %s%s__array__%s(%snd, dtype, dshape, dloc)' % (self.prefix, t.name, el.name, this))
+        self.write('subroutine %s%s__array__%s(%snd, dtype, dshape, dloc)' % (self.prefix, t.name, el.orig_name, this))
         self.indent()
 
         if isinstance(t, ft.Module):
@@ -452,9 +453,9 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write('dtype = %s' % ft.fortran_array_type(el.type, self.kind_map))
         if isinstance(t, ft.Type):
             self.write('this_ptr = transfer(this, this_ptr)')
-            array_name = 'this_ptr%%p%%%s' % el.name
+            array_name = 'this_ptr%%p%%%s' % el.orig_name
         else:
-            array_name = '%s_%s' % (t.name, el.name)
+            array_name = '%s_%s' % (t.name, el.orig_name)
 
         if 'allocatable' in el.attributes:
             self.write('if (allocated(%s)) then' % array_name)
@@ -474,7 +475,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('end if')
 
         self.dedent()
-        self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.name))
+        self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.orig_name))
         self.write()
 
     def _write_dt_array_wrapper(self, t, element, dims,
@@ -550,7 +551,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         else:
             this = 'dummy_this'
         safe_i = self.prefix + 'i'  # YANN: i could be in the "uses" clauses
-
+        # TODO: check if el.orig_name would be needed here instead of el.name
         self.write('subroutine %s%s__array_%sitem__%s(%s, %s, %s)' % (self.prefix, t.name,
                                                                       getset, el.name,
                                                                       this,
@@ -780,7 +781,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
 
-        if el.type.startswith('type') and not (el.type == 'type('+t.name+')'):
+        if el.type.startswith('type') and not (el.type == 'type(' + t.name + ')'):
             self.write_type_lines(el.type)
 
         if isinstance(t, ft.Type):
