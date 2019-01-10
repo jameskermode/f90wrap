@@ -470,6 +470,9 @@ def convert_array_intent_out_to_intent_inout(tree):
     Find all intent(out) array arguments and convert to intent(inout)
     """
     for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
+        if '__array__' in sub.name:
+            # special case for array wrappers, which shouldn't be touched
+            continue        
         for arg in arguments:
             dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
             if dims == []:
