@@ -207,7 +207,6 @@ class UnwrappablesRemover(ft.FortranTransformer):
         args = node.arguments[:]
         if isinstance(node, ft.Function):
             args.append(node.ret_val)
-
         for arg in args:
             # only callback functions in self.callbacks
             if 'callback' in arg.attributes:
@@ -219,7 +218,9 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
             if 'optional' in arg.attributes:
                 # we can remove the argument instead of the whole routine
-                return self.generic_visit(node)
+                # fortran permits opt arguments before compulsory ones, so continue not return
+                # generic_visit is done later on anyways
+                continue
             else:
                 # no allocatables or pointers
                 if 'allocatable' in arg.attributes or 'pointer' in arg.attributes:
