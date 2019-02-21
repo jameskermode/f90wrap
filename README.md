@@ -142,7 +142,7 @@ allow it to be called from Python.
     type arguments replaced by integer arrays containing a
     representation of a pointer to the derived type, in the manner
     described in
-    (Pletzer2008)[http://link.aip.org/link/?CSENFA/10/86/1].
+    (Pletzer2008)[https://doi.org/10.1109/MCSE.2008.94].
     This allows opaque references to the
     true Fortran derived type data structures to be passed back and
     forth between Python and Fortran.
