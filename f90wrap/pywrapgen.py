@@ -30,6 +30,14 @@ from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
 
+def py_arg_value(arg):
+    # made global from PythonWrapperGenerator.visit_Procedure so that other functions can use it
+    if 'optional' in arg.attributes or arg.value is None:
+        return '=None'
+    else:
+        return ''
+
+
 def normalise_class_name(name, name_map):
     return name_map.get(name.lower(), name.title())
 
@@ -322,6 +330,42 @@ except ValueError:
         self.dedent()
         self.write()
 
+    def write_classmethod(self, node):
+
+        dct = dict(func_name=node.name,
+                   method_name=hasattr(node, 'method_name') and node.method_name or node.name,
+                   prefix=self.prefix,
+                   mod_name=self.f90_mod_name,
+                   py_arg_names=', '.join([arg.py_name + py_arg_value(arg) for arg in node.arguments]),
+                   f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]),
+                   call='')
+
+        dct['result'] = ', '.join([ret_val.name for ret_val in node.ret_val])
+        dct['call'] = '%(result)s = ' % dct
+
+        self.write('@classmethod')
+        self.write("def %(method_name)s(cls, %(py_arg_names)s):" % dct)
+        self.indent()
+        self.write(format_doc_string(node))
+        self.write('bare_class = cls.__new__(cls)')
+        self.write('f90wrap.runtime.FortranDerivedType.__init__(bare_class)')
+
+        for arg in node.arguments:
+            if 'optional' in arg.attributes and '._handle' in arg.py_value:
+                dct['f90_arg_names'] = dct['f90_arg_names'].replace(arg.py_value,
+                                                                    (
+                                                                        'None if %(arg_py_name)s is None else %(arg_py_name)s._handle') %
+                                                                    {'arg_py_name': arg.py_name})
+        call_line = '%(call)s%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
+
+        self.write(call_line)
+        self.write('bare_class._handle = this[0] if isinstance(this, tuple) else this')
+
+        self.write('return bare_class')
+
+        self.dedent()
+        self.write()
+
     def write_destructor(self, node):
         dct = dict(func_name=node.name,
                    prefix=self.prefix,
@@ -341,14 +385,11 @@ except ValueError:
         self.write()
 
     def visit_Procedure(self, node):
-        def py_arg_value(arg):
-            if 'optional' in arg.attributes or arg.value is None:
-                return '=None'
-            else:
-                return ''
 
         logging.info('PythonWrapperGenerator visiting routine %s' % node.name)
-        if 'constructor' in node.attributes:
+        if 'classmethod' in node.attributes:
+            self.write_classmethod(node)
+        elif 'constructor' in node.attributes:
             self.write_constructor(node)
         elif 'destructor' in node.attributes:
             self.write_destructor(node)

@@ -726,8 +726,8 @@ class ConstructorExcessToClassMethod(ft.FortranTransformer):
                     if child.name == chosen:
                         logging.info('found multiple constructors, chose shortest named %s' % child.name)
                     else:
-                        child.attributes = list(set(child.attributes))  # fixme: decide if this is needed at all
-                        child.attributes.remove('constructor')
+                        #child.attributes = list(set(child.attributes))  # fixme: decide if this is needed at all
+                        #child.attributes.remove('constructor')
                         child.attributes.append('classmethod')
                         logging.info('transform excess constructor to classmethod %s' % child.name)
 
