@@ -42,7 +42,7 @@
 
 import string
 
-from f90wrap.fortran import *
+from f90wrap.fortran import *       #fixme: remove star import
 
 # Define some regular expressions
 
