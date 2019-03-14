@@ -472,7 +472,7 @@ def convert_array_intent_out_to_intent_inout(tree):
     for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
         if '__array__' in sub.name:
             # special case for array wrappers, which shouldn't be touched
-            continue        
+            continue
         for arg in arguments:
             dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
             if dims == []:
@@ -695,6 +695,45 @@ class MethodFinder(ft.FortranTransformer):
             return None
         else:
             return node
+
+
+class ConstructorExcessToClassMethod(ft.FortranTransformer):
+    """ Handle classes with multiple constructors
+
+    Count the number of constructors per class and choose only one.
+    Method of choice: the one with the shortest name.
+    The rest are relabeled to classmethods"""
+
+    def visit_Type(self, node):
+        logging.debug('visiting %r' % node)
+
+        constructor_names = []
+
+        for child in node.procedures:
+            if 'constructor' in child.attributes:
+                constructor_names.append(child.name)
+
+        print('visiting %r' % node, 'found', len(constructor_names),' constructors with names: ', constructor_names)
+
+        if len(constructor_names) > 1:
+            # now we need to modify all but one to classmethods
+            # for now, we are taking the one with the shortest names
+            # fixme: make this more general and possible to set up
+            chosen = min(constructor_names, key=len)
+
+            for child in node.procedures:
+                if 'constructor' in child.attributes:
+                    if child.name == chosen:
+                        logging.info('found multiple constructors, chose shortest named %s' % child.name)
+                    else:
+                        child.attributes = list(set(child.attributes))  # fixme: decide if this is needed at all
+                        child.attributes.remove('constructor')
+                        child.attributes.append('classmethod')
+                        logging.info('transform excess constructor to classmethod %s' % child.name)
+
+        return self.generic_visit(node)
+
+    visit_Module = visit_Type
 
 
 def collapse_single_interfaces(tree):
@@ -1070,6 +1109,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
+    tree = ConstructorExcessToClassMethod().visit(tree)
     tree = convert_array_intent_out_to_intent_inout(tree)
     RenameReservedWords(types, argument_name_map).visit(tree)
     return tree
