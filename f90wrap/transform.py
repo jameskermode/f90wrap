@@ -1077,7 +1077,7 @@ class SetInterfaceProcedureCallNames(ft.FortranVisitor):
 
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
-                                 only_subs, only_mods, argument_name_map,
+                                 kept_subs, kept_mods, argument_name_map,
                                  move_methods, shorten_routine_names,
                                  modules_for_type, remove_optional_arguments):
     """
@@ -1093,7 +1093,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
      * Update of subroutine uses clauses
     """
 
-    tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
+    tree = OnlyAndSkip(kept_subs, kept_mods).visit(tree)
     tree = remove_private_symbols(tree)
     tree = UnwrappablesRemover(callbacks, types, constructors,
                                destructors, remove_optional_arguments).visit(tree)
