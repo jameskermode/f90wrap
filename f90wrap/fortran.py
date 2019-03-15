@@ -571,7 +571,7 @@ def find_types(tree, skip_type=None):
                 if node.name not in skip_type:
                     logging.debug('type %s defined in module %s' % (node.name, mod.name))
                     node.mod_name = mod.name  # save module name in Type instance
-                    node.uses = {(mod.name, (node.name,))}
+                    node.uses = set((mod.name, (node.name,)))
                     types['type(%s)' % node.name] = types[node.name] = node
                 else:
                     logging.debug('Skipping type %s defined in module %s' % (node.name, mod.name))
