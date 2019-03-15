@@ -155,6 +155,8 @@ USAGE
         py_mod_names = {}
         class_names = {}
         argument_name_map = {}
+        move_methods = []
+        shorten_routine_names = []
         only = None
         skip = None
         skip_types = None
@@ -190,10 +192,10 @@ USAGE
             argument_name_map = eval(open(args.argument_name_map).read())
 
         if args.move_methods:
-            move_methods = eval(open(args.move_methods).read())
+            move_methods = [s.lower() for s in args.move_methods]
 
         if args.shorten_routine_names:
-            shorten_routine_names = eval(open(args.shorten_routine_names).read())
+            shorten_routine_names = [s.lower() for s in args.shorten_routine_names]
 
         if args.only:
             only = args.only.lower()
