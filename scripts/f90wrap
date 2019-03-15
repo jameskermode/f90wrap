@@ -134,7 +134,8 @@ USAGE
         parser.add_argument('-a', '--abort-func', default='f90wrap_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
-        parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude from wrapper")
+        parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude modules and subroutines from wrapper")
+        parser.add_argument("--skip-types", nargs="*", default=[], help="Subroutines to exclude types from wrapper")
         parser.add_argument('--default-to-inout', action='store_true', default=False,
                             help="Sets all arguments without intent to intent(inout)")
         parser.add_argument("--conf-file", help="Use Python configuration script to set options")
@@ -146,7 +147,7 @@ USAGE
         else:
             logging.root.setLevel(logging.INFO)
 
-        # set defaults, to be overriden by command line args and config file
+        # set defaults, to be overridden by command line args and config file
         kind_map = {}
         short_names = {}
         string_lengths = {}
@@ -156,6 +157,7 @@ USAGE
         argument_name_map = {}
         only = None
         skip = None
+        skip_types = None
         joint_modules = {}
         callback = []
         remove_optional_arguments = []
@@ -192,6 +194,9 @@ USAGE
 
         if args.skip:
             skip = [s.lower() for s in args.skip]
+
+        if args.skip_types:
+            skip_types = [s.lower() for s in args.skip_types]
 
         if args.joint_modules:
             joint_modules = eval(open(args.joint_modules).read())
@@ -250,7 +255,7 @@ USAGE
         print()
         tree = copy.deepcopy(parse_tree)
 
-        types = fortran.find_types(tree)
+        types = fortran.find_types(tree, skip_types)
         print('Derived types detected in Fortran source files:')
         pprint.pprint(types)
         print()
@@ -261,6 +266,7 @@ USAGE
         pprint.pprint(class_names)
 
         # Find all modules and subroutines the user wishes to keep
+        # FIXME: this is messy, add more logic to it
         kept_subs = []
         kept_mods = set()
         if only:

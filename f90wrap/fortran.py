@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 """
@@ -138,7 +138,7 @@ class Program(Fortran):
         self.procedures = procedures
         if uses is None:
             uses = []
-        self.uses = uses        
+        self.uses = uses
 
 
 class Module(Fortran):
@@ -553,7 +553,7 @@ def print_source(node, out=None):
     source = find_source(node)
     out.writelines(source)
 
-def find_types(tree):
+def find_types(tree, skip_type=None):
     """
     Walk over all the nodes in tree, building up a dictionary:
       types: maps type names to Type instances
@@ -562,13 +562,19 @@ def find_types(tree):
     """
     types = {}
 
+    if skip_type is None:
+        skip_type = []
+
     for mod in walk_modules(tree):
         for node in walk(mod):
             if isinstance(node, Type):
-                logging.debug('type %s defined in module %s' % (node.name, mod.name))
-                node.mod_name = mod.name  # save module name in Type instance
-                node.uses = set([(mod.name, (node.name,))])
-                types['type(%s)' % node.name] = types[node.name] = node
+                if node.name not in skip_type:
+                    logging.debug('type %s defined in module %s' % (node.name, mod.name))
+                    node.mod_name = mod.name  # save module name in Type instance
+                    node.uses = {(mod.name, (node.name,))}
+                    types['type(%s)' % node.name] = types[node.name] = node
+                else:
+                    logging.debug('Skipping type %s defined in module %s' % (node.name, mod.name))
 
     return types
 
