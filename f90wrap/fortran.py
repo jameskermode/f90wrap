@@ -562,7 +562,8 @@ def find_types(tree, skipped_types=None):
     """
     types = {}
 
-    print('skipping the following typs', skipped_types)
+    if skipped_types is None:
+        skipped_types = []
 
     for mod in walk_modules(tree):
         for node in walk(mod):
@@ -574,7 +575,6 @@ def find_types(tree, skipped_types=None):
                     types['type(%s)' % node.name] = types[node.name] = node
                 else:
                     logging.info('Skipping type %s defined in module %s' % (node.name, mod.name))
-                    print('skipppppp type %s defined in module %s' % (node.name, mod.name))
 
     return types
 
