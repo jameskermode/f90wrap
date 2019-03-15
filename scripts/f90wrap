@@ -189,6 +189,12 @@ USAGE
         if args.argument_name_map:
             argument_name_map = eval(open(args.argument_name_map).read())
 
+        if args.move_methods:
+            move_methods = eval(open(args.move_methods).read())
+
+        if args.shorten_routine_names:
+            shorten_routine_names = eval(open(args.shorten_routine_names).read())
+
         if args.only:
             only = args.only.lower()
 
