@@ -553,7 +553,7 @@ def print_source(node, out=None):
     source = find_source(node)
     out.writelines(source)
 
-def find_types(tree, skip_type=None):
+def find_types(tree, skipped_types=None):
     """
     Walk over all the nodes in tree, building up a dictionary:
       types: maps type names to Type instances
@@ -562,19 +562,19 @@ def find_types(tree, skip_type=None):
     """
     types = {}
 
-    if skip_type is None:
-        skip_type = []
+    print('skipping the following typs', skipped_types)
 
     for mod in walk_modules(tree):
         for node in walk(mod):
             if isinstance(node, Type):
-                if node.name not in skip_type:
+                if node.name not in skipped_types:
                     logging.debug('type %s defined in module %s' % (node.name, mod.name))
                     node.mod_name = mod.name  # save module name in Type instance
-                    node.uses = set((mod.name, (node.name,)))
+                    node.uses = set([(mod.name, (node.name,))])
                     types['type(%s)' % node.name] = types[node.name] = node
                 else:
-                    logging.debug('Skipping type %s defined in module %s' % (node.name, mod.name))
+                    logging.info('Skipping type %s defined in module %s' % (node.name, mod.name))
+                    print('skipppppp type %s defined in module %s' % (node.name, mod.name))
 
     return types
 
