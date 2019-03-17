@@ -38,11 +38,21 @@ class AccessUpdater(ft.FortranTransformer):
        (iii) public and private statement in types; (iv) public
        and private attributes of individual elements."""
 
-    def __init__(self):
+    def __init__(self, force_public=None):
         self.mod = None
         self.type = None
+        self.force_public = ()
+        if force_public is not None:
+            self.force_public = force_public
 
     def update_access(self, node, mod, default_access, in_type=False):
+        if node.name in self.force_public:
+            logging.debug('marking public symbol (forced) ' + node.name)
+            mod.public_symbols.append(node.name)
+            if 'private' in getattr(node, 'attributes', []):
+                node.attributes.remove('private')
+                node.attributes.append('public')
+
         if default_access == 'public':
             if ('private' not in getattr(node, 'attributes', []) and
                         node.name not in mod.private_symbols):
@@ -140,6 +150,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
             return None
 
         if hasattr(node, 'attributes') and 'private' in node.attributes:
+            logging.debug('removing private symbol by attribute list %s' % node.name)
             return None
 
         return self.generic_visit(node)
@@ -147,7 +158,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     def visit_Interface(self, node):
         # remove entirely private interfaces
         if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol %s' % node.name)
+            logging.debug('removing private symbol on interface %s' % node.name)
             return None
 
         # do not call generic_visit(), so we don't
@@ -159,7 +170,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     visit_Element = visit_Procedure
 
 
-def remove_private_symbols(node):
+def remove_private_symbols(node, force_public=None):
     """
     Walk the tree starting at *node*, removing all private symbols.
 
@@ -169,7 +180,7 @@ def remove_private_symbols(node):
     attributes.
     """
 
-    node = AccessUpdater().visit(node)
+    node = AccessUpdater(force_public).visit(node)
     node = PrivateSymbolsRemover().visit(node)
     return node
 
@@ -1079,7 +1090,8 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
                                  kept_subs, kept_mods, argument_name_map,
                                  move_methods, shorten_routine_names,
-                                 modules_for_type, remove_optional_arguments):
+                                 modules_for_type, remove_optional_arguments,
+                                 force_public=None):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
@@ -1094,7 +1106,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     """
 
     tree = OnlyAndSkip(kept_subs, kept_mods).visit(tree)
-    tree = remove_private_symbols(tree)
+    tree = remove_private_symbols(tree, force_public)
     tree = UnwrappablesRemover(callbacks, types, constructors,
                                destructors, remove_optional_arguments).visit(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
@@ -1109,7 +1121,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
-    tree = ConstructorExcessToClassMethod().visit(tree)
+    tree = ConstructorExcessToClassMethod().visit(tree) # dealing with cases where multiple constructors were allocated
     tree = convert_array_intent_out_to_intent_inout(tree)
     RenameReservedWords(types, argument_name_map).visit(tree)
     return tree

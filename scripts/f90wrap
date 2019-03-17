@@ -136,6 +136,7 @@ USAGE
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude modules and subroutines from wrapper")
         parser.add_argument("--skip-types", nargs="*", default=[], help="Subroutines to exclude types from wrapper")
+        parser.add_argument("--force-public", nargs="*", default=[], help="Names which are forced to be make public")
         parser.add_argument('--default-to-inout', action='store_true', default=False,
                             help="Sets all arguments without intent to intent(inout)")
         parser.add_argument("--conf-file", help="Use Python configuration script to set options")
@@ -160,6 +161,7 @@ USAGE
         only = None
         skip = None
         skip_types = None
+        force_public = None
         joint_modules = {}
         callback = []
         remove_optional_arguments = []
@@ -199,6 +201,9 @@ USAGE
 
         if args.skip_types:
             skip_types = [s.lower() for s in args.skip_types]
+
+        if args.force_public:
+            force_public = [s.lower() for s in args.force_public]
 
         if args.joint_modules:
             joint_modules = eval(open(args.joint_modules).read())
@@ -310,7 +315,8 @@ USAGE
                                                move_methods,
                                                shorten_routine_names,
                                                modules_for_type,
-                                               remove_optional_arguments)
+                                               remove_optional_arguments,
+                                               force_public=force_public)
 
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
