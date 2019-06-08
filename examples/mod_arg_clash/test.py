@@ -17,12 +17,12 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 from __future__ import print_function
 import test.cell
 
-c = test.cell.unit_cell()
+c = test.cell.Unit_Cell()
 test.cell.cell_dosomething(c, 1, 'Si')
 print(c)
