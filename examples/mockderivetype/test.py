@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 import numpy as np
@@ -27,7 +27,7 @@ from mockdt import (define_a_type,
                     use_a_type,
                     top_level)
 
-a = define_a_type.atype() # calls initialise()
+a = define_a_type.Atype() # calls initialise()
 
 a.rl = 3.0 # calls set()
 assert(a.rl == 3.0)
@@ -39,7 +39,7 @@ assert(np.all(a.vec == 1.0))
 
 a.dtype.rl = 1.0 # calls set()
 
-my_l2 = leveltwomod.leveltwo(4.0) # calls initialise()
+my_l2 = leveltwomod.Leveltwo(4.0) # calls initialise()
 a.dtype = my_l2 # calls set()
 assert(a.dtype.rl == my_l2.rl)
 
@@ -77,7 +77,7 @@ for i in range(len(use_a_type.p_array)):
 a = define_a_type.return_a_type_func()
 assert(a.bool == 1 or a.bool == -1) # ifort uses -1 for logical true
 assert(a.integ == 42)
-    
+
 # test subroutine with intent(out) derived type argument
 a = define_a_type.return_a_type_sub()
 assert(a.bool == 1 or a.bool == -1) # ifort uses -1 for logical true
