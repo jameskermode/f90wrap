@@ -17,14 +17,14 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 from __future__ import print_function
 import mymodule
 import numpy as np
 
-tt = mymodule.Mymodule.mytype()
+tt = mymodule.Mymodule.Mytype()
 tt.val = 17
 b=np.array(17)
 
