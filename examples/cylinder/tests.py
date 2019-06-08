@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 
@@ -36,8 +36,8 @@ class TestExample(unittest.TestCase):
         pass
 
     def test_auto_diff(self):
-        d1 = Example.Dual_Num_Auto_Diff.DUAL_NUM()
-        d2 = Example.Dual_Num_Auto_Diff.DUAL_NUM()
+        d1 = Example.Dual_Num_Auto_Diff.Dual_Num()
+        d2 = Example.Dual_Num_Auto_Diff.Dual_Num()
         d3 = Example.Mcyldnad.cyldnad(d1, d2)
 
 if __name__ == '__main__':
