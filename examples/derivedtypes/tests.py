@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 # -*- coding: utf-8 -*-
@@ -58,7 +58,7 @@ class BaseTests(object):
 
     def test_return_a_dt_func(self):
         dt = self.lib.library.return_a_dt_func()
-        self.assert_(isinstance(dt, self.lib.datatypes.different_types))
+        self.assert_(isinstance(dt, self.lib.datatypes.Different_Types))
         self.assertEqual(dt.alpha, 1) # logicals, so 1/0 instead of T/F
         self.assertEqual(dt.beta, 666)
         self.assertEqual(dt.delta, 666.666)
@@ -103,19 +103,19 @@ class BaseTests(object):
 
         dt = self.lib.library.set_derived_type(dt_beta=dt_beta,
                                                dt_delta=dt_delta)
-        self.assert_(isinstance(dt, self.lib.datatypes.different_types))
+        self.assert_(isinstance(dt, self.lib.datatypes.Different_Types))
         self.assertEqual(dt.beta, dt_beta)
         self.assertEqual(dt.delta, dt_delta)
 
     def test_modify_derived_types(self):
 
-        dt1 = self.lib.datatypes.different_types()
+        dt1 = self.lib.datatypes.Different_Types()
         dt1.beta = 10
         dt1.delta = 11.11
-        dt2 = self.lib.datatypes.different_types()
+        dt2 = self.lib.datatypes.Different_Types()
         dt2.beta = 20
         dt2.delta = 22.22
-        dt3 = self.lib.datatypes.different_types()
+        dt3 = self.lib.datatypes.Different_Types()
         dt3.beta = 30
         dt3.delta = 33.33
 
@@ -133,7 +133,7 @@ class BaseTests(object):
     def test_modify_dertype_multiple_arrays(self):
 
         dt = self.lib.library.modify_dertype_fixed_shape_arrays()
-        self.assert_(isinstance(dt, self.lib.datatypes.fixed_shape_arrays))
+        self.assertTrue(isinstance(dt, self.lib.datatypes.Fixed_Shape_Arrays))
 
         self.assertEqual(dt.eta.dtype, np.int32)
         eta = np.ones((10,4), dtype=np.int)
@@ -164,16 +164,16 @@ class BaseTests(object):
     #     np.testing.assert_array_equal(dt.theta, theta*np.float32(2.0))
 
     def test_nested_dertype(self):
-        ndt = self.lib.datatypes.nested()
-        self.assert_(isinstance(ndt.mu.alpha, int)) # boolean/logical in F though)
-        self.assert_(isinstance(ndt.mu.beta, int))
-        self.assert_(isinstance(ndt.mu.delta, float))
-        self.assert_(isinstance(ndt.nu, self.lib.datatypes.fixed_shape_arrays))
+        ndt = self.lib.datatypes.Nested()
+        self.assertTrue(isinstance(ndt.mu.alpha, int)) # boolean/logical in F though)
+        self.assertTrue(isinstance(ndt.mu.beta, int))
+        self.assertTrue(isinstance(ndt.mu.delta, float))
+        self.assertTrue(isinstance(ndt.nu, self.lib.datatypes.Fixed_Shape_Arrays))
 
     def test_return_dertype_pointer_arrays(self):
         m, n = 9, 5
         dt = self.lib.library.return_dertype_pointer_arrays(m, n)
-        self.assert_(isinstance(dt, self.lib.datatypes.pointer_arrays))
+        self.assertTrue(isinstance(dt, self.lib.datatypes.Pointer_Arrays))
         expected = np.ones((m, n), order='F', dtype=np.float64) * 100.0
         expected[m-3, n-2] = -10.0
         np.testing.assert_allclose(dt.chi, expected)
@@ -182,7 +182,7 @@ class BaseTests(object):
         m, n = 9, 5
         dt = self.lib.library.return_dertype_alloc_arrays(m, n)
         dt.chi_shape = np.array([m, n], dtype=np.int32)
-        self.assert_(isinstance(dt, self.lib.datatypes_allocatable.alloc_arrays))
+        self.assert_(isinstance(dt, self.lib.datatypes_allocatable.Alloc_Arrays))
         expected = np.ones((m, n), order='F', dtype=np.float64) * 10.0
         expected[m-3, n-2] = -1.0
         np.testing.assert_allclose(dt.chi, expected)
@@ -244,7 +244,7 @@ class BaseTests(object):
 
     def test_alloc_arrays(self):
         m, n = 10, 4
-        dt = self.lib.datatypes_allocatable.alloc_arrays()
+        dt = self.lib.datatypes_allocatable.Alloc_Arrays()
         self.lib.datatypes_allocatable.init_alloc_arrays(dt, m, n)
         self.assertEqual(dt.chi.shape, (m,n))
 
@@ -256,7 +256,7 @@ class BaseTests(object):
 
     def test_nested_alloc_arrays(self):
         n = 10
-        dt = self.lib.datatypes.array_nested()
+        dt = self.lib.datatypes.Array_Nested()
         self.lib.datatypes.init_array_nested(dt, n)
 
         self.assertEqual(len(dt.xi), n)
