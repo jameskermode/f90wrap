@@ -17,13 +17,13 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 from __future__ import print_function
 
 #=======================================================================
-#           simple test for f90wrap 
+#           simple test for f90wrap
 #=======================================================================
 
 
@@ -36,15 +36,15 @@ import numpy as np
 from mockdt import *
 
 #=======================================================================
-# call a "top-level" subroutine. This refers to subroutines that are 
+# call a "top-level" subroutine. This refers to subroutines that are
 # present outside of modules, and do not operate on derived types AFAIK
 #=======================================================================
 
-#This particular routine sets some numeric constants 
+#This particular routine sets some numeric constants
 assign_constants()
 
 #=======================================================================
-#Check if the subroutine worked : it modifies the "precision" module 
+#Check if the subroutine worked : it modifies the "precision" module
 #variables
 #=======================================================================
 
@@ -65,7 +65,7 @@ print(precision.one,precision.two, precision.three,precision.four)
 #           Declare the SolverOptions derived type
 #=======================================================================
 
-Options =  Defineallproperties.SolverOptionsDef()
+Options =  Defineallproperties.Solveroptionsdef()
 
 print(type(Options.airframevib))
 Options.airframevib = 0
