@@ -17,11 +17,11 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 import type_bn
 
-a = type_bn.module_structure.type_face()
+a = type_bn.module_structure.Type_Face()
 a.type = 1
 assert(a.type == 1)
