@@ -486,12 +486,11 @@ def convert_array_intent_out_to_intent_inout(tree):
             continue
         for arg in arguments:
             dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
-            if dims == []:
-                continue
-            if len(dims) != 1:
-                raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
-            if 'intent(out)' in arg.attributes:
-                arg.attributes = set_intent(arg.attributes, 'intent(inout)')
+            if dims != [] or 'optional' in arg.attributes:
+                if dims != [] and len(dims) != 1:
+                    raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
+                if 'intent(out)' in arg.attributes:
+                    arg.attributes = set_intent(arg.attributes, 'intent(inout)')
     return tree
 
 
