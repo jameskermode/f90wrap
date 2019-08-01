@@ -222,6 +222,7 @@ USAGE
         # finally, read config file, allowing it to override command line args
         if args.conf_file:
             print("Executing config file %s" % args.conf_file)
+            # fixme: this does not get the locals() and globals()
             exec(open(args.conf_file).read())
 
         print('Kind map (also saved to .f2py_f2cmap)')
