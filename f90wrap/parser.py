@@ -41,6 +41,8 @@
 # MA 02111-1307 USA
 
 import string
+import sys
+import os
 
 from f90wrap.fortran import *       #fixme: remove star import
 
@@ -344,6 +346,7 @@ def check_cont(cline, file):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_program(cl, file):
+    global doc_plugin_module
     global hold_doc
 
     out = Program()
@@ -428,6 +431,7 @@ def check_program(cl, file):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_module(cl, file):
+    global doc_plugin_module
     global hold_doc
 
     out = Module()
@@ -596,6 +600,7 @@ def check_module(cl, file):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_subt(cl, file, grab_hold_doc=True):
+    global doc_plugin_module
     global hold_doc
 
     out = Subroutine()
@@ -657,6 +662,7 @@ def check_subt(cl, file, grab_hold_doc=True):
 
         cl = file.next()
 
+        subroutine_lines = []
         while True:
 
             # Use statement
@@ -708,10 +714,14 @@ def check_subt(cl, file, grab_hold_doc=True):
 
             m = subt_end.match(cl)
 
+            subroutine_lines.append(cl)
             if m == None:
                 cl = file.next()
                 continue
             else:
+                if doc_plugin_module is not None:
+                    extra_doc = doc_plugin_module.doc_plugin(subroutine_lines, out.name, 'subroutine')
+                    out.doc.extend(extra_doc)
                 break
 
             # If no joy, get next line
@@ -776,6 +786,7 @@ def implicit_type_rule(var):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_funct(cl, file, grab_hold_doc=True):
+    global doc_plugin_module
     global hold_doc
 
     out = Function()
@@ -858,6 +869,7 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         cl = file.next()
 
+        subroutine_lines = []
         while True:
 
             # Use statement
@@ -915,11 +927,14 @@ def check_funct(cl, file, grab_hold_doc=True):
 
             m = re.match(funct_end, cl)
 
+            subroutine_lines.append(cl)
             if m == None:
                 cl = file.next()
                 continue
-
             else:
+                if doc_plugin_module is not None:
+                    extra_doc = doc_plugin_module.doc_plugin(subroutine_lines, out.name, 'function')
+                    out.doc.extend(extra_doc)
                 break
 
             cl = file.next()
@@ -1089,6 +1104,7 @@ def check_interface(cl, file):
 
 
 def check_interface_decl(cl, file):
+    global doc_plugin_module
     out = Interface()
 
     if cl and re.match(iface, cl) != None:
@@ -1100,14 +1116,14 @@ def check_interface_decl(cl, file):
         while re.match(iface_end, cl) == None:
 
             # Subroutine declaration
-            check = check_subt(cl, file, grab_hold_doc=False)
+            check = check_subt(cl, file)
             if check[0] != None:
                 out.procedures.append(check[0])
                 cl = check[1]
                 continue
 
             # Function declaration
-            check = check_funct(cl, file, grab_hold_doc=False)
+            check = check_funct(cl, file)
             if check[0] != None:
                 out.procedures.append(check[0])
                 cl = check[1]
@@ -1302,8 +1318,16 @@ def check_arg(cl, file):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-def read_files(args):
+def read_files(args, doc_plugin_filename=None):
+    global doc_plugin_module
     global hold_doc
+
+    if doc_plugin_filename is not None:
+        sys.path.insert(0, os.path.dirname(doc_plugin_filename))
+        doc_plugin_module = __import__(os.path.splitext(os.path.basename(doc_plugin_filename))[0])
+        sys.path = sys.path[1:]
+    else:
+        doc_plugin_module = None
 
     root = Root()
 

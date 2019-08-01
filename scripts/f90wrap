@@ -140,6 +140,10 @@ USAGE
         parser.add_argument('--default-to-inout', action='store_true', default=False,
                             help="Sets all arguments without intent to intent(inout)")
         parser.add_argument("--conf-file", help="Use Python configuration script to set options")
+        parser.add_argument("--documentation-plugin", help="Use Python script for expanding the documentation of "
+                                                           "functions and subroutines. All lines of the given tree "
+                                                           "object are passed to it with a reference to its "
+                                                           "documentation")
 
         args = parser.parse_args()
 
@@ -208,6 +212,13 @@ USAGE
         if args.joint_modules:
             joint_modules = eval(open(args.joint_modules).read())
 
+        # documentation plugin
+        if args.documentation_plugin:
+            print("Using dcoumentation plugin script {}".format(args.documentation_plugin))
+            doc_plugin_fname = args.documentation_plugin
+        else:
+            doc_plugin_fname = None
+
         # finally, read config file, allowing it to override command line args
         if args.conf_file:
             print("Executing config file %s" % args.conf_file)
@@ -257,7 +268,7 @@ USAGE
 
         # parse input Fortran source files
         print('Parsing Fortran source files %r ...' % args.files)
-        parse_tree = fparse.read_files(args.files)
+        parse_tree = fparse.read_files(args.files, doc_plugin_filename=doc_plugin_fname)
         print('done parsing source.')
         print()
         tree = copy.deepcopy(parse_tree)
