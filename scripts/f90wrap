@@ -1,27 +1,29 @@
 #!/usr/bin/env python
 
-#  f90wrap: F90 to Python interface generator with derived type support
-#
-#  Copyright James Kermode 2011-2018
-#
-#  This file is part of f90wrap
-#  For the latest version see github.com/jameskermode/f90wrap
-#
-#  f90wrap is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Lesser General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  f90wrap is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Lesser General Public License for more details.
-#
-#  You should have received a copy of the GNU Lesser General Public License
-#  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
-#  If you would like to license the source code under different terms,
-#  please contact James Kermode, james.kermode@gmail.com
+"""
+  f90wrap: F90 to Python interface generator with derived type support
+
+  Copyright James Kermode 2011-2018
+
+  This file is part of f90wrap
+  For the latest version see github.com/jameskermode/f90wrap
+
+  f90wrap is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  f90wrap is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
+ 
+  If you would like to license the source code under different terms,
+  please contact James Kermode, james.kermode@gmail.com
+"""
 
 from __future__ import print_function
 
@@ -132,10 +134,16 @@ USAGE
         parser.add_argument('-a', '--abort-func', default='f90wrap_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
-        parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude from wrapper")
+        parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude modules and subroutines from wrapper")
+        parser.add_argument("--skip-types", nargs="*", default=[], help="Subroutines to exclude types from wrapper")
+        parser.add_argument("--force-public", nargs="*", default=[], help="Names which are forced to be make public")
         parser.add_argument('--default-to-inout', action='store_true', default=False,
                             help="Sets all arguments without intent to intent(inout)")
         parser.add_argument("--conf-file", help="Use Python configuration script to set options")
+        parser.add_argument("--documentation-plugin", help="Use Python script for expanding the documentation of "
+                                                           "functions and subroutines. All lines of the given tree "
+                                                           "object are passed to it with a reference to its "
+                                                           "documentation")
 
         args = parser.parse_args()
 
@@ -144,7 +152,7 @@ USAGE
         else:
             logging.root.setLevel(logging.INFO)
 
-        # set defaults, to be overriden by command line args and config file
+        # set defaults, to be overridden by command line args and config file
         kind_map = {}
         short_names = {}
         string_lengths = {}
@@ -152,8 +160,12 @@ USAGE
         py_mod_names = {}
         class_names = {}
         argument_name_map = {}
+        #move_methods = []
+        #shorten_routine_names = []
         only = None
         skip = None
+        skip_types = None
+        force_public = None
         joint_modules = {}
         callback = []
         remove_optional_arguments = []
@@ -186,17 +198,31 @@ USAGE
             argument_name_map = eval(open(args.argument_name_map).read())
 
         if args.only:
-            only = args.only
+            only = args.only.lower()
 
         if args.skip:
-            skip = args.skip
+            skip = [s.lower() for s in args.skip]
+
+        if args.skip_types:
+            skip_types = [s.lower() for s in args.skip_types]
+
+        if args.force_public:
+            force_public = [s.lower() for s in args.force_public]
 
         if args.joint_modules:
             joint_modules = eval(open(args.joint_modules).read())
 
+        # documentation plugin
+        if args.documentation_plugin:
+            print("Using dcoumentation plugin script {}".format(args.documentation_plugin))
+            doc_plugin_fname = args.documentation_plugin
+        else:
+            doc_plugin_fname = None
+
         # finally, read config file, allowing it to override command line args
         if args.conf_file:
             print("Executing config file %s" % args.conf_file)
+            # fixme: this does not get the locals() and globals()
             exec(open(args.conf_file).read())
 
         print('Kind map (also saved to .f2py_f2cmap)')
@@ -243,12 +269,12 @@ USAGE
 
         # parse input Fortran source files
         print('Parsing Fortran source files %r ...' % args.files)
-        parse_tree = fparse.read_files(args.files)
+        parse_tree = fparse.read_files(args.files, doc_plugin_filename=doc_plugin_fname)
         print('done parsing source.')
         print()
         tree = copy.deepcopy(parse_tree)
 
-        types = fortran.find_types(tree)
+        types = fortran.find_types(tree, skip_types)
         print('Derived types detected in Fortran source files:')
         pprint.pprint(types)
         print()
@@ -259,6 +285,7 @@ USAGE
         pprint.pprint(class_names)
 
         # Find all modules and subroutines the user wishes to keep
+        # FIXME: this is messy, add more logic to it
         kept_subs = []
         kept_mods = set()
         if only:
@@ -300,7 +327,8 @@ USAGE
                                                move_methods,
                                                shorten_routine_names,
                                                modules_for_type,
-                                               remove_optional_arguments)
+                                               remove_optional_arguments,
+                                               force_public=force_public)
 
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)

@@ -38,11 +38,21 @@ class AccessUpdater(ft.FortranTransformer):
        (iii) public and private statement in types; (iv) public
        and private attributes of individual elements."""
 
-    def __init__(self):
+    def __init__(self, force_public=None):
         self.mod = None
         self.type = None
+        self.force_public = ()
+        if force_public is not None:
+            self.force_public = force_public
 
     def update_access(self, node, mod, default_access, in_type=False):
+        if node.name in self.force_public:
+            logging.debug('marking public symbol (forced) ' + node.name)
+            mod.public_symbols.append(node.name)
+            if 'private' in getattr(node, 'attributes', []):
+                node.attributes.remove('private')
+                node.attributes.append('public')
+
         if default_access == 'public':
             if ('private' not in getattr(node, 'attributes', []) and
                         node.name not in mod.private_symbols):
@@ -140,6 +150,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
             return None
 
         if hasattr(node, 'attributes') and 'private' in node.attributes:
+            logging.debug('removing private symbol by attribute list %s' % node.name)
             return None
 
         return self.generic_visit(node)
@@ -147,7 +158,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     def visit_Interface(self, node):
         # remove entirely private interfaces
         if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol %s' % node.name)
+            logging.debug('removing private symbol on interface %s' % node.name)
             return None
 
         # do not call generic_visit(), so we don't
@@ -159,7 +170,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     visit_Element = visit_Procedure
 
 
-def remove_private_symbols(node):
+def remove_private_symbols(node, force_public=None):
     """
     Walk the tree starting at *node*, removing all private symbols.
 
@@ -169,7 +180,7 @@ def remove_private_symbols(node):
     attributes.
     """
 
-    node = AccessUpdater().visit(node)
+    node = AccessUpdater(force_public).visit(node)
     node = PrivateSymbolsRemover().visit(node)
     return node
 
@@ -207,7 +218,6 @@ class UnwrappablesRemover(ft.FortranTransformer):
         args = node.arguments[:]
         if isinstance(node, ft.Function):
             args.append(node.ret_val)
-
         for arg in args:
             # only callback functions in self.callbacks
             if 'callback' in arg.attributes:
@@ -219,7 +229,9 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
             if 'optional' in arg.attributes:
                 # we can remove the argument instead of the whole routine
-                return self.generic_visit(node)
+                # fortran permits opt arguments before compulsory ones, so continue not return
+                # generic_visit is done later on anyways
+                continue
             else:
                 # no allocatables or pointers
                 if 'allocatable' in arg.attributes or 'pointer' in arg.attributes:
@@ -469,14 +481,16 @@ def convert_array_intent_out_to_intent_inout(tree):
     Find all intent(out) array arguments and convert to intent(inout)
     """
     for mod, sub, arguments in ft.walk_procedures(tree, include_ret_val=True):
+        if '__array__' in sub.name:
+            # special case for array wrappers, which shouldn't be touched
+            continue
         for arg in arguments:
             dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
-            if dims == []:
-                continue
-            if len(dims) != 1:
-                raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
-            if 'intent(out)' in arg.attributes:
-                arg.attributes = set_intent(arg.attributes, 'intent(inout)')
+            if dims != [] or 'optional' in arg.attributes:
+                if dims != [] and len(dims) != 1:
+                    raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
+                if 'intent(out)' in arg.attributes:
+                    arg.attributes = set_intent(arg.attributes, 'intent(inout)')
     return tree
 
 
@@ -691,6 +705,45 @@ class MethodFinder(ft.FortranTransformer):
             return None
         else:
             return node
+
+
+class ConstructorExcessToClassMethod(ft.FortranTransformer):
+    """ Handle classes with multiple constructors
+
+    Count the number of constructors per class and choose only one.
+    Method of choice: the one with the shortest name.
+    The rest are relabeled to classmethods"""
+
+    def visit_Type(self, node):
+        logging.debug('visiting %r' % node)
+
+        constructor_names = []
+
+        for child in node.procedures:
+            if 'constructor' in child.attributes:
+                constructor_names.append(child.name)
+
+        print('visiting %r' % node, 'found', len(constructor_names),' constructors with names: ', constructor_names)
+
+        if len(constructor_names) > 1:
+            # now we need to modify all but one to classmethods
+            # for now, we are taking the one with the shortest names
+            # fixme: make this more general and possible to set up
+            chosen = min(constructor_names, key=len)
+
+            for child in node.procedures:
+                if 'constructor' in child.attributes:
+                    if child.name == chosen:
+                        logging.info('found multiple constructors, chose shortest named %s' % child.name)
+                    else:
+                        #child.attributes = list(set(child.attributes))  # fixme: decide if this is needed at all
+                        #child.attributes.remove('constructor')
+                        child.attributes.append('classmethod')
+                        logging.info('transform excess constructor to classmethod %s' % child.name)
+
+        return self.generic_visit(node)
+
+    visit_Module = visit_Type
 
 
 def collapse_single_interfaces(tree):
@@ -1034,9 +1087,10 @@ class SetInterfaceProcedureCallNames(ft.FortranVisitor):
 
 def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  destructors, short_names, init_lines,
-                                 only_subs, only_mods, argument_name_map,
+                                 kept_subs, kept_mods, argument_name_map,
                                  move_methods, shorten_routine_names,
-                                 modules_for_type, remove_optional_arguments):
+                                 modules_for_type, remove_optional_arguments,
+                                 force_public=None):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
@@ -1050,8 +1104,8 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
      * Update of subroutine uses clauses
     """
 
-    tree = OnlyAndSkip(only_subs, only_mods).visit(tree)
-    tree = remove_private_symbols(tree)
+    tree = OnlyAndSkip(kept_subs, kept_mods).visit(tree)
+    tree = remove_private_symbols(tree, force_public)
     tree = UnwrappablesRemover(callbacks, types, constructors,
                                destructors, remove_optional_arguments).visit(tree)
     tree = fix_subroutine_uses_clauses(tree, types)
@@ -1066,6 +1120,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = fix_element_uses_clauses(tree, types)
     tree = add_missing_constructors(tree)
     tree = add_missing_destructors(tree)
+    tree = ConstructorExcessToClassMethod().visit(tree) # dealing with cases where multiple constructors were allocated
     tree = convert_array_intent_out_to_intent_inout(tree)
     RenameReservedWords(types, argument_name_map).visit(tree)
     return tree

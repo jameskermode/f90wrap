@@ -99,7 +99,7 @@ class CodeGenerator(object):
             if not item_lines[-1].endswith('\n'):
                 item_lines[-1] += '\n'
             lines.extend(item_lines)
-            
+
         lines = [self._indent * level + line for line in lines]
         if insert is not None:
             self.code = self.code[:insert] + lines + self.code[insert:]
