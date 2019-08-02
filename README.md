@@ -217,6 +217,7 @@ James Kermode: <james.kermode@gmail.com>
 Contributors
 ------------
 
+- Tamas Stenczel [stenczelt](https://github.com/stenczelt)
 - Steven Murray [steven-murray](https://github.com/steven-murray)
 - Greg Corbett  [gregcorbett](https://github.com/gregcorbett)
 - Bob Fischer [citibob](https://github.com/citibob)
