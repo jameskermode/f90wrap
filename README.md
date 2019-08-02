@@ -35,18 +35,6 @@ For the latest stable release, install with either `pip` or `conda`:
 pip install f90wrap
 ```
 
-f90wrap can also be installed using `conda` via the conda-forge channel:
-
-```
-conda config --add channels conda-forge
-```
-
-Once the conda-forge channel has been enabled, f90wrap can be installed with:
-
-```
-conda install f90wrap
-```
-
 For the development version, installation is as follows:
 
     git clone https://github.com/jameskermode/f90wrap
