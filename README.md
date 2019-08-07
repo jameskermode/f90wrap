@@ -40,7 +40,14 @@ For the development version, installation is as follows:
     git clone https://github.com/jameskermode/f90wrap
     cd f90wrap
     python setup.py install [--prefix PREFIX]
-    
+
+Note that if your Fortran 90 compiler has a non-standard name
+(e.g. gfortran-9) then you need to set the `F90` environment variable
+prior to installing f90wrap to ensure it uses the correct one, e.g.
+
+```
+F90=gfortran-9 pip install f90wrap
+```
 
 Examples and Testing
 --------------------
