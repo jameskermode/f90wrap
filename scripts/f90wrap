@@ -280,7 +280,8 @@ USAGE
         print()
 
         for type_name, typ in types.items():
-            class_names[type_name] = typ.orig_name
+            if not type_name in class_names.keys():
+                class_names[type_name] = typ.orig_name
         print('Class name mapping:')
         pprint.pprint(class_names)
 
