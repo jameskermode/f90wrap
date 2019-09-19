@@ -288,7 +288,7 @@ except ValueError:
             self.dedent()  # finish the FortranModule class
             self.write()
             # instantise the module class
-            self.write('%s = %s()' % (node.name, node.name.title()))
+            self.write('%s = %s()' % (node.name, cls_name))
             self.write()
 
         self.current_module = None
@@ -453,7 +453,7 @@ except ValueError:
         for proc in node.procedures:
             proc_name = ''
             if not self.make_package:
-                proc_name += proc.mod_name.title() + '.'
+                proc_name += normalise_class_name(proc.mod_name, self.class_names) + '.'
             elif cls_name is not None:
                 proc_name += cls_name + '.'
             if hasattr(proc, 'method_name'):
