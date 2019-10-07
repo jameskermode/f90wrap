@@ -231,16 +231,16 @@ USAGE
 
         # Line lengths for python files
         if args.py_max_line_length:
-            print("Using maximum line length in python files: {}".format(args.documentation_plugin))
-            py_max_line_length = args.py_max_line_length
+            py_max_line_length = int(args.py_max_line_length)
+            print("Using maximum line length in python files: {}".format(py_max_line_length))
         else:
             # default set by preserving the previously hardcoded value from pywrapgen.py
             py_max_line_length = 80
 
         # Line lengths for fortran files
         if args.f90_max_line_length:
-            print("Using maximum line length in python files: {}".format(args.documentation_plugin))
-            f90_max_line_length = args.f90_max_line_length
+            f90_max_line_length = int(args.f90_max_line_length)
+            print("Using maximum line length in fortran files: {}".format(f90_max_line_length))
         else:
             # default set by preserving the previously hardcoded value from f90wrapgen.py
             f90_max_line_length = 120
