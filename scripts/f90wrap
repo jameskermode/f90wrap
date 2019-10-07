@@ -48,15 +48,20 @@ from f90wrap import transform as tf
 from f90wrap import f90wrapgen as fwrap
 from f90wrap import pywrapgen as pywrap
 
+
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
+
     def __init__(self, msg):
         super(CLIError).__init__(type(self))
         self.msg = "E: %s" % msg
+
     def __str__(self):
         return self.msg
+
     def __unicode__(self):
         return self.msg
+
 
 def main(argv=None):
     '''Parse and wrap Fortran 90 code, including derived types.'''
@@ -90,7 +95,8 @@ USAGE
     try:
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
-        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
+        parser.add_argument("-v", "--verbose", dest="verbose", action="count",
+                            help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         parser.add_argument("files", nargs="+", help="The files to include in the wrap")
@@ -99,7 +105,7 @@ USAGE
                             default='f90wrap_')
         parser.add_argument('-c', '--callback', nargs="*", default=[],
                             help="""Names of permitted callback routines.""")
-        parser.add_argument('-C', '--constructors', nargs="*",  default=('initialise_ptr', 'initialise', 'allocate'),
+        parser.add_argument('-C', '--constructors', nargs="*", default=('initialise_ptr', 'initialise', 'allocate'),
                             help="""Names of constructor routines.""")
         parser.add_argument('-D', '--destructors', nargs="*", default=('finalise', 'deallocate'),
                             help="""Names of destructor routines.""")
@@ -134,7 +140,8 @@ USAGE
         parser.add_argument('-a', '--abort-func', default='f90wrap_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
-        parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude modules and subroutines from wrapper")
+        parser.add_argument("--skip", nargs="*", default=[],
+                            help="Subroutines to exclude modules and subroutines from wrapper")
         parser.add_argument("--skip-types", nargs="*", default=[], help="Subroutines to exclude types from wrapper")
         parser.add_argument("--force-public", nargs="*", default=[], help="Names which are forced to be make public")
         parser.add_argument('--default-to-inout', action='store_true', default=False,
@@ -163,8 +170,8 @@ USAGE
         py_mod_names = {}
         class_names = {}
         argument_name_map = {}
-        #move_methods = []
-        #shorten_routine_names = []
+        # move_methods = []
+        # shorten_routine_names = []
         only = None
         skip = None
         skip_types = None
@@ -391,6 +398,7 @@ USAGE
             raise
         else:
             return 2
+
 
 if __name__ == "__main__":
     sys.exit(main())
