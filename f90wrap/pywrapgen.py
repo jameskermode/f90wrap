@@ -359,7 +359,7 @@ except ValueError:
         self.write('f90wrap.runtime.FortranDerivedType.__init__(bare_class)')
 
         self.write(call_line)
-        
+
         self.write('bare_class._handle = result[0] if isinstance(result, tuple) else result')
         self.write('return bare_class')
 
