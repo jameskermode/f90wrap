@@ -144,6 +144,9 @@ USAGE
                                                            "functions and subroutines. All lines of the given tree "
                                                            "object are passed to it with a reference to its "
                                                            "documentation")
+        parser.add_argument("--py-max-line-length", help="Maximum length of lines in python files written. Default: 80")
+        parser.add_argument("--f90-max-line-length", help="Maximum length of lines in fortan files written. "
+                                                          "Default: 120")
 
         args = parser.parse_args()
 
@@ -214,10 +217,26 @@ USAGE
 
         # documentation plugin
         if args.documentation_plugin:
-            print("Using dcoumentation plugin script {}".format(args.documentation_plugin))
+            print("Using documentation plugin script {}".format(args.documentation_plugin))
             doc_plugin_fname = args.documentation_plugin
         else:
             doc_plugin_fname = None
+
+        # Line lengths for python files
+        if args.py_max_line_length:
+            print("Using maximum line length in python files: {}".format(args.documentation_plugin))
+            py_max_line_length = args.py_max_line_length
+        else:
+            # default set by preserving the previously hardcoded value from pywrapgen.py
+            py_max_line_length = 80
+
+        # Line lengths for fortran files
+        if args.f90_max_line_length:
+            print("Using maximum line length in python files: {}".format(args.documentation_plugin))
+            f90_max_line_length = args.f90_max_line_length
+        else:
+            # default set by preserving the previously hardcoded value from f90wrapgen.py
+            f90_max_line_length = 120
 
         # finally, read config file, allowing it to override command line args
         if args.conf_file:
@@ -352,9 +371,11 @@ USAGE
                                       kind_map=kind_map,
                                       init_file=args.init_file,
                                       py_mod_names=py_mod_names,
-                                      class_names=class_names).visit(py_tree)
+                                      class_names=class_names,
+                                      max_length=py_max_line_length).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
-                                  abort_func, kind_map, types, default_to_inout).visit(f90_tree)
+                                  abort_func, kind_map, types, default_to_inout,
+                                  max_length=f90_max_line_length).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:

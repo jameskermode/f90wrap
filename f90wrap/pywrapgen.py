@@ -151,9 +151,11 @@ def format_doc_string(node):
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
                  make_package=False, kind_map=None, init_file=None,
-                 py_mod_names=None, class_names=None):
+                 py_mod_names=None, class_names=None, max_length=None):
+        if max_length is None:
+            max_length = 80
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
-                                  max_length=80,
+                                  max_length=max_length,
                                   continuation='\\',
                                   comment='#')
         ft.FortranVisitor.__init__(self)
