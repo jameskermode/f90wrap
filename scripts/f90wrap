@@ -48,15 +48,20 @@ from f90wrap import transform as tf
 from f90wrap import f90wrapgen as fwrap
 from f90wrap import pywrapgen as pywrap
 
+
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
+
     def __init__(self, msg):
         super(CLIError).__init__(type(self))
         self.msg = "E: %s" % msg
+
     def __str__(self):
         return self.msg
+
     def __unicode__(self):
         return self.msg
+
 
 def main(argv=None):
     '''Parse and wrap Fortran 90 code, including derived types.'''
@@ -90,7 +95,8 @@ USAGE
     try:
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
-        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
+        parser.add_argument("-v", "--verbose", dest="verbose", action="count",
+                            help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         parser.add_argument("files", nargs="+", help="The files to include in the wrap")
@@ -99,7 +105,7 @@ USAGE
                             default='f90wrap_')
         parser.add_argument('-c', '--callback', nargs="*", default=[],
                             help="""Names of permitted callback routines.""")
-        parser.add_argument('-C', '--constructors', nargs="*",  default=('initialise_ptr', 'initialise', 'allocate'),
+        parser.add_argument('-C', '--constructors', nargs="*", default=('initialise_ptr', 'initialise', 'allocate'),
                             help="""Names of constructor routines.""")
         parser.add_argument('-D', '--destructors', nargs="*", default=('finalise', 'deallocate'),
                             help="""Names of destructor routines.""")
@@ -134,7 +140,8 @@ USAGE
         parser.add_argument('-a', '--abort-func', default='f90wrap_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
-        parser.add_argument("--skip", nargs="*", default=[], help="Subroutines to exclude modules and subroutines from wrapper")
+        parser.add_argument("--skip", nargs="*", default=[],
+                            help="Subroutines to exclude modules and subroutines from wrapper")
         parser.add_argument("--skip-types", nargs="*", default=[], help="Subroutines to exclude types from wrapper")
         parser.add_argument("--force-public", nargs="*", default=[], help="Names which are forced to be make public")
         parser.add_argument('--default-to-inout', action='store_true', default=False,
@@ -144,6 +151,9 @@ USAGE
                                                            "functions and subroutines. All lines of the given tree "
                                                            "object are passed to it with a reference to its "
                                                            "documentation")
+        parser.add_argument("--py-max-line-length", help="Maximum length of lines in python files written. Default: 80")
+        parser.add_argument("--f90-max-line-length", help="Maximum length of lines in fortan files written. "
+                                                          "Default: 120")
 
         args = parser.parse_args()
 
@@ -160,8 +170,8 @@ USAGE
         py_mod_names = {}
         class_names = {}
         argument_name_map = {}
-        #move_methods = []
-        #shorten_routine_names = []
+        # move_methods = []
+        # shorten_routine_names = []
         only = None
         skip = None
         skip_types = None
@@ -214,10 +224,26 @@ USAGE
 
         # documentation plugin
         if args.documentation_plugin:
-            print("Using dcoumentation plugin script {}".format(args.documentation_plugin))
+            print("Using documentation plugin script {}".format(args.documentation_plugin))
             doc_plugin_fname = args.documentation_plugin
         else:
             doc_plugin_fname = None
+
+        # Line lengths for python files
+        if args.py_max_line_length:
+            py_max_line_length = int(args.py_max_line_length)
+            print("Using maximum line length in python files: {}".format(py_max_line_length))
+        else:
+            # default set by preserving the previously hardcoded value from pywrapgen.py
+            py_max_line_length = 80
+
+        # Line lengths for fortran files
+        if args.f90_max_line_length:
+            f90_max_line_length = int(args.f90_max_line_length)
+            print("Using maximum line length in fortran files: {}".format(f90_max_line_length))
+        else:
+            # default set by preserving the previously hardcoded value from f90wrapgen.py
+            f90_max_line_length = 120
 
         # finally, read config file, allowing it to override command line args
         if args.conf_file:
@@ -352,9 +378,11 @@ USAGE
                                       kind_map=kind_map,
                                       init_file=args.init_file,
                                       py_mod_names=py_mod_names,
-                                      class_names=class_names).visit(py_tree)
+                                      class_names=class_names,
+                                      max_length=py_max_line_length).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
-                                  abort_func, kind_map, types, default_to_inout).visit(f90_tree)
+                                  abort_func, kind_map, types, default_to_inout,
+                                  max_length=f90_max_line_length).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:
@@ -370,6 +398,7 @@ USAGE
             raise
         else:
             return 2
+
 
 if __name__ == "__main__":
     sys.exit(main())

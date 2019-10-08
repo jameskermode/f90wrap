@@ -70,9 +70,11 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     """
 
     def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
-                 kind_map, types, default_to_inout):
+                 kind_map, types, default_to_inout, max_length=None):
+        if max_length is None:
+            max_length = 120
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
-                                  max_length=120,
+                                  max_length=max_length,
                                   continuation='&',
                                   comment='!')
         ft.FortranVisitor.__init__(self)
