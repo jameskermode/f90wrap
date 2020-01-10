@@ -29,7 +29,7 @@ Dependencies
 Installation
 ------------
 
-For the latest stable release, install with either `pip` or `conda`:
+For the latest stable release, install with either `pip`:
 
 ```
 pip install f90wrap
