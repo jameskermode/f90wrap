@@ -43,6 +43,7 @@ is generated. We make several changes to f2py:
 """
 
 from __future__ import print_function
+import sys
 
 __all__ = []
 
@@ -58,17 +59,23 @@ numpy.f2py.capi_maps.cformat_map['long_long'] = '%Ld'
 
 import numpy.f2py.rules, numpy.f2py.cb_rules
 
-numpy.f2py.rules.module_rules['modulebody'] = numpy.f2py.rules.module_rules['modulebody'].replace('#includes0#\n', """#includes0#
+includes_inject = "#includes0#\n"
+
+includes_inject = includes_inject + """
 
 /* custom abort handler - James Kermode <james.kermode@gmail.com> */
+"""
+if(sys.platform == 'win32'):
+   includes_inject = includes_inject + "#include <signal.h> // fix https://github.com/jameskermode/f90wrap/issues/73 \n#include <setjmpex.h> // fix https://github.com/jameskermode/f90wrap/issues/96\n"
+else:
+   includes_inject = includes_inject + "#include <setjmp.h>\n"
 
-#include <setjmp.h>
+includes_inject = includes_inject + """
 extern jmp_buf environment_buffer;
 extern char abort_message[1024];
 void f90wrap_abort_(char *message, int len);
 void f90wrap_abort_int_handler(int signum);
 
-#include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -99,7 +106,9 @@ void f90wrap_abort_int_handler(int signum)
 }
 
 /* end of custom abort handler  */
-""")
+"""
+
+numpy.f2py.rules.module_rules['modulebody'] = numpy.f2py.rules.module_rules['modulebody'].replace("#includes0#\n", includes_inject)
 
 numpy.f2py.rules.routine_rules['body'] = numpy.f2py.rules.routine_rules['body'].replace('\tvolatile int f2py_success = 1;\n', """\tvolatile int f2py_success = 1;
 \tint setjmpvalue; /* James Kermode - for setjmp */
