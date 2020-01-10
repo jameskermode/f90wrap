@@ -1,0 +1,9 @@
+{
+ 'real':     {'': 'float',
+              '8': 'double',
+              'dp': 'double',
+              'idp':'double'},
+ 'integer' : {'4': 'int',
+	          '8': 'long_long',
+			  'dp': 'long_long' }
+}
