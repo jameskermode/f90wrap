@@ -64,7 +64,7 @@ applications:
  - [QUIP](http://libatoms.github.io/QUIP/) - molecular dynamics code
  - [CASTEP](http://www.castep.org) - electronic structure code
 
-See this [IPython notebook](http://nbviewer.ipython.org/github/jameskermode/f90wrap/blob/master/docs/tutorials/kermode-csc-warwick-nov-2015.ipynb) from a recent seminar for more details.
+See this [Jupyter notebook](http://nbviewer.ipython.org/github/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo-feb2020.ipynb) from a recent seminar for more details.
 
 Usage
 -----
