@@ -81,7 +81,8 @@ funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
 # funct       = re.compile('^function',re.IGNORECASE)
 funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
-prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)')
+#MC prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)')
+prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
 
 contains = re.compile('^contains', re.IGNORECASE)
 
