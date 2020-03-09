@@ -605,7 +605,7 @@ def check_subt(cl, file, grab_hold_doc=True):
     global hold_doc
 
     out = Subroutine()
-        
+
     if re.match(subt, cl) != None:
 
         out.filename = file.filename
@@ -663,6 +663,7 @@ def check_subt(cl, file, grab_hold_doc=True):
 
         cl = file.next()
 
+        cont = 0
         subroutine_lines = []
         while True:
 
@@ -689,29 +690,51 @@ def check_subt(cl, file, grab_hold_doc=True):
                     cl = file.next()
                     continue
 
-            # Doc comment
-            check = check_doc(cl, file)
-            if check[0] != None:
-                out.doc.append(check[0])
+            # contains statement
+            check = check_cont(cl, file)
+            if check[0] is not None:
+                cont = 1
                 cl = check[1]
-                continue
 
-            if has_args:
-                # Argument
-                check = check_arg(cl, file)
+            if cont == 0:
+
+                # Doc comment
+                check = check_doc(cl, file)
                 if check[0] != None:
-                    for a in check[0]:
-                        out.arguments.append(a)
+                    out.doc.append(check[0])
                     cl = check[1]
                     continue
 
-                # Interface section
-                check = check_interface_decl(cl, file)
-                if check[0] != None:
-                    for a in check[0].procedures:
-                        out.arguments.append(a)
+                if has_args:
+                    # Argument
+                    check = check_arg(cl, file)
+                    if check[0] != None:
+                        for a in check[0]:
+                            out.arguments.append(a)
+                        cl = check[1]
+                        continue
+
+                    # Interface section
+                    check = check_interface_decl(cl, file)
+                    if check[0] != None:
+                        for a in check[0].procedures:
+                            out.arguments.append(a)
+                        cl = check[1]
+                        continue
+
+            else:
+
+                # Subroutine definition
+                check = check_subt(cl, file)
+                if check[0] is not None:
+                    # Discard contained subroutine
                     cl = check[1]
-                    continue
+
+                # Function definition
+                check = check_funct(cl, file)
+                if check[0] is not None:
+                    # Discard contained function
+                    cl = check[1]
 
             m = subt_end.match(cl)
 
