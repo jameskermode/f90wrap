@@ -1,4 +1,4 @@
-F = gfortran 
+FC = gfortran
 CFLAGS = -fPIC
 
 all: test
