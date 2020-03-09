@@ -252,3 +252,4 @@ Contributors
 - David Verelst [davidovitch](https://github.com/davidovitch)
 - James Orr [jamesorr](https://github.com/jamesorr)
 - [yvesch](https://github.com/yvesch)
+- Balthasar Reuter [reuterbal](https://github.com/reuterbal)
