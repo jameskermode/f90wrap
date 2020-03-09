@@ -15,6 +15,7 @@ EXAMPLES = arrayderivedtypes \
 	optional_derived_arrays \
 	passbyreference \
 	strings \
+	subroutine_contains_issue101 \
 	type_bn
 
 test:
