@@ -5,6 +5,7 @@
                 '8' : 'double',
                'dp' : 'double',
               'idp' : 'double',
+              'sng_ad' : 'float',
               'dbl_ad' : 'double'},
  'complex' : {   '' : 'complex_float',
  	            '8' : 'complex_double',
