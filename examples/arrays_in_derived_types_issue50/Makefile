@@ -105,8 +105,9 @@ all: _${PYTHON_MODN}.so test
 
 
 clean:
-	-rm ${LIBSRC_OBJECTS} ${LIBSRC_FPP_FILES} libsrc.a _${PYTHON_MODN}.so \
-	 *.mod *.fpp f90wrap*.f90 f90wrap*.o *.o
+	-rm -f ${LIBSRC_OBJECTS} ${LIBSRC_FPP_FILES} libsrc.a _${PYTHON_MODN}*.so \
+	 *.mod *.fpp f90wrap*.f90 f90wrap*.o *.o ${PYTHON_MODN}.py
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
 
 
 .f90.o:

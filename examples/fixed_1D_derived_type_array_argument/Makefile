@@ -1,5 +1,7 @@
+PYTHON = python
+
 test :  clean functions.o wrap python
-	python tests.py
+	$(PYTHON) tests.py
 functions.o : functions.f90
 	gfortran -c -O3 -fPIC functions.f90
 wrap :

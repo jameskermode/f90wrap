@@ -3,6 +3,7 @@ F90 = gfortran
 FPP = gfortran -E
 F90FLAGS = -x f95-cpp-input -fPIC
 CFLAGS = -fPIC
+PYTHON = python
 
 all: test
 
@@ -18,12 +19,13 @@ package: example.o
 	f2py-f90wrap -c -m _examplepkg f90wrap_example.f90 example.o
 
 test: mod package
-	python test.py
-	python test_pkg.py
+	$(PYTHON) test.py
+	$(PYTHON) test_pkg.py
 
 clean:
 	-rm -r examplepkg
 	-rm example.py
 	-rm f90wrap*.f90 *.o *.pyc *.mod
-	-rm _example.so _examplepkg.so
+	-rm _example*.so _examplepkg*.so
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
 

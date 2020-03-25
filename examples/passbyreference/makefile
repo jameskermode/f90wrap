@@ -1,3 +1,5 @@
+PYTHON = python
+
 all: mymodule.so
 
 mymodule.so : f90wrap_mycode.f90 mycode.o
@@ -11,6 +13,7 @@ mycode.o : mycode.F90
 
 clean:
 	-rm *.o *.so f90wrap* mymodule.py
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
 
 test: mymodule.so
-	python example_mymodule.py
+	$(PYTHON) example_mymodule.py

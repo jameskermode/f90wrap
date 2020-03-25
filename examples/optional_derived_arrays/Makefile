@@ -1,6 +1,7 @@
 #FPP=ifort
 FPP=gfortran
 FFLAGS=-fPIC
+PYTHON = python
 
 %.o : %.f90
 	${FPP} ${FFLAGS} -c $< -o $@
@@ -12,6 +13,7 @@ all: test.o
 clean:
 	-rm *.o f90wrap*.f90 *.so *.mod
 	-rm -r test/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
 
 test: all
-	python -c 'import test'
+	$(PYTHON) -c 'import test'

@@ -5,6 +5,7 @@
 CC       = gcc
 F90      = gfortran
 #F90      = ifort
+PYTHON = python
 
 
 moddir   = modules
@@ -87,9 +88,11 @@ all: test
 clean:
 	rm -rf $(moddir)/*
 	rm -rf $(wrap_dir)/*
-	rm -rf mockdt* *.so
+	rm -rf mockdt* *.so *.mod
 	rm -rf mockdtpkg
-	rm ${LIBSRC_OBJECTS} libsrc.a $(LIBSRC_FPP_FILES)
+	rm -f ${LIBSRC_OBJECTS} libsrc.a $(LIBSRC_FPP_FILES)
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf f90wrap/ modules/
 
 .F90.o:
 	${F90} ${F90FLAGS} ${SOFLAGS} -c $< -o $@
@@ -136,5 +139,5 @@ all_so: _mockdt.so _mockdtpkg.so
 #=======================================================================
 
 test: all_so
-	python test_module.py
-	python test_package.py
+	$(PYTHON) test_module.py
+	$(PYTHON) test_package.py
