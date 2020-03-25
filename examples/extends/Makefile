@@ -1,6 +1,7 @@
 FPP=gfortran
 #FPP=ifort
 FFLAGS=-fPIC
+PYTHON = python
 
 %.o : %.f90
 	${FPP} ${FFLAGS} -c $< -o $@
@@ -10,8 +11,9 @@ all: testextends.o
 	f2py-f90wrap -c -m _testextends f90wrap_*.f90
 
 test: all
-	python testextends.py
+	$(PYTHON) testextends.py
 
 clean:
-	-rm *.o f90wrap*.f90 *.so *.mod
+	-rm -f *.o f90wrap*.f90 *.so *.mod testextends.py
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
 

@@ -3,6 +3,7 @@ F90 = gfortran
 FPP = gfortran -E
 F90FLAGS = -x f95-cpp-input -fPIC
 CFLAGS = -fPIC
+PYTHON = python
 
 UNAME = $(shell uname)
 
@@ -17,8 +18,9 @@ endif
 all: test
 
 clean:
-	-rm _type_bn.so *.mod f90wrap*.f90 *.fpp *.o *.pyc
-	-rm -r src.*
+	-rm -f _type_bn*.so *.mod f90wrap*.f90 *.fpp *.o *.pyc
+	-rm -f type_bn.py
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
 
 _type_bn.so: type_bn.f90
 	f90wrap -m type_bn type_bn.f90 -v
@@ -26,5 +28,5 @@ _type_bn.so: type_bn.f90
 	f2py-f90wrap --build-dir . -c -m _type_bn type_bn.o f90wrap*.f90
 
 test: _type_bn.so
-	python test.py
+	$(PYTHON) test.py
 

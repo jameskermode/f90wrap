@@ -8,6 +8,7 @@ EXAMPLES = arrayderivedtypes \
 	example2 \
 	extends \
 	interface \
+	issue105_function_definition_with_empty_lines \
 	issue32 \
 	mockderivetype \
 	mod_arg_clash \
@@ -18,10 +19,18 @@ EXAMPLES = arrayderivedtypes \
 	subroutine_contains_issue101 \
 	type_bn
 
+PYTHON = python
+
+all: test
+
 test:
 	for example in ${EXAMPLES}; do \
+	  echo "" ; \
+	  echo "" ; \
+	  echo "" ; \
+	  echo "# ---------------------------------------------------" ; \
 	  echo "running make test in $$example" ; \
-	  make -C $$example test || exit ; \
+	  make -C $$example PYTHON=$(PYTHON) test || exit ; \
 	done
 
 clean:

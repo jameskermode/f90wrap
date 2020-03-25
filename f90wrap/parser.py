@@ -81,7 +81,6 @@ funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
 # funct       = re.compile('^function',re.IGNORECASE)
 funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
-#MC prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)')
 prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
 
 contains = re.compile('^contains', re.IGNORECASE)
@@ -110,16 +109,15 @@ result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
 
 arg_split = re.compile(r'\s*(\w*)\s*(\(.+?\))?\s*(=\s*[\w\.]+\s*)?,?\s*')
 
-size_re = re.compile(r'size\(([^,]+),([^\)]+)\)')
-dimension_re = re.compile(r'^([-0-9.e]+)|((rank\(.*\))|(size\(.*\))|(len\(.*\))|(slen\(.*\)))$')
+size_re = re.compile(r'size\(([^,]+),([^\)]+)\)', re.IGNORECASE)
+dimension_re = re.compile(r'^([-0-9.e]+)|((rank\(.*\))|(size\(.*\))|(len\(.*\))|(slen\(.*\)))$', re.IGNORECASE)
 
 alnum = string.ascii_letters + string.digits + '_'
 
-valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$')
+valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$', re.IGNORECASE)
 
 public = re.compile('(^public$)|(^public\s*(\w+)\s*$)|(^public\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 private = re.compile('(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
-
 
 def remove_delimited(line, d1, d2):
     bk = 0
@@ -218,9 +216,13 @@ class F90File(object):
 
         while (cline == '' and len(self.lines) != 0):
             cline = self.lines[0].strip()
+            while (cline == '' and len(self.lines) != 1): # issue105 - rm empty lines
+                self.lines = self.lines[1:]
+                cline = self.lines[0].strip()
+
             if cline.find('_FD') == 1:
                 break
-
+    
             # jrk33 - join lines before removing delimiters
 
             # Join together continuation lines
@@ -232,6 +234,9 @@ class F90File(object):
                 cont_index = cline.find('&')
                 try:
                     cont2 = self.lines[1].strip()
+                    while (cont2 == '' and len(self.lines) != 2): # issue105 - rm empty lines
+                        self.lines[1:] = self.lines[2:]
+                        cont2 = self.lines[1].strip()
                     if cont2.startswith('&'):
                         cont2_index = 0
                     else:
@@ -242,6 +247,9 @@ class F90File(object):
                 while (cont_index != -1 and (comm_index == -1 or comm_index > cont_index)) or \
                         (cont2_index != -1):
                     cont2 = self.lines[1].strip()
+                    while (cont2 == '' and len(self.lines) != 2): # issue105 - rm empty lines
+                        self.lines[1:] = self.lines[2:]
+                        cont2 = self.lines[1].strip()
                     if cont2.startswith('&'):
                         cont2 = cont2[1:].strip()
 
@@ -256,9 +264,15 @@ class F90File(object):
                     self.lines = [cont] + self.lines[2:]
                     self._lineno = self._lineno + 1
                     cline = self.lines[0].strip()
+                    while (cline == '' and len(self.lines) != 1): # issue105 - rm empty lines
+                        self.lines = self.lines[1:]
+                        cline = self.lines[0].strip()
                     cont_index = cline.find('&')
                     try:
                         cont2 = self.lines[1].strip()
+                        while (cont2 == '' and len(self.lines) != 2): # issue105 - rm empty lines
+                            self.lines[1:] = self.lines[2:]
+                            cont2 = self.lines[1].strip()
                         if cont2.startswith('&'):
                             cont2_index = 0
                         else:
@@ -271,8 +285,7 @@ class F90File(object):
             comm_index = cline.find('!')
             if comm_index != -1:
                 self.lines = [cline[:comm_index], cline[comm_index:]] + self.lines[1:]
-                cline = self.lines[0]
-                cline = cline.strip()
+                cline = self.lines[0].strip()
                 # jrk33 - changed comment mark from '!*FD' to '!%'
                 if self.lines[1].find('!%') != -1:
                     self.lines = [self.lines[0]] + ['_FD' + self.lines[1][2:]] + self.lines[2:]
@@ -457,7 +470,7 @@ def check_module(cl, file):
         # Get next line, and check each possibility in turn
 
         cl = file.next()
-
+        
         while re.match(module_end, cl) == None:
 
             # contains statement
