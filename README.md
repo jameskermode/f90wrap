@@ -12,7 +12,7 @@ suitable for wrapping with f2py, together with a higher-level Pythonic
 wrapper that makes the existance of an additional layer transparent to
 the final user.
 
-Copyright (C) James Kermode 2011-2018. Released under the GNU Lesser General
+Copyright (C) James Kermode 2011-2020. Released under the GNU Lesser General
 Public License, version 3. Parts originally based on f90doc - automatic
 documentation generator for Fortran 90. Copyright (C) 2004 Ian Rutt.
 
