@@ -47,13 +47,13 @@ wrapping Fortran code with a simple f90 interface layer.
 
 (c) James Kermode 2011 <james.kermode@gmail.com>"""
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 import sys
 major, minor = sys.version_info[0:2]
 
-if (major, minor) < (2, 4):
-    sys.stderr.write('Python 2.4 or later is needed to use this package\n')
+if (major, minor) < (3, 6):
+    sys.stderr.write('Python 3.6 or later is needed to use this package\n')
     sys.exit(1)
 
 del major, minor

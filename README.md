@@ -18,11 +18,10 @@ documentation generator for Fortran 90. Copyright (C) 2004 Ian Rutt.
 
 If you would like to license the source code under different terms,
 please contact James Kermode <james.kermode@gmail.com>
-
 Dependencies
 ------------
 
- 1.  [Python](http://www.python.org) \>= 2.7 or 3.x (both now supported!)
+ 1.  [Python](http://www.python.org) 3.6+ (Python 2.7 no longer supported)
  2.  Recent version of [numpy](http://www.numpy.org) which includes `f2py`
  3.  Fortran compiler - tested with `gfortran` 4.6+ and recent `ifort` 12+
 
@@ -37,9 +36,9 @@ pip install f90wrap
 
 For the development version, installation is as follows:
 
-    git clone https://github.com/jameskermode/f90wrap
-    cd f90wrap
-    python setup.py install [--prefix PREFIX]
+```
+pip install git+https://github.com/jameskermode/f90wrap
+```
 
 Note that if your Fortran 90 compiler has a non-standard name
 (e.g. gfortran-9) then you need to set the `F90` environment variable
@@ -55,6 +54,38 @@ Examples and Testing
 To test the installation, run `make test` from the `examples/`
 directory. You may find the code in the various examples useful.
 
+Citing f90wrap
+--------------
+
+If you find `f90wrap` useful in academic work, please cite the following
+(open access) publication:
+
+> J. R. Kermode, f90wrap: an automated tool for constructing 
+> deep Python interfaces to modern Fortran codes. 
+> J. Phys. Condens. Matter (2020) 
+>[doi:10.1088/1361-648X/ab82d2](https://dx.doi.org/10.1088/1361-648X/ab82d2)
+
+BibTeX entry:
+
+```bibtex
+
+@ARTICLE{Kermode2020-f90wrap,
+  title    = "f90wrap: an automated tool for constructing deep Python
+              interfaces to modern Fortran codes",
+  author   = "Kermode, James R",
+  journal  = "J. Phys. Condens. Matter",
+  month    =  mar,
+  year     =  2020,
+  keywords = "Fortran; Interfacing; Interoperability; Python; Wrapping codes;
+              f2py",
+  language = "en",
+  issn     = "0953-8984, 1361-648X",
+  pmid     = "32209737",
+  doi      = "10.1088/1361-648X/ab82d2"
+}
+
+```
+
 Case studies
 ------------
 
@@ -64,7 +95,8 @@ applications:
  - [QUIP](http://libatoms.github.io/QUIP/) - molecular dynamics code
  - [CASTEP](http://www.castep.org) - electronic structure code
 
-See this [Jupyter notebook](http://nbviewer.ipython.org/github/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo-feb-2020.ipynb) from a recent seminar for more details.
+See this [Jupyter notebook](https://github.com/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo-feb-2020.ipynb) 
+from a recent seminar for more details.
 
 Usage
 -----
@@ -240,7 +272,7 @@ some of the options are used:
 Author
 ------
 
-James Kermode: <james.kermode@gmail.com>
+James Kermode [jameskermode](https://github.com/jameskermode)
 
 Contributors
 ------------
