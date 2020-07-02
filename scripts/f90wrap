@@ -208,7 +208,7 @@ USAGE
             argument_name_map = eval(open(args.argument_name_map).read())
 
         if args.only:
-            only = args.only.lower()
+            only = [o.lower() for o in args.only]
 
         if args.skip:
             skip = [s.lower() for s in args.skip]
