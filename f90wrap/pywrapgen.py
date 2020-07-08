@@ -454,7 +454,7 @@ except ValueError:
         proc_names = []
         for proc in node.procedures:
             proc_name = ''
-            if not self.make_package:
+            if not self.make_package and hasattr(proc, 'mod_name'):
                 proc_name += normalise_class_name(proc.mod_name, self.class_names) + '.'
             elif cls_name is not None:
                 proc_name += cls_name + '.'
