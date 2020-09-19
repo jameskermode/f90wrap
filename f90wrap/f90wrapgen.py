@@ -167,6 +167,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     if only is None:
                         continue
                     for symbol in only:
+                        if all_uses[mod] is None:
+                            all_uses[mod] = []
                         if symbol not in all_uses[mod]:
                             all_uses[mod] += [symbol]
                 elif only is not None:
