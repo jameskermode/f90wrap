@@ -85,7 +85,7 @@ char abort_message[1024];
 void f90wrap_abort_(char *message, int len_message)
 {
   strncpy(abort_message, message, len_message);
-  abort_message[len_message] = '\0';
+  abort_message[len_message] = '\\0';
   longjmp(environment_buffer, 0);
 }
 
@@ -94,7 +94,7 @@ void f90wrap_abort_(char *message, int len_message)
 void f90wrap_abort__(char *message, int len_message)
 {
   strncpy(abort_message, message, len_message);
-  abort_message[len_message] = '\0';
+  abort_message[len_message] = '\\0';
   longjmp(environment_buffer, 0);
 }
 
