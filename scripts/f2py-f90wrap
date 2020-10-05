@@ -71,8 +71,9 @@ else:
    includes_inject = includes_inject + "#include <setjmp.h>\n"
 
 includes_inject = includes_inject + """
+#define ABORT_BUFFER_SIZE 1024
 extern jmp_buf environment_buffer;
-extern char abort_message[1024];
+extern char abort_message[ABORT_BUFFER_SIZE];
 void f90wrap_abort_(char *message, int len);
 void f90wrap_abort_int_handler(int signum);
 
@@ -80,12 +81,12 @@ void f90wrap_abort_int_handler(int signum);
 #include <string.h>
 
 jmp_buf environment_buffer;
-char abort_message[1024];
+char abort_message[ABORT_BUFFER_SIZE];
 
 void f90wrap_abort_(char *message, int len_message)
 {
-  strncpy(abort_message, message, len_message);
-  abort_message[len_message] = '\0';
+  strncpy(abort_message, message, ABORT_BUFFER_SIZE);
+  abort_message[ABORT_BUFFER_SIZE-1] = '\\0';
   longjmp(environment_buffer, 0);
 }
 
@@ -93,8 +94,8 @@ void f90wrap_abort_(char *message, int len_message)
 // void (*f90wrap_abort__)(char *, int) = &f90wrap_abort_;
 void f90wrap_abort__(char *message, int len_message)
 {
-  strncpy(abort_message, message, len_message);
-  abort_message[len_message] = '\0';
+  strncpy(abort_message, message, ABORT_BUFFER_SIZE);
+  abort_message[ABORT_BUFFER_SIZE-1] = '\\0';
   longjmp(environment_buffer, 0);
 }
 
