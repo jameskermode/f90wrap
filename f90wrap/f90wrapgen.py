@@ -428,7 +428,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.indent()
 
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
+            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.orig_name)]})
         else:
             self.write_uses_lines(t)
 
@@ -457,7 +457,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             self.write('this_ptr = transfer(this, this_ptr)')
             array_name = 'this_ptr%%p%%%s' % el.orig_name
         else:
-            array_name = '%s_%s' % (t.name, el.orig_name)
+            array_name = '%s_%s' % (t.name, el.name)
 
         if 'allocatable' in el.attributes:
             self.write('if (allocated(%s)) then' % array_name)
