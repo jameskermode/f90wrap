@@ -435,7 +435,7 @@ except ValueError:
                         #         self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
                         # else:
                         #     cls_name = cls_mod_name + '.' + cls_name
-                        self.write('%s = %s.from_handle(%s)' %
+                        self.write('%s = %s.from_handle(%s, alloc=True)' %
                                    (ret_val.name, cls_name, ret_val.name))
                 self.write('return %(result)s' % dct)
 
