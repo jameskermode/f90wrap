@@ -19,3 +19,4 @@ src.*
 .f2py_f2cmap
 .ipynb_checkpoints
 .idea/
+*.swp
