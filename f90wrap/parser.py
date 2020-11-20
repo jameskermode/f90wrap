@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 
@@ -81,7 +81,8 @@ funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
 # funct       = re.compile('^function',re.IGNORECASE)
 funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
-prototype = re.compile(r'^module procedure ([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
+prototype = re.compile(r'^module procedure\s*(::)?\s*([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
+binding = re.compile(r'^(procedure|generic|final)\s*(::)?\s*(.*)', re.IGNORECASE)
 
 contains = re.compile('^contains', re.IGNORECASE)
 
@@ -222,7 +223,7 @@ class F90File(object):
 
             if cline.find('_FD') == 1:
                 break
-    
+
             # jrk33 - join lines before removing delimiters
 
             # Join together continuation lines
@@ -470,7 +471,7 @@ def check_module(cl, file):
         # Get next line, and check each possibility in turn
 
         cl = file.next()
-        
+
         while re.match(module_end, cl) == None:
 
             # contains statement
@@ -1027,6 +1028,7 @@ def check_type(cl, file):
     out = Type()
     m = re.match(type_re, cl)
     current_access = None
+    cont = 0
 
     if m is not None:
 
@@ -1059,20 +1061,39 @@ def check_type(cl, file):
         cl = file.next()
 
         while re.match(type_end, cl) == None:
-            check = check_doc(cl, file)
+
+            # contains statement
+            check = check_cont(cl, file)
             if check[0] != None:
-                out.doc.append(check[0])
+                logging.debug('parser reading type %s bound procedures', out.name)
+                cont = 1
                 cl = check[1]
                 continue
 
-            check = check_decl(cl, file)
-            if check[0] != None:
-                for a in check[0]:
-                    if current_access is not None:
-                        a.attributes.append(current_access)
-                    out.elements.append(a)
-                cl = check[1]
-                continue
+            if cont == 0:
+
+                check = check_doc(cl, file)
+                if check[0] != None:
+                    out.doc.append(check[0])
+                    cl = check[1]
+                    continue
+
+                check = check_decl(cl, file)
+                if check[0] != None:
+                    for a in check[0]:
+                        if current_access is not None:
+                            a.attributes.append(current_access)
+                        out.elements.append(a)
+                    cl = check[1]
+                    continue
+
+            else:
+
+                check = check_binding(cl, file)
+                if check[0] != None:
+                    out.procedures.extend(check[0])
+                    cl = check[1]
+                    continue
 
             if cl.lower() == 'public':
                 current_access = 'public'
@@ -1180,12 +1201,34 @@ def check_interface_decl(cl, file):
 def check_prototype(cl, file):
     m = prototype.match(cl)
     if m != None:
-        out = map(lambda s: s.strip().lower(), m.group(1).split(','))
+        out = map(lambda s: s.strip().lower(), m.group(2).split(','))
         out = [Prototype(name=name, lineno=file.lineno, filename=file.filename) for name in out]
 
         cl = file.next()
         return [out, cl]
 
+    else:
+        return [None, cl]
+
+
+def check_binding(cl, file):
+    m = binding.match(cl)
+    if m != None:
+        type = m.group(1).strip().lower()
+        bindings = m.group(3)
+        out = []
+        if type == 'generic':
+            name, targets = [ b.strip().lower() for b in bindings.split('=>') ]
+            targets = [ t.strip().lower() for t in targets.split(',') ]
+            logging.debug('found generic binding %s => %s', name, targets)
+            out.append(Binding(name=name, lineno=file.lineno, filename=file.filename, type=type, targets=targets))
+        else:
+            for b in bindings.split(','):
+                name, *targets = [ word.strip().lower() for word in b.split('=>')]
+                logging.debug('found %s binding %s => %s', type, name, targets)
+                out.append(Binding(name=name, lineno=file.lineno, filename=file.filename, type=type, targets=targets))
+        cl = file.next()
+        return [out, cl]
     else:
         return [None, cl]
 

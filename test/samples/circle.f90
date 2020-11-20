@@ -12,7 +12,9 @@ module ClassCircle
   contains
     procedure :: get_area => Circle_get_area
     procedure :: get_radius => Circle_get_radius
-    procedure :: print => Circle_print
+    procedure :: print_basic => Circle_print_basic, &
+                 print_tagged => Circle_print_tagged
+    generic :: print => print_basic, print_tagged
     final :: Circle_finalize
   end type
   interface Circle
@@ -50,9 +52,16 @@ contains
     return
   end function
 
-  subroutine circle_print(this)
+  subroutine circle_print_basic(this)
     class(Circle), intent(in) :: this
     write(*,*) 'Circle: r = ', this%radius, ' area = ', this%area
+    return
+  end subroutine
+
+  subroutine circle_print_tagged(this, tag)
+    class(Circle), intent(in) :: this
+    character(*), intent(in) :: tag
+    write(*,*) 'Circle [', tag, ']: r = ', this%radius, ' area = ', this%area
     return
   end subroutine
 

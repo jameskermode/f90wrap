@@ -276,6 +276,15 @@ class Prototype(Fortran):
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Prototype.")
     pass
 
+class Binding(Fortran):
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a type procedure binding.")
+    def __init__(self, name='', filename='', doc=None, lineno=0,
+                 attributes=None, type='', targets=''):
+        Fortran.__init__(self, name, filename, doc, lineno)
+        self.attributes = attributes if not None else []
+        self.targets = targets if not None else []
+        self.type = type
+
 class Declaration(Fortran):
     """
     type : `str` , default ``""``
@@ -737,7 +746,7 @@ def remove_private_symbols(node):
     """
     Walk the tree starting at *node*, removing all private symbols.
 
-    This funciton first applies the AccessUpdater transformer to
+    This function first applies the AccessUpdater transformer to
     ensure module *public_symbols* and *private_symbols* are up to
     date with *default_access* and individual `public` and `private`
     attributes.
