@@ -82,7 +82,14 @@ funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
 funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
 prototype = re.compile(r'^module procedure\s*(::)?\s*([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
-binding = re.compile(r'^(procedure|generic|final)\s*(::)?\s*(.*)', re.IGNORECASE)
+
+binding_types = r'procedure|generic|final'
+binding = re.compile(
+    r'^(' + binding_types + r')' +
+    r'\s*((,([^:]*))?(::))?' +
+    r'\s*(.*)',
+    re.IGNORECASE
+)
 
 contains = re.compile('^contains', re.IGNORECASE)
 
@@ -564,40 +571,16 @@ def check_module(cl, file):
                 # Subroutine definition
                 check = check_subt(cl, file)
                 if check[0] != None:
-
                     logging.debug('    module subroutine ' + check[0].name)
-
-                    for i in out.interfaces:
-                        for j, p in enumerate(i.procedures):
-                            if check[0].name.lower() == p.name.lower():
-                                # Replace prototype with procedure
-                                i.procedures[j] = check[0]
-                                break
-                        else:
-                            continue
-                        break
-                    else:
-                        out.procedures.append(check[0])
-
+                    out.procedures.append(check[0])
                     cl = check[1]
                     continue
 
                 # Function definition
                 check = check_funct(cl, file)
                 if check[0] != None:
-
                     logging.debug('    module function ' + check[0].name)
-                    for i in out.interfaces:
-                        for j, p in enumerate(i.procedures):
-                            if check[0].name.lower() == p.name.lower():
-                                # Replace prototype with procedure
-                                i.procedures[j] = check[0]
-                                break
-                        else:
-                            continue
-                        break
-                    else:
-                        out.procedures.append(check[0])
+                    out.procedures.append(check[0])
                     cl = check[1]
                     continue
 
@@ -851,8 +834,9 @@ def check_funct(cl, file, grab_hold_doc=True):
         # jrk33 - Does function header specify alternate name of
         # return variable?
         ret_var = None
-        if re.search(result_re, cl) != None:
-            ret_var = re.search(result_re, cl).group(1)
+        m = re.search(result_re, cl)
+        if m != None:
+            ret_var = m.group(1)
             cl = result_re.sub('', cl)
 
         # Get func name
@@ -1215,18 +1199,50 @@ def check_binding(cl, file):
     m = binding.match(cl)
     if m != None:
         type = m.group(1).strip().lower()
-        bindings = m.group(3)
+        attrs = m.group(4)
+        bindings = m.group(6)
+        if attrs:
+            attrs = [a.strip().lower() for a in attrs.split(',')]
         out = []
         if type == 'generic':
-            name, targets = [ b.strip().lower() for b in bindings.split('=>') ]
-            targets = [ t.strip().lower() for t in targets.split(',') ]
+            name, targets = bindings.split('=>')
+            name = name.strip().lower()
             logging.debug('found generic binding %s => %s', name, targets)
-            out.append(Binding(name=name, lineno=file.lineno, filename=file.filename, type=type, targets=targets))
+            out.append(Binding(
+                name=name,
+                lineno=file.lineno,
+                filename=file.filename,
+                type=type,
+                attributes=attrs,
+                procedures=[
+                    Prototype(
+                        name=t.strip().lower(),
+                        lineno=file.lineno,
+                        filename=file.filename
+                    )
+                    for t in targets.split(',')
+                ],
+            ))
         else:
             for b in bindings.split(','):
-                name, *targets = [ word.strip().lower() for word in b.split('=>')]
-                logging.debug('found %s binding %s => %s', type, name, targets)
-                out.append(Binding(name=name, lineno=file.lineno, filename=file.filename, type=type, targets=targets))
+                name, *target = [ word.strip().lower() for word in b.split('=>')]
+                name = name.strip().lower()
+                target = target[0] if target else name
+                logging.debug('found %s binding %s => %s', type, name, target)
+                out.append(Binding(
+                    name=name,
+                    lineno=file.lineno,
+                    filename=file.filename,
+                    type=type,
+                    attributes=attrs,
+                    procedures=[
+                        Prototype(
+                            name=target.strip().lower(),
+                            lineno=file.lineno,
+                            filename=file.filename,
+                        ),
+                    ],
+                ))
         cl = file.next()
         return [out, cl]
     else:

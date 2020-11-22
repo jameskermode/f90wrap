@@ -276,15 +276,6 @@ class Prototype(Fortran):
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Prototype.")
     pass
 
-class Binding(Fortran):
-    __doc__ = _rep_des(Fortran.__doc__, "Represents a type procedure binding.")
-    def __init__(self, name='', filename='', doc=None, lineno=0,
-                 attributes=None, type='', targets=''):
-        Fortran.__init__(self, name, filename, doc, lineno)
-        self.attributes = attributes if not None else []
-        self.targets = targets if not None else []
-        self.type = type
-
 class Declaration(Fortran):
     """
     type : `str` , default ``""``
@@ -360,6 +351,36 @@ class Interface(Fortran):
         if procedures is None:
             procedures = []
         self.procedures = procedures
+        self.mod_name = mod_name
+        self.type_name = type_name
+
+class Binding(Fortran):
+    """
+    type : `str`, default ``None``
+        The type of bound procedures: ['procedure', 'generic', 'final']
+
+    attributes : list of `str`, default ``[]``
+        Attributes of the procedure
+
+    procedures : list of :class:`fortran.Procedure`, default ``[]``
+        The procedures listed in the binding.
+
+    mod_name : `str` , default ``None``
+        The name of the module in which the interface is found, if any.
+
+    type_name : `str` , default ``None``
+        The name of the type in which the interface is defined, if any.
+    """
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a Derived Type procedure binding.") + __doc__
+    _fields = ['procedures']
+
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a type procedure binding.")
+    def __init__(self, name='', filename='', doc=None, lineno=0,
+                 type=None, attributes=None, procedures=None, mod_name=None, type_name=None):
+        Fortran.__init__(self, name, filename, doc, lineno)
+        self.type = type
+        self.attributes = attributes if procedures else []
+        self.procedures = procedures if procedures else []
         self.mod_name = mod_name
         self.type_name = type_name
 
