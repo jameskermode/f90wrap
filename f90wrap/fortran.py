@@ -315,18 +315,16 @@ class Type(Fortran):
         Procedures defined with the type.
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Derived-type.") + __doc__
-    _fields = ['elements', 'procedures', 'interfaces']
+    _fields = ['elements', 'procedures', 'bindings', 'interfaces']
 
     def __init__(self, name='', filename='', doc=None,
-                 lineno=0, elements=None, procedures=None, interfaces=None,
+                 lineno=0, elements=None, procedures=None, bindings=None, interfaces=None,
                  mod_name=None):
         Fortran.__init__(self, name, filename, doc, lineno)
-        if elements is None: elements = []
-        self.elements = elements
-        if procedures is None: procedures = []
-        self.procedures = procedures
-        if interfaces is None: interfaces = []
-        self.interfaces = interfaces
+        self.elements = elements if elements else []
+        self.procedures = procedures if procedures else []
+        self.bindings = bindings if bindings else []
+        self.interfaces = interfaces if interfaces else []
         self.mod_name = mod_name
         self.super_types_dimensions = set()
 
@@ -346,11 +344,10 @@ class Interface(Fortran):
     _fields = ['procedures']
 
     def __init__(self, name='', filename='', doc=None,
-                 lineno=0, procedures=None, mod_name=None, type_name=None):
+                 lineno=0, procedures=None, attributes=None, mod_name=None, type_name=None):
         Fortran.__init__(self, name, filename, doc, lineno)
-        if procedures is None:
-            procedures = []
-        self.procedures = procedures
+        self.procedures = procedures if procedures else []
+        self.attributes = attributes if attributes else []
         self.mod_name = mod_name
         self.type_name = type_name
 
@@ -379,7 +376,7 @@ class Binding(Fortran):
                  type=None, attributes=None, procedures=None, mod_name=None, type_name=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         self.type = type
-        self.attributes = attributes if procedures else []
+        self.attributes = attributes if attributes else []
         self.procedures = procedures if procedures else []
         self.mod_name = mod_name
         self.type_name = type_name
@@ -602,7 +599,9 @@ def find_types(tree, skipped_types=None):
                     logging.debug('type %s defined in module %s' % (node.name, mod.name))
                     node.mod_name = mod.name  # save module name in Type instance
                     node.uses = set([(mod.name, (node.name,))])
-                    types['type(%s)' % node.name] = types[node.name] = node
+                    types[node.name] = node
+                    types['type(%s)' % node.name] = node
+                    types['class(%s)' % node.name] = node
                 else:
                     logging.info('Skipping type %s defined in module %s' % (node.name, mod.name))
 
@@ -777,12 +776,18 @@ def remove_private_symbols(node):
     node = PrivateSymbolsRemover().visit(node)
     return node
 
-def split_type(typename):
+type_re = re.compile(r'(type|class)\s*\((.*?)\)')
+def derived_typename(typename):
     """
     type(TYPE) -> TYPE
+    class(TYPE) -> TYPE
+    otherwise -> None
     """
-    type_re = re.compile(r'type\s*\((.*?)\)')
-    return type_re.match(typename).group(1)
+    m = type_re.match(typename)
+    return m.group(2) if m else None
+
+def is_derived_type(typename):
+    return type_re.match(typename) != None
 
 def split_type_kind(typename):
     """

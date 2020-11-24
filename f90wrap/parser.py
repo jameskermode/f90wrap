@@ -511,6 +511,7 @@ def check_module(cl, file):
                 check = check_interface(cl, file)
                 if check[0] != None:
                     logging.debug('    interface ' + check[0].name)
+                    check[0].mod_name = out.name
                     out.interfaces.append(check[0])
                     cl = check[1]
                     continue
@@ -519,6 +520,7 @@ def check_module(cl, file):
                 check = check_type(cl, file)
                 if check[0] != None:
                     logging.debug('    type ' + check[0].name)
+                    check[0].mod_name = out.name
                     out.types.append(check[0])
                     cl = check[1]
                     continue
@@ -572,6 +574,7 @@ def check_module(cl, file):
                 check = check_subt(cl, file)
                 if check[0] != None:
                     logging.debug('    module subroutine ' + check[0].name)
+                    check[0].mod_name = out.name
                     out.procedures.append(check[0])
                     cl = check[1]
                     continue
@@ -580,6 +583,7 @@ def check_module(cl, file):
                 check = check_funct(cl, file)
                 if check[0] != None:
                     logging.debug('    module function ' + check[0].name)
+                    check[0].mod_name = out.name
                     out.procedures.append(check[0])
                     cl = check[1]
                     continue
@@ -1075,7 +1079,7 @@ def check_type(cl, file):
 
                 check = check_binding(cl, file)
                 if check[0] != None:
-                    out.procedures.extend(check[0])
+                    out.bindings.extend(check[0])
                     cl = check[1]
                     continue
 

@@ -1,10 +1,9 @@
 module ClassCircle
   implicit none
-  private
 
-  real :: pi = 3.14159
+  real, private :: pi = 3.14159
 
-  type, public :: Circle
+  type :: Circle
     private
     character(:), allocatable :: name
     real :: radius
@@ -17,16 +16,16 @@ module ClassCircle
       print_tagged => Circle_print_tagged
     generic :: print => print_basic, print_tagged
     final :: Circle_finalize
-    final :: Circle_finalize_array
+    final :: Circle_array_finalize
   end type
   interface Circle
-    module procedure :: Circle_initialize_named
-    module procedure :: Circle_initialize_unnamed
+    module procedure :: Circle_named_initialize
+    module procedure :: Circle_unnamed_initialize
   end interface
 
 contains
 
-  function Circle_initialize_named(name, radius) result(this)
+  function Circle_named_initialize(name, radius) result(this)
     type(Circle) :: this
     character(*), intent(in) :: name
     real, intent(in) :: radius
@@ -37,7 +36,7 @@ contains
     return
   end function
 
-  function Circle_initialize_unnamed(radius) result(this)
+  function Circle_unnamed_initialize(radius) result(this)
     type(Circle) :: this
     real, intent(in) :: radius
     this%name = 'unnamed'
@@ -53,7 +52,7 @@ contains
     return
   end subroutine
 
-  subroutine Circle_finalize_array(this_arr)
+  subroutine Circle_array_finalize(this_arr)
     type(Circle), intent(inout) :: this_arr(:)
     integer :: i
     do i = 1, size(this_arr)

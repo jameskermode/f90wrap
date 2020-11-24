@@ -7,8 +7,7 @@ class TestParser(unittest.TestCase):
 
     def test_parse_type_procedures(self):
         root = parser.read_files([str(test_samples_dir/'circle.f90')])
-        parser.dump(root)
-        bindings = root.modules[0].types[0].procedures
+        bindings = root.modules[0].types[0].bindings
         self.assertEqual(len(bindings), 7)
         self.assertEqual(bindings[0].type, 'procedure')
         self.assertEqual(bindings[0].name, 'get_area')
