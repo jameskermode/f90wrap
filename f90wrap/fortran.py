@@ -32,6 +32,9 @@ import re
 
 import numpy as np
 
+log = logging.getLogger(__name__)
+
+
 def _rep_des(doc, string):
     """
     Replaces the description line of a documentation with `string`
@@ -596,14 +599,14 @@ def find_types(tree, skipped_types=None):
         for node in walk(mod):
             if isinstance(node, Type):
                 if node.name not in skipped_types:
-                    logging.debug('type %s defined in module %s' % (node.name, mod.name))
+                    log.debug('type %s defined in module %s' % (node.name, mod.name))
                     node.mod_name = mod.name  # save module name in Type instance
                     node.uses = set([(mod.name, (node.name,))])
                     types[node.name] = node
                     types['type(%s)' % node.name] = node
                     types['class(%s)' % node.name] = node
                 else:
-                    logging.info('Skipping type %s defined in module %s' % (node.name, mod.name))
+                    log.info('Skipping type %s defined in module %s' % (node.name, mod.name))
 
     return types
 
@@ -709,12 +712,12 @@ class AccessUpdater(FortranTransformer):
 
                 # symbol should be marked as public if it's not already
                 if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
+                    log.debug('marking public symbol ' + node.name)
                     self.mod.public_symbols.append(node.name)
             else:
                 # symbol should be marked as private if it's not already
                 if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
+                    log.debug('marking private symbol ' + node.name)
                     self.mod.private_symbols.append(node.name)
 
         elif self.mod.default_access == 'private':
@@ -723,12 +726,12 @@ class AccessUpdater(FortranTransformer):
 
                 # symbol should be marked as private if it's not already
                 if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
+                    log.debug('marking private symbol ' + node.name)
                     self.mod.private_symbols.append(node.name)
             else:
                 # symbol should be marked as public if it's not already
                 if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
+                    log.debug('marking public symbol ' + node.name)
                     self.mod.public_symbols.append(node.name)
 
         else:
@@ -757,7 +760,7 @@ class PrivateSymbolsRemover(FortranTransformer):
             return self.generic_visit(node)
 
         if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol ' + node.name)
+            log.debug('removing private symbol ' + node.name)
             return None
         else:
             return node

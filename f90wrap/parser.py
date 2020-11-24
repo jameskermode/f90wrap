@@ -40,11 +40,15 @@
 # Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 
+import logging
 import string
 import sys
 import os
 
 from f90wrap.fortran import *       #fixme: remove star import
+
+log = logging.getLogger(__name__)
+
 
 # Define some regular expressions
 
@@ -426,7 +430,7 @@ def check_program(cl, file):
                 # Subroutine definition
                 check = check_subt(cl, file)
                 if check[0] != None:
-                    logging.debug('    program subroutine ' + check[0].name)
+                    log.debug('    program subroutine ' + check[0].name)
                     out.procedures.append(check[0])
                     cl = check[1]
                     continue
@@ -434,7 +438,7 @@ def check_program(cl, file):
                 # Function definition
                 check = check_funct(cl, file)
                 if check[0] != None:
-                    logging.debug('    program function ' + check[0].name)
+                    log.debug('    program function ' + check[0].name)
                     out.procedures.append(check[0])
                     cl = check[1]
                     continue
@@ -510,7 +514,7 @@ def check_module(cl, file):
                 # jrk33 - Interface definition
                 check = check_interface(cl, file)
                 if check[0] != None:
-                    logging.debug('    interface ' + check[0].name)
+                    log.debug('    interface ' + check[0].name)
                     check[0].mod_name = out.name
                     out.interfaces.append(check[0])
                     cl = check[1]
@@ -519,7 +523,7 @@ def check_module(cl, file):
                 # Type definition
                 check = check_type(cl, file)
                 if check[0] != None:
-                    logging.debug('    type ' + check[0].name)
+                    log.debug('    type ' + check[0].name)
                     check[0].mod_name = out.name
                     out.types.append(check[0])
                     cl = check[1]
@@ -538,7 +542,7 @@ def check_module(cl, file):
                 if m is not None:
                     line = m.group()
                     if line.lower() == 'public':
-                        logging.info('marking module %s as default public' % out.name)
+                        log.info('marking module %s as default public' % out.name)
                         out.default_access = 'public'
                     else:
                         line = line.lower().replace('public', '')
@@ -550,7 +554,7 @@ def check_module(cl, file):
                 if m is not None:
                     line = m.group()
                     if line.lower() == 'private':
-                        logging.info('marking module %s as default private' % out.name)
+                        log.info('marking module %s as default private' % out.name)
                         out.default_access = 'private'
                     else:
                         line = line.replace('private', '')
@@ -573,7 +577,7 @@ def check_module(cl, file):
                 # Subroutine definition
                 check = check_subt(cl, file)
                 if check[0] != None:
-                    logging.debug('    module subroutine ' + check[0].name)
+                    log.debug('    module subroutine ' + check[0].name)
                     check[0].mod_name = out.name
                     out.procedures.append(check[0])
                     cl = check[1]
@@ -582,7 +586,7 @@ def check_module(cl, file):
                 # Function definition
                 check = check_funct(cl, file)
                 if check[0] != None:
-                    logging.debug('    module function ' + check[0].name)
+                    log.debug('    module function ' + check[0].name)
                     check[0].mod_name = out.name
                     out.procedures.append(check[0])
                     cl = check[1]
@@ -620,7 +624,7 @@ def check_subt(cl, file, grab_hold_doc=True):
         # Get subt name
         cl = subt.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
-        logging.debug('    module subroutine checking ' + out.name)
+        log.debug('    module subroutine checking ' + out.name)
 
         # Test in principle whether we can have a 'do not wrap' list
         if out.name.lower() == 'debugtype_stop_if':
@@ -804,7 +808,7 @@ def implicit_to_explicit_arguments(argl, ag_temp):
 def implicit_type_rule(var):
     # YANN: implicit arguments type rule
     tp = 'integer' if var[0] in ('i', 'j', 'k', 'l', 'm', 'n') else 'real'
-    logging.debug('        implicit type of "%s" inferred from its name as "%s"' % (var, tp))
+    log.debug('        implicit type of "%s" inferred from its name as "%s"' % (var, tp))
     return tp
 
 
@@ -847,7 +851,7 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         cl = funct.sub('', cl)
         out.name = re.search(re.compile('\w+'), cl).group()
-        logging.debug('    module function checking ' + out.name)
+        log.debug('    module function checking ' + out.name)
 
         # Default name of return value is function name
         out.ret_val.name = out.name
@@ -1042,7 +1046,7 @@ def check_type(cl, file):
             out.attributes = split_attribs(m.group(1))
 
         out.name = re.search(re.compile('\w+'), cl).group()
-        logging.info('parser reading type %s' % out.name)
+        log.info('parser reading type %s' % out.name)
 
         # Get next line, and check each possibility in turn
 
@@ -1053,7 +1057,7 @@ def check_type(cl, file):
             # contains statement
             check = check_cont(cl, file)
             if check[0] != None:
-                logging.debug('parser reading type %s bound procedures', out.name)
+                log.debug('parser reading type %s bound procedures', out.name)
                 cont = 1
                 cl = check[1]
                 continue
@@ -1211,7 +1215,7 @@ def check_binding(cl, file):
         if type == 'generic':
             name, targets = bindings.split('=>')
             name = name.strip().lower()
-            logging.debug('found generic binding %s => %s', name, targets)
+            log.debug('found generic binding %s => %s', name, targets)
             out.append(Binding(
                 name=name,
                 lineno=file.lineno,
@@ -1232,7 +1236,7 @@ def check_binding(cl, file):
                 name, *target = [ word.strip().lower() for word in b.split('=>')]
                 name = name.strip().lower()
                 target = target[0] if target else name
-                logging.debug('found %s binding %s => %s', type, name, target)
+                log.debug('found %s binding %s => %s', type, name, target)
                 out.append(Binding(
                     name=name,
                     lineno=file.lineno,
@@ -1437,7 +1441,7 @@ def read_files(args, doc_plugin_filename=None):
 
         # Open the filename for reading
 
-        logging.debug('processing file ' + fname)
+        log.debug('processing file ' + fname)
         file = F90File(fname)
 
         # Get first line
@@ -1449,7 +1453,7 @@ def read_files(args, doc_plugin_filename=None):
             # programs
             check = check_program(cline, file)
             if check[0] != None:
-                logging.debug('  program ' + check[0].name)
+                log.debug('  program ' + check[0].name)
                 root.programs.append(check[0])
                 cline = check[1]
                 continue
@@ -1457,7 +1461,7 @@ def read_files(args, doc_plugin_filename=None):
             # modules
             check = check_module(cline, file)
             if check[0] != None:
-                logging.debug('  module ' + check[0].name)
+                log.debug('  module ' + check[0].name)
                 root.modules.append(check[0])
                 cline = check[1]
                 continue
@@ -1475,7 +1479,7 @@ def read_files(args, doc_plugin_filename=None):
             # stand-alone subroutines
             check = check_subt(cline, file)
             if check[0] != None:
-                # logging.debug('  subroutine ' + check[0].name)
+                # log.debug('  subroutine ' + check[0].name)
                 root.procedures.append(check[0])
                 cline = check[1]
                 continue
@@ -1483,7 +1487,7 @@ def read_files(args, doc_plugin_filename=None):
             # stand-alone functions
             check = check_funct(cline, file)
             if check[0] != None:
-                # logging.debug('  function ' + check[0].name)
+                # log.debug('  function ' + check[0].name)
                 root.procedures.append(check[0])
                 cline = check[1]
                 continue

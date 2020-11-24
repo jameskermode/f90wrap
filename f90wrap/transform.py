@@ -29,6 +29,8 @@ import re
 
 from f90wrap import fortran as ft
 
+log = logging.getLogger(__name__)
+
 
 class AccessUpdater(ft.FortranTransformer):
     """Visit module contents and update public_symbols and
@@ -46,7 +48,7 @@ class AccessUpdater(ft.FortranTransformer):
 
     def update_access(self, node, mod, default_access, in_type=False):
         if node.name in self.force_public:
-            logging.debug('marking public symbol (forced) ' + node.name)
+            log.debug('marking public symbol (forced) ' + node.name)
             mod.public_symbols.append(node.name)
             if 'private' in getattr(node, 'attributes', []):
                 node.attributes.remove('private')
@@ -58,13 +60,13 @@ class AccessUpdater(ft.FortranTransformer):
 
                 # symbol should be marked as public if it's not already
                 if not in_type and node.name not in mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
+                    log.debug('marking public symbol ' + node.name)
                     mod.public_symbols.append(node.name)
             else:
                 # symbol should be marked as private if it's not already
                 if not in_type and (node.name not in mod.private_symbols and
                                             'callback' not in getattr(node, 'attributes', [])):
-                    logging.debug('marking private symbol ' + node.name)
+                    log.debug('marking private symbol ' + node.name)
                     mod.private_symbols.append(node.name)
 
         elif default_access == 'private':
@@ -74,12 +76,12 @@ class AccessUpdater(ft.FortranTransformer):
                 # symbol should be marked as private if it's not already
                 if not in_type and (node.name not in mod.private_symbols and
                                             'callback' not in getattr(node, 'attributes', [])):
-                    logging.debug('marking private symbol ' + node.name)
+                    log.debug('marking private symbol ' + node.name)
                     mod.private_symbols.append(node.name)
             else:
                 # symbol should be marked as public if it's not already
                 if not in_type and node.name not in mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
+                    log.debug('marking public symbol ' + node.name)
                     mod.public_symbols.append(node.name)
 
         else:
@@ -145,11 +147,11 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
             return self.generic_visit(node)
 
         if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol %s' % node.name)
+            log.debug('removing private symbol %s' % node.name)
             return None
 
         if hasattr(node, 'attributes') and 'private' in node.attributes:
-            logging.debug('removing private symbol by attribute list %s' % node.name)
+            log.debug('removing private symbol by attribute list %s' % node.name)
             return None
 
         return self.generic_visit(node)
@@ -157,7 +159,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
     def visit_Interface(self, node):
         # remove entirely private interfaces
         if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol on interface %s' % node.name)
+            log.debug('removing private symbol on interface %s' % node.name)
             return None
 
         # do not call generic_visit(), so we don't
@@ -234,7 +236,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
             # only callback functions in self.callbacks
             if 'callback' in arg.attributes:
                 if node.name not in self.callbacks:
-                    logging.warning('removing callback routine %s' % node.name)
+                    log.warning('removing callback routine %s' % node.name)
                     return None
                 else:
                     continue
@@ -247,34 +249,34 @@ class UnwrappablesRemover(ft.FortranTransformer):
             else:
                 # no allocatables or pointers
                 if 'allocatable' in arg.attributes or 'pointer' in arg.attributes:
-                    logging.warning('removing routine %s due to allocatable/pointer arguments' % node.name)
+                    log.warning('removing routine %s due to allocatable/pointer arguments' % node.name)
                     return None
 
                 dims = [attrib for attrib in arg.attributes if attrib.startswith('dimension')]
 
                 # # no complex scalars (arrays are OK)
                 # if arg.type.startswith('complex') and len(dims) == 0:
-                #    logging.debug('removing routine %s due to complex scalar arguments' % node.name)
+                #    log.debug('removing routine %s due to complex scalar arguments' % node.name)
                 #    return None
 
                 # no derived types apart from those in self.types
                 typename = ft.derived_typename(arg.type)
                 if typename and typename not in self.types:
-                    logging.warning('removing routine %s due to unsupported derived type %s' %
+                    log.warning('removing routine %s due to unsupported derived type %s' %
                                   (node.name, arg.type))
                     return None
 
                 # no arrays of derived types of assumed shape, or more than one dimension
                 # Yann - EXPERIMENTAL !!
                 if typename and len(dims) != 0:
-                    # logging.warning('removing routine %s due to unsupported arrays of derived types %s' %
+                    # log.warning('removing routine %s due to unsupported arrays of derived types %s' %
                     #               (node.name, arg.type))
                     # return none
                     if len(dims) > 1:
                         raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
                     dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
                     if len(dimensions_list) > 1 or ':' in dimensions_list:
-                        logging.warning('removing routine %s due to derived type array argument : %s -- currently, only '
+                        log.warning('removing routine %s due to derived type array argument : %s -- currently, only '
                                      'fixed-lengh one-dimensional arrays of derived type are supported'
                                      % (node.name, arg.name))
                         return None
@@ -289,13 +291,13 @@ class UnwrappablesRemover(ft.FortranTransformer):
             return self.generic_visit(node)
 
         if node.name in self.remove_optional_arguments:
-            logging.warning('removing optional argument %s' %
+            log.warning('removing optional argument %s' %
                          node.name)
             return None
 
         # remove optional allocatable/pointer arguments
         if 'allocatable' in node.attributes or 'pointer' in node.attributes:
-            logging.warning('removing optional argument %s due to allocatable/pointer attributes' %
+            log.warning('removing optional argument %s due to allocatable/pointer attributes' %
                          node.name)
             return None
 
@@ -303,13 +305,13 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
         # remove optional complex scalar arguments
         if node.type.startswith('complex') and len(dims) == 0:
-            logging.warning('removing optional argument %s as it is a complex scalar' % node.name)
+            log.warning('removing optional argument %s as it is a complex scalar' % node.name)
             return None
 
         # remove optional derived types not in self.types
         typename = ft.derived_typename(node.type)
         if typename and typename not in self.types:
-            logging.warning('removing optional argument %s due to unsupported derived type %s' %
+            log.warning('removing optional argument %s due to unsupported derived type %s' %
                           (node.name, node.type))
             return None
 
@@ -320,7 +322,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 raise ValueError('more than one dimension attribute found for arg %s' % node.name)
             dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
             if len(dimensions_list) > 1 or ':' in dimensions_list:
-                logging.warning(
+                log.warning(
                     'test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
                     (node.name, node.type))
                 return None
@@ -332,7 +334,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
         Remove unwrappable elements inside derived types
         """
         if node.name not in self.types:
-            logging.warning('removing type %s' % node.name)
+            log.warning('removing type %s' % node.name)
             return None
         else:
             elements = []
@@ -341,12 +343,12 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 dims = [attr for attr in element.attributes if attr.startswith(
                     'dimension')]  # dims = filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
                 if element.type.lower() == 'type(c_ptr)':
-                    logging.warning('removing %s.%s as type(c_ptr) unsupported' %
+                    log.warning('removing %s.%s as type(c_ptr) unsupported' %
                                   (node.name, element.name))
                     continue
                 typename = ft.derived_typename(element.type)
                 if typename  and typename not in self.types:
-                    logging.warning('removing %s.%s as type %s unsupported' %
+                    log.warning('removing %s.%s as type %s unsupported' %
                                   (node.name, element.name, element.type))
                     continue
                 elements.append(element)
@@ -366,25 +368,25 @@ class UnwrappablesRemover(ft.FortranTransformer):
             dims = [attr for attr in element.attributes if attr.startswith(
                 'dimension')]  # filter(lambda x: x.startswith('dimension'), element.attributes) provides a filter object, so dims == [] would ALWAYS be false
             if 'pointer' in element.attributes and dims != []:
-                logging.warning('removing %s.%s due to pointer attribute' %
+                log.warning('removing %s.%s due to pointer attribute' %
                               (node.name, element.name))
                 continue
             if element.type.lower() == 'type(c_ptr)':
-                logging.warning('removing %s.%s as type(c_ptr) unsupported' %
+                log.warning('removing %s.%s as type(c_ptr) unsupported' %
                               (node.name, element.name))
                 continue
             typename = ft.dervied_typename(element.type)
             if typename and 'target' not in element.attributes:
-                logging.warning('removing %s.%s as missing "target" attribute' %
+                log.warning('removing %s.%s as missing "target" attribute' %
                               (node.name, element.name))
                 continue
             if typename and typename not in self.types:
-                logging.warning('removing %s.%s as type %s unsupported' %
+                log.warning('removing %s.%s as type %s unsupported' %
                               (node.name, element.name, element.type))
                 continue
             # parameter ARRAYS in modules live only in the mind of the compiler
             if 'parameter' in element.attributes and dims != []:
-                logging.warning('removing %s.%s as it has "parameter array" attribute' %
+                log.warning('removing %s.%s as it has "parameter array" attribute' %
                               (node.name, element.name))
                 continue
 
@@ -458,7 +460,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
             sub.arguments[0].attributes = set_intent(sub.arguments[0].attributes, 'intent(out)')
 
         if 'destructor' in sub.attributes:
-            logging.debug('deallocating arg "%s" in %s', sub.arguments[0].name, sub.name)
+            log.debug('deallocating arg "%s" in %s', sub.arguments[0].name, sub.name)
             sub.deallocate.append(sub.arguments[0].name)
 
         for arg in arguments:
@@ -485,7 +487,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
                 arg.attributes = set_intent(arg.attributes, 'intent(out)')
                 sub.transfer_out.append(arg.name)
                 if 'pointer' not in arg.attributes:
-                    logging.debug('allocating arg "%s" in %s' % (arg.name, sub.name))
+                    log.debug('allocating arg "%s" in %s' % (arg.name, sub.name))
                     sub.allocate.append(arg.name)
             else:
                 arg.attributes = set_intent(arg.attributes, 'intent(in)')
@@ -622,7 +624,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                 n_dummy += 1
 
             if new_dummy_args != []:
-                logging.debug('adding dummy arguments %r to %s' % (new_dummy_args, node.name))
+                log.debug('adding dummy arguments %r to %s' % (new_dummy_args, node.name))
                 arg.attributes = ([attr for attr in arg.attributes if not attr.startswith('dimension')] +
                                   ['dimension(%s)' % ','.join(new_ds)])
                 node.arguments.extend(new_dummy_args)
@@ -696,7 +698,7 @@ class MethodFinder(ft.FortranTransformer):
 
                 # just a regular method - move into typ.procedures
                 typ.procedures.append(node)
-                logging.info('added method %s to type %s' %
+                log.info('added method %s to type %s' %
                               (node.method_name, typ.name))
             else:
                 # this method was originally inside an interface,
@@ -704,7 +706,7 @@ class MethodFinder(ft.FortranTransformer):
                 for intf in typ.interfaces:
                     if intf.name == interface.name:
                         intf.procedures.append(node)
-                        logging.info('added method %s to interface %s in type %s module %r' %
+                        log.info('added method %s to interface %s in type %s module %r' %
                                       (node.method_name, intf.name, typ.name, node.mod_name))
                         break
                 else:
@@ -716,7 +718,7 @@ class MethodFinder(ft.FortranTransformer):
                                         mod_name=node.mod_name,
                                         type_name=typ.name)
                     typ.interfaces.append(intf)
-                    logging.info('added method %s to new interface %s in type %s module %r' %
+                    log.info('added method %s to new interface %s in type %s module %r' %
                                   (node.method_name, intf.name, typ.name, node.mod_name))
 
             # remove method from parent since we've added it to Type
@@ -733,7 +735,7 @@ class ConstructorExcessToClassMethod(ft.FortranTransformer):
     The rest are relabeled to classmethods"""
 
     def visit_Type(self, node):
-        logging.debug('visiting %r' % node)
+        log.debug('visiting %r' % node)
 
         constructor_names = []
 
@@ -741,7 +743,7 @@ class ConstructorExcessToClassMethod(ft.FortranTransformer):
             if 'constructor' in child.attributes:
                 constructor_names.append(child.name)
 
-        logging.info('visiting %r found %d constructors with names: %s', node, len(constructor_names), constructor_names)
+        log.info('visiting %r found %d constructors with names: %s', node, len(constructor_names), constructor_names)
 
         if len(constructor_names) > 1:
             # now we need to modify all but one to classmethods
@@ -752,12 +754,12 @@ class ConstructorExcessToClassMethod(ft.FortranTransformer):
             for child in node.procedures:
                 if 'constructor' in child.attributes:
                     if child.name == chosen:
-                        logging.info('found multiple constructors, chose shortest named %s', child.name)
+                        log.info('found multiple constructors, chose shortest named %s', child.name)
                     else:
                         #child.attributes = list(set(child.attributes))  # fixme: decide if this is needed at all
                         #child.attributes.remove('constructor')
                         child.attributes.append('classmethod')
-                        logging.info('transform excess constructor to classmethod %s', child.name)
+                        log.info('transform excess constructor to classmethod %s', child.name)
 
         return self.generic_visit(node)
 
@@ -774,7 +776,7 @@ def collapse_single_interfaces(tree):
             if len(node.procedures) == 1:
                 proc = node.procedures[0]
                 proc.doc = node.doc + proc.doc
-                logging.debug('collapsing single-component interface %s' % proc.name)
+                log.debug('collapsing single-component interface %s' % proc.name)
                 return proc
             else:
                 return node
@@ -783,7 +785,7 @@ def collapse_single_interfaces(tree):
         """Filter interfaces and procedures into correct lists"""
 
         def visit_Type(self, node):
-            logging.debug('visiting %r' % node)
+            log.debug('visiting %r' % node)
             interfaces = []
             procedures = []
             for child in ft.iter_child_nodes(node):
@@ -812,11 +814,11 @@ def add_missing_constructors(tree):
             continue
         for child in ft.iter_child_nodes(node):
             if 'constructor' in child.attributes:
-                logging.info('found constructor %s', child.name)
+                log.info('found constructor %s', child.name)
                 break
         else:
 
-            logging.info('adding missing constructor for %s', node.name)
+            log.info('adding missing constructor for %s', node.name)
             new_node = ft.Subroutine('%s_initialise' % node.name,
                                      node.filename,
                                      ['Automatically generated constructor for %s' % node.name],
@@ -842,11 +844,11 @@ def add_missing_destructors(tree):
             continue
         for child in ft.iter_child_nodes(node):
             if 'destructor' in child.attributes:
-                logging.info('found destructor %s', child.name)
+                log.info('found destructor %s', child.name)
                 break
         else:
 
-            logging.info('adding missing destructor for %s', node.name)
+            log.info('adding missing destructor for %s', node.name)
             new_node = ft.Subroutine('%s_finalise' % node.name,
                                      node.filename,
                                      ['Automatically generated destructor for %s' % node.name],
@@ -1097,7 +1099,7 @@ class SetInterfaceProcedureCallNames(ft.FortranVisitor):
 
     def visit_Interface(self, node):
         for proc in node.procedures:
-            logging.info('setting call_name of %s to %s' % (proc.name, node.name))
+            log.info('setting call_name of %s to %s' % (proc.name, node.name))
             proc.call_name = node.name
         return node
 
@@ -1132,12 +1134,12 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
                     continue
                 proto = binding.procedures[0]  # Only generics have multiple procedures
                 proc = procedure_map.pop(proto.name)
-                logging.debug('Creating method for %s from procedure %s.', type.name, proc.name)
+                log.debug('Creating method for %s from procedure %s.', type.name, proc.name)
                 proc.type_name = type.name
                 proc.method_name = binding.name
                 proc.attributes.append('method')
                 if binding.type == 'final':
-                    logging.debug('Marking method %s as destructor for %s', proc.method_name, type.name)
+                    log.debug('Marking method %s as destructor for %s', proc.method_name, type.name)
                     proc.attributes.append('destructor')
                     type.bindings[ib].attributes.append('destructor')
                 binding.procedures = [proc]
@@ -1170,7 +1172,7 @@ class BindConstructorInterfaces(ft.FortranTransformer):
             if type.name not in interface_map:
                 continue
             interface = interface_map.pop(type.name)
-            logging.debug('Move interface %s into type %s and mark constructor', interface.name, type.name)
+            log.debug('Move interface %s into type %s and mark constructor', interface.name, type.name)
             interface.attributes.append('constructor')
             for p in interface.procedures:
                 p.type_name = type.name

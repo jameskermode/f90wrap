@@ -32,6 +32,8 @@ from f90wrap import fortran as ft
 from f90wrap.six import string_types  # Python 2/3 compatibility library
 from f90wrap.transform import ArrayDimensionConverter
 
+log = logging.getLogger(__name__)
+
 
 class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     """
@@ -113,7 +115,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         Subroutines and elements within each module are properly wrapped.
         """
-        logging.info('F90WrapperGenerator visiting module %s' % node.name)
+        log.info('F90WrapperGenerator visiting module %s' % node.name)
         self.code = []
         self.write('! Module %s defined in file %s' % (node.name, node.filename))
         self.write()
@@ -362,7 +364,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         call_name = node.name
         if hasattr(node, 'call_name'):
             call_name = node.call_name
-        logging.info(
+        log.info(
             'F90WrapperGenerator visiting routine %s call_name %s mod_name %r' % (node.name, call_name, node.mod_name))
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
@@ -397,7 +399,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         """
         Properly wraps derived types, including derived-type arrays.
         """
-        logging.info('F90WrapperGenerator visiting type %s' % node.name)
+        log.info('F90WrapperGenerator visiting type %s' % node.name)
 
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
@@ -756,7 +758,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             String indicating whether to write a get routine, or a set routine.
         """
 
-        logging.debug('writing %s wrapper for %s.%s' % (getset, t.name, el.name))
+        log.debug('writing %s wrapper for %s.%s' % (getset, t.name, el.name))
 
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"

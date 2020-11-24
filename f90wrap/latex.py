@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 
@@ -50,6 +50,8 @@ from f90wrap import fortran as ft
 
 import sys
 major, minor = sys.version_info[0:2]
+
+log = logging.getLogger(__name__)
 
 if (major, minor) < (2, 5):
     all = lambda seq: not False in seq
@@ -661,7 +663,7 @@ class LatexGenerator(ft.FortranVisitor, LatexOutput):
             return
 
         if any([isinstance(proc, ft.Prototype) for proc in node.procedures]):
-            logging.debug('Skipping interface %s as some procedures were not found' % node.name)
+            log.debug('Skipping interface %s as some procedures were not found' % node.name)
             return
 
         n_sub = sum([isinstance(proc, ft.Subroutine) for proc in node.procedures])
