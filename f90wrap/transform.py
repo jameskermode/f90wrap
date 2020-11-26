@@ -375,7 +375,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 log.warning('removing %s.%s as type(c_ptr) unsupported' %
                               (node.name, element.name))
                 continue
-            typename = ft.dervied_typename(element.type)
+            typename = ft.derived_typename(element.type)
             if typename and 'target' not in element.attributes:
                 log.warning('removing %s.%s as missing "target" attribute' %
                               (node.name, element.name))
@@ -1109,11 +1109,53 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
     Replaces prototypes in interface declarations with referenced procedure
     """
     def visit_Module(self, node):
-        procedure_map = { p.name:p for p in node.procedures }
-        for int in node.interfaces:
-            int.procedures = [ procedure_map.pop(p.name) for p in int.procedures ]
-        node.procedures = list(procedure_map.values())
+
+        # Attempt 0:
+        # Insert procedure at first interface reference. Does not support
+        # procedures being reused in multiple interfaces. This was how the
+        # original resolution logic was implemented when resolution occurred in
+        # the parser. Technically this is quadratic complexity, but the number
+        # of interface prototypes is generally small...
+        def inject_procedure(interfaces, procedure):
+            for iface in interfaces:
+                for i, p in enumerate(iface.procedures):
+                    if procedure.name == p.name:
+                        log.debug("Procedure %s moved to interface %s", procedure.name, iface.name)
+                        iface.procedures[i] = procedure # Replace the prototype
+                        return True
+            log.debug(f"Procedure %s is not used in any interface", procedure.name)
+            return False
+
+        unused = []
+        for mp in node.procedures:
+            if not inject_procedure(node.interfaces, mp):
+                unused.append(mp)
+        node.procedures = unused
         return node
+
+        # Attempt 1:
+        # Insert procedures at first reference. Elegant and equivalent to Option 0,
+        # but causes issues because it throws an error if procedure is referenced by
+        # multiple interfaces (Option 0 just ignores unresolved prototypes)
+        #procedure_map = { p.name:p for p in node.procedures }
+        #for int in node.interfaces:
+        #    int.procedures = [ procedure_map.pop(p.name) for p in int.procedures ]
+        #node.procedures = list(procedure_map.values())
+
+        # Option 2:
+        # Support procedure reuse across multiple interfaces by inserting the
+        # Procedure node once per interface node. This causes problems in
+        # fortran code gen b/c identically named wrappers will be generated for
+        # each interface, causing a name clash. This could be fixed in code gen
+        # by adding the interface name to the wrapper function name.
+        #procedure_map = { p.name:p for p in node.procedures }
+        #unused = set(procedure_map.keys())
+        #for int in node.interfaces:
+        #    iprocs = { p.name for p in int.procedures }
+        #    unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
+        #    int.procedures = [ procedure_map[p] for p in iprocs ]
+        #node.procedures = [ procedure_map[p] for p in unused ]
+        #return node
 
 
 class ResolveBindingPrototypes(ft.FortranTransformer):

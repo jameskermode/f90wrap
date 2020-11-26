@@ -18,6 +18,17 @@ class TestTransform(unittest.TestCase):
             fortran.Function
         ))
 
+    def test_parse_dnad(self):
+        root = parser.read_files([str(test_samples_dir/'DNAD.fpp')])
+        new = transform.ResolveInterfacePrototypes().visit(root)
+        m = new.modules[0]
+        self.assertEqual(len(m.procedures), 1)
+        # TODO: Fix incomplete resolution of prototypes
+        #       This is because both interfaces reference the same procedure
+        #       but we only resolve first reference of a given procedure.
+        self.assertIsInstance(m.interfaces[12].procedures[0], fortran.Function)
+        self.assertIsInstance(m.interfaces[13].procedures[0], fortran.Prototype)
+
     def test_resolve_binding_prototypes(self):
         ''' Verify procedures gets moved into binding objects '''
         new = transform.ResolveBindingPrototypes().visit(self.root)
