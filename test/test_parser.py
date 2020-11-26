@@ -17,3 +17,10 @@ class TestParser(unittest.TestCase):
         self.assertEqual(bindings[4].name, 'print')
         self.assertEqual(len(bindings[4].procedures), 2)
         self.assertEqual(bindings[5].type, 'final')
+
+    def test_parse_dnad(self):
+        root = parser.read_files([str(test_samples_dir/'DNAD.fpp')])
+        proc_names = [ p.name for p in root.modules[0].procedures ]
+        self.assertIn('abs_d', proc_names)
+        self.assertIn('add_di', proc_names)
+        self.assertIn('assign_di', proc_names)

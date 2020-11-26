@@ -20,7 +20,7 @@
 
   You should have received a copy of the GNU Lesser General Public License
   along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
- 
+
   If you would like to license the source code under different terms,
   please contact James Kermode, james.kermode@gmail.com
 """
@@ -48,6 +48,7 @@ from f90wrap import transform as tf
 from f90wrap import f90wrapgen as fwrap
 from f90wrap import pywrapgen as pywrap
 
+logging.basicConfig(stream=sys.stdout)
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -158,9 +159,9 @@ USAGE
         args = parser.parse_args()
 
         if args.verbose:
-            logging.root.setLevel(logging.DEBUG)
+            logging.getLogger().setLevel(logging.DEBUG)
         else:
-            logging.root.setLevel(logging.INFO)
+            logging.getLogger().setLevel(logging.INFO)
 
         # set defaults, to be overridden by command line args and config file
         kind_map = {}

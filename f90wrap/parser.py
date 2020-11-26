@@ -65,7 +65,8 @@ type_end = re.compile('^end\s*type|end$', re.IGNORECASE)
 
 dummy_types_re = re.compile('recursive|pure|elemental', re.IGNORECASE)
 
-types = r'recursive|pure|double precision|elemental|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
+prefixes = r'elemental|impure|module|non_recursive|pure|recursive'
+types = r'double precision|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
 a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private'
 
 types_re = re.compile(types, re.IGNORECASE)
@@ -78,10 +79,10 @@ c_ret = re.compile(r'\r')
 iface = re.compile('^interface', re.IGNORECASE)
 iface_end = re.compile('^end\s*interface|end$', re.IGNORECASE)
 
-subt = re.compile(r'^(recursive\s+)?subroutine', re.IGNORECASE)
+subt = re.compile(r'^((' + prefixes + r')\s+)*subroutine', re.IGNORECASE)
 subt_end = re.compile(r'^end\s*subroutine\s*(\w*)|end$', re.IGNORECASE)
 
-funct = re.compile('^((' + types + r')\s+)*function', re.IGNORECASE)
+funct = re.compile(r'^((' + types + '|' + prefixes + r')\s+)*function', re.IGNORECASE)
 # funct       = re.compile('^function',re.IGNORECASE)
 funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
