@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 
@@ -29,6 +29,7 @@ from f90wrap.transform import ArrayDimensionConverter
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
+log = logging.getLogger(__name__)
 
 def py_arg_value(arg):
     # made global from PythonWrapperGenerator.visit_Procedure so that other functions can use it
@@ -220,7 +221,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         py_wrapper_file.close()
 
     def visit_Module(self, node):
-        logging.info('PythonWrapperGenerator visiting module %s' % node.name)
+        log.info('PythonWrapperGenerator visiting module %s' % node.name)
         cls_name = normalise_class_name(node.name, self.class_names)
         node.array_initialisers = []
         node.dt_array_initialisers = []
@@ -386,7 +387,7 @@ except ValueError:
 
     def visit_Procedure(self, node):
 
-        logging.info('PythonWrapperGenerator visiting routine %s' % node.name)
+        log.info('PythonWrapperGenerator visiting routine %s' % node.name)
         if 'classmethod' in node.attributes:
             self.write_classmethod(node)
         elif 'constructor' in node.attributes:
@@ -443,7 +444,7 @@ except ValueError:
             self.write()
 
     def visit_Interface(self, node):
-        logging.info('PythonWrapperGenerator visiting interface %s' % node.name)
+        log.info('PythonWrapperGenerator visiting interface %s' % node.name)
 
         # first output all the procedures within the interface
         self.generic_visit(node)
@@ -488,7 +489,7 @@ except ValueError:
         self.write()
 
     def visit_Type(self, node):
-        logging.info('PythonWrapperGenerator visiting type %s' % node.name)
+        log.info('PythonWrapperGenerator visiting type %s' % node.name)
         node.dt_array_initialisers = []
         cls_name = normalise_class_name(node.name, self.class_names)
         self.write('@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name))

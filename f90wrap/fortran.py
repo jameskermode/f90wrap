@@ -32,6 +32,9 @@ import re
 
 import numpy as np
 
+log = logging.getLogger(__name__)
+
+
 def _rep_des(doc, string):
     """
     Replaces the description line of a documentation with `string`
@@ -315,18 +318,16 @@ class Type(Fortran):
         Procedures defined with the type.
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Derived-type.") + __doc__
-    _fields = ['elements', 'procedures', 'interfaces']
+    _fields = ['elements', 'procedures', 'bindings', 'interfaces']
 
     def __init__(self, name='', filename='', doc=None,
-                 lineno=0, elements=None, procedures=None, interfaces=None,
+                 lineno=0, elements=None, procedures=None, bindings=None, interfaces=None,
                  mod_name=None):
         Fortran.__init__(self, name, filename, doc, lineno)
-        if elements is None: elements = []
-        self.elements = elements
-        if procedures is None: procedures = []
-        self.procedures = procedures
-        if interfaces is None: interfaces = []
-        self.interfaces = interfaces
+        self.elements = elements if elements else []
+        self.procedures = procedures if procedures else []
+        self.bindings = bindings if bindings else []
+        self.interfaces = interfaces if interfaces else []
         self.mod_name = mod_name
         self.super_types_dimensions = set()
 
@@ -346,11 +347,40 @@ class Interface(Fortran):
     _fields = ['procedures']
 
     def __init__(self, name='', filename='', doc=None,
-                 lineno=0, procedures=None, mod_name=None, type_name=None):
+                 lineno=0, procedures=None, attributes=None, mod_name=None, type_name=None):
         Fortran.__init__(self, name, filename, doc, lineno)
-        if procedures is None:
-            procedures = []
-        self.procedures = procedures
+        self.procedures = procedures if procedures else []
+        self.attributes = attributes if attributes else []
+        self.mod_name = mod_name
+        self.type_name = type_name
+
+class Binding(Fortran):
+    """
+    type : `str`, default ``None``
+        The type of bound procedures: ['procedure', 'generic', 'final']
+
+    attributes : list of `str`, default ``[]``
+        Attributes of the procedure
+
+    procedures : list of :class:`fortran.Procedure`, default ``[]``
+        The procedures listed in the binding.
+
+    mod_name : `str` , default ``None``
+        The name of the module in which the interface is found, if any.
+
+    type_name : `str` , default ``None``
+        The name of the type in which the interface is defined, if any.
+    """
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a Derived Type procedure binding.") + __doc__
+    _fields = ['procedures']
+
+    __doc__ = _rep_des(Fortran.__doc__, "Represents a type procedure binding.")
+    def __init__(self, name='', filename='', doc=None, lineno=0,
+                 type=None, attributes=None, procedures=None, mod_name=None, type_name=None):
+        Fortran.__init__(self, name, filename, doc, lineno)
+        self.type = type
+        self.attributes = attributes if attributes else []
+        self.procedures = procedures if procedures else []
         self.mod_name = mod_name
         self.type_name = type_name
 
@@ -569,12 +599,14 @@ def find_types(tree, skipped_types=None):
         for node in walk(mod):
             if isinstance(node, Type):
                 if node.name not in skipped_types:
-                    logging.debug('type %s defined in module %s' % (node.name, mod.name))
+                    log.debug('type %s defined in module %s' % (node.name, mod.name))
                     node.mod_name = mod.name  # save module name in Type instance
                     node.uses = set([(mod.name, (node.name,))])
-                    types['type(%s)' % node.name] = types[node.name] = node
+                    types[node.name] = node
+                    types['type(%s)' % node.name] = node
+                    types['class(%s)' % node.name] = node
                 else:
-                    logging.info('Skipping type %s defined in module %s' % (node.name, mod.name))
+                    log.info('Skipping type %s defined in module %s' % (node.name, mod.name))
 
     return types
 
@@ -680,12 +712,12 @@ class AccessUpdater(FortranTransformer):
 
                 # symbol should be marked as public if it's not already
                 if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
+                    log.debug('marking public symbol ' + node.name)
                     self.mod.public_symbols.append(node.name)
             else:
                 # symbol should be marked as private if it's not already
                 if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
+                    log.debug('marking private symbol ' + node.name)
                     self.mod.private_symbols.append(node.name)
 
         elif self.mod.default_access == 'private':
@@ -694,12 +726,12 @@ class AccessUpdater(FortranTransformer):
 
                 # symbol should be marked as private if it's not already
                 if node.name not in self.mod.private_symbols:
-                    logging.debug('marking private symbol ' + node.name)
+                    log.debug('marking private symbol ' + node.name)
                     self.mod.private_symbols.append(node.name)
             else:
                 # symbol should be marked as public if it's not already
                 if node.name not in self.mod.public_symbols:
-                    logging.debug('marking public symbol ' + node.name)
+                    log.debug('marking public symbol ' + node.name)
                     self.mod.public_symbols.append(node.name)
 
         else:
@@ -728,7 +760,7 @@ class PrivateSymbolsRemover(FortranTransformer):
             return self.generic_visit(node)
 
         if node.name in self.mod.private_symbols:
-            logging.debug('removing private symbol ' + node.name)
+            log.debug('removing private symbol ' + node.name)
             return None
         else:
             return node
@@ -737,7 +769,7 @@ def remove_private_symbols(node):
     """
     Walk the tree starting at *node*, removing all private symbols.
 
-    This funciton first applies the AccessUpdater transformer to
+    This function first applies the AccessUpdater transformer to
     ensure module *public_symbols* and *private_symbols* are up to
     date with *default_access* and individual `public` and `private`
     attributes.
@@ -747,12 +779,18 @@ def remove_private_symbols(node):
     node = PrivateSymbolsRemover().visit(node)
     return node
 
-def split_type(typename):
+type_re = re.compile(r'(type|class)\s*\((.*?)\)')
+def derived_typename(typename):
     """
     type(TYPE) -> TYPE
+    class(TYPE) -> TYPE
+    otherwise -> None
     """
-    type_re = re.compile(r'type\s*\((.*?)\)')
-    return type_re.match(typename).group(1)
+    m = type_re.match(typename)
+    return m.group(2) if m else None
+
+def is_derived_type(typename):
+    return type_re.match(typename) != None
 
 def split_type_kind(typename):
     """
