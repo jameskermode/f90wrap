@@ -132,6 +132,7 @@ valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(
 public = re.compile('(^public$)|(^public\s*(\w+)\s*$)|(^public\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 private = re.compile('(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 
+rmspace = re.compile(r'(\w+)\s+\(', re.IGNORECASE)
 def remove_delimited(line, d1, d2):
     bk = 0
     temp_str = ''
@@ -212,7 +213,7 @@ hold_doc = None
 class F90File(object):
     def __init__(self, fname):
         self.filename = fname
-        self.file = open(fname, 'r')
+        self.file = open(fname, 'r', encoding='utf-8', errors='ignore')
         self.lines = self.file.readlines()
         self._lineno = 0
         self._lineno_offset = 0
@@ -312,6 +313,7 @@ class F90File(object):
 
             self.lines = self.lines[1:]
 
+        cline = rmspace.sub(r'\1(', cline)
         if cline == '':
             return None
         else:
@@ -730,17 +732,21 @@ def check_subt(cl, file, grab_hold_doc=True):
 
             else:
 
-                # Subroutine definition
-                check = check_subt(cl, file)
-                if check[0] is not None:
-                    # Discard contained subroutine
-                    cl = check[1]
+                while True :
+                    # Subroutine definition
+                    check = check_subt(cl, file)
+                    if check[0] is not None:
+                        # Discard contained subroutine
+                        cl = check[1]
+                        continue
 
-                # Function definition
-                check = check_funct(cl, file)
-                if check[0] is not None:
-                    # Discard contained function
-                    cl = check[1]
+                    # Function definition
+                    check = check_funct(cl, file)
+                    if check[0] is not None:
+                        # Discard contained function
+                        cl = check[1]
+                        continue
+                    break
 
             m = subt_end.match(cl)
 
