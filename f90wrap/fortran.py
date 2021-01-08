@@ -678,6 +678,22 @@ class LowerCaseConverter(FortranTransformer):
         node.attributes = [a.lower() for a in node.attributes]
         return self.generic_visit(node)
 
+
+class RepeatedInterfaceCollapser(FortranTransformer):
+    """
+    Collapse repeated interfaces with the same name into a single interface
+    """
+
+    def visit_Module(self, node):
+        interface_map = {}
+        for interface in node.interfaces:
+            if interface.name in interface_map:
+                interface_map[interface.name].procedures.extend(interface.procedures)
+            else:
+                interface_map[interface.name] = interface
+        node.interfaces = list(interface_map.values())
+        return self.generic_visit(node)
+
 def strip_type(t):
     """Return type name from type declaration"""
     t = t.replace(' ', '')  # remove blanks
