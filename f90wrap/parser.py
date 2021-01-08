@@ -44,8 +44,16 @@ import logging
 import string
 import sys
 import os
+import re
 
-from f90wrap.fortran import *       #fixme: remove star import
+from f90wrap.fortran import (Fortran, Root, Program, Module,
+                             Procedure, Subroutine, Function, Interface,
+                             Prototype, Declaration,
+                             Argument, Element, Type,
+                             fix_argument_attributes,
+                             LowerCaseConverter,
+                             RepeatedInterfaceCollapser)
+
 
 log = logging.getLogger(__name__)
 
@@ -1502,8 +1510,7 @@ def read_files(args, doc_plugin_filename=None):
             cline = file.next()
 
     # apply some rules to the parsed tree
-    from f90wrap.fortran import fix_argument_attributes, LowerCaseConverter
-
     root = fix_argument_attributes(root)
     root = LowerCaseConverter().visit(root)
+    root = RepeatedInterfaceCollapser().visit(root)
     return root
