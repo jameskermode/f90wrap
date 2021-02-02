@@ -111,8 +111,8 @@ void f90wrap_abort_int_handler(int signum)
 
 numpy.f2py.rules.module_rules['modulebody'] = numpy.f2py.rules.module_rules['modulebody'].replace("#includes0#\n", includes_inject)
 
-numpy.f2py.rules.routine_rules['body'] = numpy.f2py.rules.routine_rules['body'].replace('\tvolatile int f2py_success = 1;\n', """\tvolatile int f2py_success = 1;
-\tint setjmpvalue; /* James Kermode - for setjmp */
+numpy.f2py.rules.routine_rules['body'] = numpy.f2py.rules.routine_rules['body'].replace("volatile int f2py_success = 1;\n", """volatile int f2py_success = 1;
+    int setjmpvalue; /* James Kermode - for setjmp */
 """)
 
 numpy.f2py.rules.routine_rules['body'] = numpy.f2py.rules.routine_rules['body'].replace('#callfortranroutine#\n', """/* setjmp() exception handling added by James Kermode */
