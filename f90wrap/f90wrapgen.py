@@ -241,6 +241,10 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             arg_dict['arg_attribs'] = ', '.join(attributes)
             arg_dict['comma'] = len(attributes) != 0 and ', ' or ''
 
+            #character array definition
+            #https://github.com/numpy/numpy/issues/18684
+            if arg.type == 'character(*)' :
+                arg_dict['arg_type'] = 'character*(*)'
             self.write('%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s' % arg_dict)
             if hasattr(arg, 'f2py_line'):
                 self.write(arg.f2py_line)
