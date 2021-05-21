@@ -651,17 +651,30 @@ class LowerCaseConverter(FortranTransformer):
         node.orig_name = node.name
         node.name = node.name.lower()
         node.uses = [u.lower() for u in node.uses]
+        if node.mod_name is not None:
+            node.mod_name = node.mod_name.lower()
         return self.generic_visit(node)
 
     def visit_Interface(self, node):
         node.orig_name = node.name
         node.name = node.name.lower()
+        if node.mod_name is not None:
+            node.mod_name = node.mod_name.lower()
+        return self.generic_visit(node)
+
+    def visit_Binding(self, node):
+        if node.type_name is not None:
+            node.type_name = node.type_name.lower()
+        if node.mod_name is not None:
+            node.mod_name = node.mod_name.lower()
         return self.generic_visit(node)
 
     def visit_Type(self, node):
         node.orig_name = node.name
         node.name = node.name.lower()
         node.attributes = [a.lower() for a in node.attributes]
+        if node.mod_name is not None:
+            node.mod_name = node.mod_name.lower()
         return self.generic_visit(node)
 
     def visit_Declaration(self, node):

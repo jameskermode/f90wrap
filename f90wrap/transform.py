@@ -694,6 +694,8 @@ class MethodFinder(ft.FortranTransformer):
                 if node.mod_name not in self.modules_for_type[typ.mod_name]:
                     # procedure looks like a method but
                     # defined in a different module - leave it where it is
+                    log.info(f'Not moving method {node.name} from module {node.mod_name} as '
+                             f'type defined in different module {self.modules_for_type[typ.mod_name]}')
                     return node
 
                 # just a regular method - move into typ.procedures
