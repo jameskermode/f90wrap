@@ -3,11 +3,9 @@ python:
   - "3.6"
   - "3.7"
   - "3.8"
+  - "3.9"
 install:
-  - "sudo apt-get update"
-  - "sudo apt-get install python-numpy python-scipy gfortran"
-  - "pip install numpy"
-  - "python setup.py install"
+  - "pip install ."
 script:
   - "cd examples ; make test"
 notifications:
