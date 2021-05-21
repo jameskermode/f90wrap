@@ -65,5 +65,5 @@ setup(name='f90wrap',
       author='James Kermode',
       author_email='james.kermode@gmail.com',
       url='https://github.com/jameskermode/f90wrap',
-      download_url='https://github.com/jameskermode/f90wrap/archive/v%s.tar.gz' % __version__,
-      install_requires=['numpy>=1.3.0'])
+      download_url=f'https://github.com/jameskermode/f90wrap/archive/refs/tags/v{__version__}.tar.gz',
+      install_requires=['numpy>=1.19'])
