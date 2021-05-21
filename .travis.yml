@@ -6,10 +6,9 @@ python:
   - "3.9"
 install:
   - "sudo apt-get install gfortran"
+  - "pip install -U numpy"
   - "pip install ."
-  - "python -c 'import numpy; print(numpy.__path__)'"
 script:
-  - "python -c 'import numpy; print(numpy.__path__)'"
   - "cd examples ; make test"
 notifications:
   email:
