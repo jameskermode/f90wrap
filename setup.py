@@ -28,11 +28,6 @@ import sys
 
 __version__ = '0.2.4'
 
-major, minor = sys.version_info[0:2]
-if (major, minor) < (3, 6):
-    sys.stderr.write('Python 3.6 or later is needed to use this package\n')
-    sys.exit(1)
-
 try:
     import setuptools
 except ImportError:
@@ -66,4 +61,5 @@ setup(name='f90wrap',
       author_email='james.kermode@gmail.com',
       url='https://github.com/jameskermode/f90wrap',
       download_url=f'https://github.com/jameskermode/f90wrap/archive/refs/tags/v{__version__}.tar.gz',
-      install_requires=['numpy>=1.19'])
+      install_requires=['numpy>=1.19'],
+      python_requires=">=3.6")
