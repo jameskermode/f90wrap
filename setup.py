@@ -25,7 +25,9 @@
 
 import os
 import sys
-from f90wrap import __version__
+
+__version__ = '0.2.4'
+
 major, minor = sys.version_info[0:2]
 if (major, minor) < (3, 6):
     sys.stderr.write('Python 3.6 or later is needed to use this package\n')
