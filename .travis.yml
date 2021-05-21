@@ -5,6 +5,7 @@ python:
   - "3.8"
   - "3.9"
 install:
+  - "sudo apt-get install gfortran"
   - "pip install ."
 script:
   - "cd examples ; make test"
