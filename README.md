@@ -1,7 +1,7 @@
 f90wrap: Fortran to Python interface generator with derived type support
 ========================================================================
 
-[![Build Status](https://travis-ci.com/jameskermode/f90wrap.svg?branch=master](https://travis-ci.com/jameskermode/f90wrap)
+[![Build Status](https://travis-ci.com/jameskermode/f90wrap.svg?branch=master)](https://travis-ci.com/jameskermode/f90wrap)
 
 f90wrap is a tool to automatically generate Python extension modules
 which interface to Fortran code that makes use of derived types. It
