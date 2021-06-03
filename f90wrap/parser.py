@@ -46,7 +46,7 @@ import sys
 import os
 import re
 
-from f90wrap.fortran import (Fortran, Root, Program, Module,
+from f90wrap.fortran import (Fortran, Binding,Root, Program, Module,
                              Procedure, Subroutine, Function, Interface,
                              Prototype, Declaration,
                              Argument, Element, Type,
