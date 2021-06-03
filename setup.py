@@ -27,7 +27,7 @@ import os
 import sys
 
 version = {}
-with open('...f90wrap/__init__.py') as fp:
+with open('f90wrap/__init__.py') as fp:
     exec(fp.read(), version)
 __version__ = version['__version__']
 
