@@ -132,6 +132,8 @@ USAGE
                             help="File containing Python dictionary mapping modules defining times to list of additional modules defining methods")
         parser.add_argument('-m', '--mod-name', default='mod',
                             help="Name of output extension module (without .so extension).")
+        parser.add_argument('--f90-mod-name', default=None,
+                            help="Full name of compiled extension module. Default is _MOD_NAME. Set to PACKAGE._MOD_NAME if extension will be included in a package")
         parser.add_argument('-M', '--move-methods', action='store_true',
                             help="Convert routines with derived type instance as first agument into class methods")
         parser.add_argument('--shorten-routine-names', action='store_true',
@@ -376,6 +378,7 @@ USAGE
 
         pywrap.PythonWrapperGenerator(prefix, mod_name,
                                       types, make_package=package,
+                                      f90_mod_name=f90_mod_name,
                                       kind_map=kind_map,
                                       init_file=args.init_file,
                                       py_mod_names=py_mod_names,
