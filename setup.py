@@ -26,7 +26,10 @@
 import os
 import sys
 
-__version__ = '0.2.4'
+version = {}
+with open('...f90wrap/__init__.py') as fp:
+    exec(fp.read(), version)
+__version__ = version['__version__']
 
 try:
     import setuptools
@@ -61,5 +64,5 @@ setup(name='f90wrap',
       author_email='james.kermode@gmail.com',
       url='https://github.com/jameskermode/f90wrap',
       download_url=f'https://github.com/jameskermode/f90wrap/archive/refs/tags/v{__version__}.tar.gz',
-      install_requires=['numpy>=1.16'],
+      install_requires=['numpy>=1.13'],
       python_requires=">=3.6")
