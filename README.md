@@ -29,10 +29,16 @@ Dependencies
 Installation
 ------------
 
-For the latest stable release, install with either `pip`:
+For the latest stable release, install with `pip`:
 
 ```
 pip install f90wrap
+```
+
+There is also a [conda package](https://anaconda.org/conda-forge/f90wrap) on conda-forge:
+
+```
+conda install -c conda-forge f90wrap
 ```
 
 For the development version, installation is as follows:
