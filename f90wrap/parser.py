@@ -46,13 +46,14 @@ import sys
 import os
 import re
 
-from f90wrap.fortran import (Fortran, Binding,Root, Program, Module,
+from f90wrap.fortran import (Fortran, Root, Program, Module,
                              Procedure, Subroutine, Function, Interface,
                              Prototype, Declaration,
                              Argument, Element, Type,
                              fix_argument_attributes,
                              LowerCaseConverter,
-                             RepeatedInterfaceCollapser)
+                             RepeatedInterfaceCollapser,
+                             Binding,)
 
 
 log = logging.getLogger(__name__)
