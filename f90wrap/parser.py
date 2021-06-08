@@ -52,7 +52,8 @@ from f90wrap.fortran import (Fortran, Root, Program, Module,
                              Argument, Element, Type,
                              fix_argument_attributes,
                              LowerCaseConverter,
-                             RepeatedInterfaceCollapser)
+                             RepeatedInterfaceCollapser,
+                             Binding,)
 
 
 log = logging.getLogger(__name__)
