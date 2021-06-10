@@ -35,4 +35,6 @@ jobs:
         sudo apt-get install gfortran
         pip install .
     - name: Run tests
-        cd examples ; make test
+      run: |
+        cd examples
+        make test
