@@ -123,7 +123,7 @@ class CodeGenerator(object):
                 while tokens:
                     token = tokens.pop(0)
                     current_line = ' '.join(split_lines[-1])
-                    if len(current_line) + len(token) < self.max_length:
+                    if len(current_line) == 0 or len(current_line) + len(token) < self.max_length:
                         split_lines[-1].append(token)
                     else:
                         split_lines[-1].append(self.continuation)
