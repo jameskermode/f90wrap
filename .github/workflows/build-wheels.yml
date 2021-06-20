@@ -20,7 +20,7 @@ jobs:
            CIBW_SKIP: cp27-* cp35-*
            CIBW_BEFORE_ALL_MACOS: "brew link gfortran && which gfortran"
            CIBW_BEFORE_ALL_LINUX: "yum install -y gcc-gfortran"
-           CIBW_ENVIRONMENT: "F90=gfortran F90FLAGS=-fPIC PATH=/usr/local/bin:${PATH"
+           CIBW_ENVIRONMENT: "F90=gfortran F90FLAGS=-fPIC PATH=/usr/local/bin:${PATH}"
            CIBW_TEST_COMMAND: "cd ${project}/examples; make test"
 
       - uses: actions/upload-artifact@v2
