@@ -18,10 +18,9 @@ jobs:
         uses: pypa/cibuildwheel@v1.11.1.post1
         env:
            CIBW_SKIP: cp27-* cp35-*
-           CIBW_BEFORE_ALL_MACOS: "brew link gfortran"
            CIBW_BEFORE_ALL_LINUX: "yum install -y gcc-gfortran"
-           CIBW_ENVIRONMENT: "F90=gfortran F90FLAGS=-fPIC PATH=/usr/local/bin:${PATH}"
-           CIBW_TEST_COMMAND: "cd ${project}/examples; make test"
+           CIBW_ENVIRONMENT_MACOS: "FC=gfortran-10 F77=gfortran-10 F90=gfortran-10 F90FLAGS=-fPIC"
+           CIBW_TEST_COMMAND: "cd {project}/examples; make test"
            
       # Uncomment to get SSH access for testing
       - name: Setup tmate session
