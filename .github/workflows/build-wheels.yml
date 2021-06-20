@@ -21,12 +21,13 @@ jobs:
            CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"           
            CIBW_BEFORE_ALL_MACOS: "ln -s $(which gfortran-10) /usr/local/bin/gfortran"
            CIBW_BEFORE_ALL_LINUX: "yum install -y gcc-gfortran"
-           CIBW_TEST_COMMAND: "cd {project}/examples; make test"
+           CIBW_TEST_COMMAND: "cd {project}/examples; make clean; make test"
            
       # Uncomment to get SSH access for testing
       - name: Setup tmate session
         if: failure()
-        uses: mxschmitt/action-tmate@v3           
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
 
       - uses: actions/upload-artifact@v2
         with:
