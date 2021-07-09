@@ -47,4 +47,4 @@ wrapping Fortran code with a simple f90 interface layer.
 
 (c) James Kermode 2011-2021 <james.kermode@gmail.com>"""
 
-__version__ = '0.2.6'
+__version__ = '0.2.7'
