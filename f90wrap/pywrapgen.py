@@ -592,7 +592,15 @@ except ValueError:
         self.write()
 
     def write_dt_wrappers(self, node, el, properties):
-        cls_name = normalise_class_name(ft.strip_type(el.type), self.class_names)
+
+# change class names to avoid reserved keywords to conform to what f2py does
+# with renaming reserved words
+        import numpy
+        name_map = numpy.f2py.crackfortran.badnames
+        if ft.strip_type(el.type) in name_map:
+            cls_name = name_map[ft.strip_type(el.type)]
+        cls_name = normalise_class_name(cls_name, self.class_names)
+
         mod_name = self.types[ft.strip_type(el.type)].mod_name
         cls_mod_name = self.py_mod_names.get(mod_name, mod_name)
         dct = dict(el_name=el.name,
