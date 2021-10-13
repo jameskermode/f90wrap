@@ -19,7 +19,7 @@ EXAMPLES = arrayderivedtypes \
 	subroutine_contains_issue101 \
 	type_bn
 
-PYTHON = python
+PYTHON = python3
 
 all: test
 
