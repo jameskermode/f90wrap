@@ -40,7 +40,10 @@ def py_arg_value(arg):
 
 
 def normalise_class_name(name, name_map):
-    return name_map.get(name.lower(), name.title())
+    temp = name_map.get(name.lower(), name.title())
+    if temp.endswith('_Bn'):
+        temp = temp.rstrip('_Bn') +'_bn'
+    return temp
 
 
 def format_call_signature(node):
@@ -523,16 +526,19 @@ except ValueError:
 
     def write_scalar_wrappers(self, node, el, properties):
         dct = dict(el_name=el.name,
-                   el_orig_name=el.orig_name,
-                   el_name_get=el.name,
-                   el_name_set=el.name,
+                   el_orig_name=el.orig_name.lower(),
+                   el_name_get=el.name.lower(),
+                   el_name_set=el.name.lower(),
                    mod_name=self.f90_mod_name,
-                   prefix=self.prefix, type_name=node.name,
+                   prefix=self.prefix, type_name=node.name.lower(),
                    self='self',
                    selfdot='self.',
                    selfcomma='self, ',
                    handle=isinstance(node, ft.Type) and 'self._handle' or '')
 
+        #print('class names',self.class_names, node.orig_name)
+        #cls_name = normalise_class_name(node.orig_name, self.class_names)
+        dct['type_orig_name'] = node.orig_name.lower()
         if hasattr(el, 'py_name'):
             dct['el_name_get'] = el.py_name
             dct['el_name_set'] = el.py_name
@@ -563,7 +569,7 @@ except ValueError:
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
         self.write(format_doc_string(el))
-        self.write('return %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)' % dct)
+        self.write('return %(mod_name)s.%(prefix)s%(type_orig_name)s__get__%(el_orig_name)s(%(handle)s)' % dct)
         self.dedent()
         self.write()
         if 'parameter' in el.attributes and isinstance(node, ft.Module) and self.make_package:
@@ -574,7 +580,7 @@ except ValueError:
             if not isinstance(node, ft.Module) or not self.make_package:
                 self.write('@%(el_name_get)s.setter' % dct)
             self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-    %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
+    %(mod_name)s.%(prefix)s%(type_orig_name)s__set__%(el_orig_name)s(%(set_args)s)
     ''' % dct)
             self.write()
 
@@ -601,14 +607,18 @@ except ValueError:
         if ft.strip_type(el.type) in name_map:
             cls_name = name_map[ft.strip_type(el.type)]
             cls_name = normalise_class_name(cls_name, self.class_names)
+            log.info('reserved keyword detected: renaming class %s' % cls_name)
         else:
             cls_name = normalise_class_name(ft.strip_type(el.type), self.class_names)
 
+        print('normalise_class_name called in write_dt_wrappers',ft.strip_type(el.type),self.class_names)
+
         mod_name = self.types[ft.strip_type(el.type)].mod_name
         cls_mod_name = self.py_mod_names.get(mod_name, mod_name)
-        dct = dict(el_name=el.name,
-                   el_name_get=el.name,
-                   el_name_set=el.name,
+        dct = dict(el_name=el.name.lower(),
+                   el_name_get=el.name.lower(),
+                   el_name_set=el.name.lower(),
+                   el_orig_name=el.orig_name.lower(),
                    mod_name=self.f90_mod_name,
                    prefix=self.prefix, type_name=node.name,
                    cls_name=cls_name,
@@ -617,6 +627,9 @@ except ValueError:
                    selfdot='self.',
                    selfcomma='self, ',
                    handle=isinstance(node, ft.Type) and 'self._handle' or '')
+
+# f2py/C uses lowercase for everything..
+        dct['type_orig_name'] = node.orig_name.lower()
 
         print('dct is ',dct)
         if isinstance(node, ft.Type):
@@ -651,7 +664,7 @@ except ValueError:
         self.write(format_doc_string(el))
         if isinstance(node, ft.Module) and self.make_package:
             self.write('global %(el_name)s' % dct)
-        self.write('''%(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)
+        self.write('''%(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_orig_name)s__get__%(el_orig_name)s(%(handle)s)
 if tuple(%(el_name)s_handle) in %(selfdot)s_objs:
     %(el_name)s = %(selfdot)s_objs[tuple(%(el_name)s_handle)]
 else:
@@ -667,21 +680,23 @@ return %(el_name)s''' % dct)
                 self.write('@%(el_name_set)s.setter' % dct)
             self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
     %(el_name)s = %(el_name)s._handle
-    %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
+    %(mod_name)s.%(prefix)s%(type_orig_name)s__set__%(el_name)s(%(set_args)s)
     ''' % dct)
             self.write()
 
     def write_sc_array_wrapper(self, node, el, dims, properties):
-        dct = dict(el_name=el.name,
-                   el_name_get=el.name,
-                   el_name_set=el.name,
+        dct = dict(el_name=el.name.lower(),
+                   el_name_get=el.name.lower(),
+                   el_name_set=el.name.lower(),
                    mod_name=self.f90_mod_name,
-                   prefix=self.prefix, type_name=node.name,
+                   prefix=self.prefix, type_name=node.name.lower(),
                    self='self',
                    selfdot='self.',
                    selfcomma='self, ',
                    doc=format_doc_string(el),
                    handle=isinstance(node, ft.Type) and 'self._handle' or 'f90wrap.runtime.empty_handle')
+
+        dct['type_orig_name'] = node.orig_name.lower()
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write('@property')

@@ -781,8 +781,14 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         if isinstance(t, ft.Module):
             extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
         elif isinstance(t, ft.Type):
-            extra_uses[self.types[t.orig_name].mod_name] = [t.orig_name]
-
+            print(t.orig_name,t.name,self.types)
+            orig_name = t.orig_name.lower()
+            try:
+                extra_uses[self.types[t.name].mod_name] = [orig_name]
+            except:
+                print('self.types = ',self.types)
+                print('t.orig_name',t.orig_name, t.name)
+                extra_uses[self.types[orig_name].mod_name] = [orig_name]
         # Check if the type has recursive definition:
         same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
 
@@ -798,7 +804,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         #   -- Since some cases require a safer localvar name, we always transform it
         localvar = self.prefix + el.orig_name
 
-        self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
+        self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.orig_name,
                                                       getset, el.orig_name, this, localvar))
         self.indent()
 
@@ -809,6 +815,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             self.write_type_lines(t.orig_name)
 
         if el.type.startswith('type') and not (el.type == 'type(' + t.name + ')'):
+            print('writing type lines',el.type)
             self.write_type_lines(el.type)
 
         if isinstance(t, ft.Type):
@@ -862,6 +869,6 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
                 else:
                     self.write('%s_%s = %s' % (t.name, el.orig_name, localvar))
         self.dedent()
-        self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
+        self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.orig_name, getset,
                                                     el.orig_name))
         self.write()
