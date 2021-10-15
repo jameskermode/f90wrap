@@ -7,13 +7,11 @@ SET(all_src "")
 
 file(GLOB pyint_files_src pyint_files/*.F90)
 file(GLOB pyinv_mod_src pyinv_modules/*.F90)
-file(GLOB mathops_src MathOps/*.f)
 
 # add files to list of sources
 LIST(APPEND all_src driver.F90)
 LIST(APPEND all_src ${pyint_files_src})
 LIST(APPEND all_src ${pyinv_mod_src})
-#LIST(APPEND all_src ${mathOps_src})
 
 # include preprocessor function from include file
 INCLUDE(${CMAKE_MODULE_PATH}/f90wrap.cmake) 
@@ -39,11 +37,6 @@ set(UDP ${LIB})
 set(UDL fortran_routines_${prj})
 add_library(${UDL} ${lib_src})
 
-# math library
-set(MTH netlib_routines_${prj})
-add_library(${MTH} ${mathops_src})
-target_compile_options(${MTH} PRIVATE "-fdefault-real-8")
-
 # no flags for lapack routines
 target_compile_options(${UDL} PRIVATE ${CMAKE_COMPILE_FLAGS})
 
@@ -52,8 +45,8 @@ set(FC ${CMAKE_Fortran_COMPILER})
 
 GET_FILENAME_COMPONENT(CN ${CMAKE_Fortran_COMPILER} NAME)
 
-set(UDLs ${UDL} ${MTH})
-set(UDPs ${UDP} ${UDP})
+set(UDLs ${UDL})
+set(UDPs ${UDP})
 #-----------------------------
 # 3. Run f90wrap: cmake script
 #-----------------------------
@@ -77,7 +70,7 @@ run_f90wrap("${FC}" "${CMAKE_COMPILE_FLAGS}" "${src_list}" "${prj}" "${MOD}" "${
 # build fortran executable
 SET(EXE ${prj}_exe)
 ADD_EXECUTABLE(${EXE} ${all_src})
-TARGET_LINK_LIBRARIES(${EXE} ${UDL} ${MTH})
+TARGET_LINK_LIBRARIES(${EXE} ${UDL})
 target_compile_options(${EXE} PRIVATE ${CMAKE_FORTRAN_FLAGS})
 
 # copy to main folder
