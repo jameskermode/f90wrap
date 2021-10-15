@@ -17,11 +17,18 @@ module highest_level
 
     type :: outer
         sequence
-        Type(Size) :: Size
+        Type(Size) :: Size!, inner_type_array(1)
         Type(oktype) :: Oktype
     end type
 
-    type(Size) :: size_tmp
     type(oktype) :: oktype_tmp
     type(outer) :: outer_tmp
+    type(Size) :: case
+end module
+
+module size 
+
+    implicit none 
+    real(kind=4) :: module_var
+
 end module

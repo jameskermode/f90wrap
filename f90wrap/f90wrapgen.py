@@ -444,7 +444,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         self.indent()
 
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
+            self.write_uses_lines(t, {t.orig_name: ['%s_%s => %s' % (t.orig_name, el.orig_name, el.orig_name)]})
         else:
             self.write_uses_lines(t)
 
@@ -779,15 +779,12 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         # Get appropriate use statements
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
+            extra_uses[t.orig_name] = ['%s_%s => %s' % (t.orig_name, el.orig_name, el.orig_name)]
         elif isinstance(t, ft.Type):
-            print(t.orig_name,t.name,self.types)
             orig_name = t.orig_name.lower()
             try:
                 extra_uses[self.types[t.name].mod_name] = [orig_name]
             except:
-                print('self.types = ',self.types)
-                print('t.orig_name',t.orig_name, t.name)
                 extra_uses[self.types[orig_name].mod_name] = [orig_name]
         # Check if the type has recursive definition:
         same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
@@ -815,7 +812,6 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             self.write_type_lines(t.orig_name)
 
         if el.type.startswith('type') and not (el.type == 'type(' + t.name + ')'):
-            print('writing type lines',el.type)
             self.write_type_lines(el.type)
 
         if isinstance(t, ft.Type):
@@ -862,12 +858,12 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
                 if isinstance(t, ft.Type):
                     self.write('%s = this_ptr%%p%%%s' % (localvar, el.orig_name))
                 else:
-                    self.write('%s = %s_%s' % (localvar, t.name, el.orig_name))
+                    self.write('%s = %s_%s' % (localvar, t.orig_name, el.orig_name))
             else:
                 if isinstance(t, ft.Type):
                     self.write('this_ptr%%p%%%s = %s' % (el.orig_name, localvar))
                 else:
-                    self.write('%s_%s = %s' % (t.name, el.orig_name, localvar))
+                    self.write('%s_%s = %s' % (t.orig_name, el.orig_name, localvar))
         self.dedent()
         self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.orig_name, getset,
                                                     el.orig_name))

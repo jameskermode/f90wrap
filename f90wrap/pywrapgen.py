@@ -250,7 +250,6 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 if el.type.startswith('type'):
-                    print('writing dt wrappers',node,el,properties)
                     self.write_dt_wrappers(node, el, properties)
                 else:
                     self.write_scalar_wrappers(node, el, properties)
@@ -440,7 +439,6 @@ except ValueError:
                         #         self.imports.add((self.py_mod_name + '.' + cls_mod_name, cls_name))
                         # else:
                         #     cls_name = cls_mod_name + '.' + cls_name
-                        print('writing from_handle',ret_val.name, cls_name, ret_val.name)
                         self.write('%s = %s.from_handle(%s, alloc=True)' %
                                    (ret_val.name, cls_name, ret_val.name))
                 self.write('return %(result)s' % dct)
@@ -497,8 +495,6 @@ except ValueError:
         log.info('PythonWrapperGenerator visiting type %s' % node.name)
         node.dt_array_initialisers = []
         cls_name = normalise_class_name(node.name, self.class_names)
-        print('writing class name',cls_name)
-        print(node.name,self.class_names)
         self.write('@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name))
         self.write('class %s(f90wrap.runtime.FortranDerivedType):' % cls_name)
         self.indent()
@@ -536,7 +532,6 @@ except ValueError:
                    selfcomma='self, ',
                    handle=isinstance(node, ft.Type) and 'self._handle' or '')
 
-        #print('class names',self.class_names, node.orig_name)
         #cls_name = normalise_class_name(node.orig_name, self.class_names)
         dct['type_orig_name'] = node.orig_name.lower()
         if hasattr(el, 'py_name'):
@@ -611,8 +606,6 @@ except ValueError:
         else:
             cls_name = normalise_class_name(ft.strip_type(el.type), self.class_names)
 
-        print('normalise_class_name called in write_dt_wrappers',ft.strip_type(el.type),self.class_names)
-
         mod_name = self.types[ft.strip_type(el.type)].mod_name
         cls_mod_name = self.py_mod_names.get(mod_name, mod_name)
         dct = dict(el_name=el.name.lower(),
@@ -631,7 +624,6 @@ except ValueError:
 # f2py/C uses lowercase for everything..
         dct['type_orig_name'] = node.orig_name.lower()
 
-        print('dct is ',dct)
         if isinstance(node, ft.Type):
             dct['set_args'] = '%(handle)s, %(el_name)s' % dct
         else:
@@ -671,7 +663,6 @@ else:
     %(el_name)s = %(cls_mod_name)s%(cls_name)s.from_handle(%(el_name)s_handle)
     %(selfdot)s_objs[tuple(%(el_name)s_handle)] = %(el_name)s
 return %(el_name)s''' % dct)
-        print('from_handle',dct)
         self.dedent()
         self.write()
 
