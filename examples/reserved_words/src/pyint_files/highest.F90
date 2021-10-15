@@ -1,6 +1,14 @@
 #define type(X) Type(X), target
 
+module case
+    
+    implicit none 
+    real(kind=4) :: module_var
+    
+end module
+
 module highest_level
+    use case
     implicit none
     type :: Size
         sequence
@@ -23,12 +31,5 @@ module highest_level
 
     type(oktype) :: oktype_tmp
     type(outer) :: outer_tmp
-    type(Size) :: case
-end module
-
-module size 
-
-    implicit none 
-    real(kind=4) :: module_var
-
+    type(Size) :: len
 end module
