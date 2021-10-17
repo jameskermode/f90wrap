@@ -5,13 +5,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN}/${prj})
 # all sources to create executable
 SET(all_src "")
 
-file(GLOB pyint_files_src pyint_files/*.F90)
-file(GLOB pyinv_mod_src pyinv_modules/*.F90)
+file(GLOB pyint_files_src *.F90)
 
 # add files to list of sources
-LIST(APPEND all_src driver.F90)
 LIST(APPEND all_src ${pyint_files_src})
-LIST(APPEND all_src ${pyinv_mod_src})
 
 # include preprocessor function from include file
 INCLUDE(${CMAKE_MODULE_PATH}/f90wrap.cmake) 
@@ -66,14 +63,3 @@ set(src_list ${pyint_files_src})
 MESSAGE("CMAKE FLAGS PASSED TO F90WRAP ARE " ${CMAKE_COMPILE_FLAGS})
 # 3b. call wrapper
 run_f90wrap("${FC}" "${CMAKE_COMPILE_FLAGS}" "${src_list}" "${prj}" "${MOD}" "${UDLs}" "${UDPs}" "${PYD}")
-
-# build fortran executable
-SET(EXE ${prj}_exe)
-ADD_EXECUTABLE(${EXE} ${all_src})
-TARGET_LINK_LIBRARIES(${EXE} ${UDL})
-target_compile_options(${EXE} PRIVATE ${CMAKE_FORTRAN_FLAGS})
-
-# copy to main folder
-add_custom_command(TARGET ${EXE}
-                   POST_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${EXE}> ${EXD})
