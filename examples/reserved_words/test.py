@@ -1,7 +1,7 @@
-import test
+import reserved_words
 import numpy
 
-sd        = test.highest_level.outer_tmp.size_bn
+sd        = reserved_words.highest_level.outer_tmp.size_bn
 type_DP   = type(sd.test_double)
 type_SP   = type(sd.test_single)
 type_real = type(sd.test_float)

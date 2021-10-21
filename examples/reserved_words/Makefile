@@ -44,7 +44,7 @@ endif
 # PROJECT CONFIG, do not put spaced behind the variables
 # ======================================================================
 # Python module name
-PYTHON_MODN = test
+PYTHON_MODN = reserved_words
 # mapping between Fortran and C types
 KIND_MAP = kind_map
 

@@ -33,11 +33,6 @@ test:
 	  make -C $$example PYTHON=$(PYTHON) test || exit ; \
 	done
 
-# reserved_words test uses CMake build system to invoke f90wrap and f2py-f90wrap
-	cd reserved_words/cmake/ && mkdir build && cd build && FC=gfortran cmake ../../ && make -j
-	pwd
-	cd reserved_words/ && ${PYTHON} driver.py
-	cd reserved_words/cmake && rm -r build
 clean:
 	for example in ${EXAMPLES}; do \
 	  echo "running make test in $$example" ; \
