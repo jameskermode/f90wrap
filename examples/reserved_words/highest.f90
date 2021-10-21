@@ -1,4 +1,3 @@
-#define type(X) Type(X), target
 
 module case
     
@@ -29,7 +28,7 @@ module highest_level
         Type(oktype) :: Oktype
     end type
 
-    type(oktype) :: oktype_tmp
-    type(outer) :: outer_tmp
-    type(Size) :: len
+    type(oktype), target :: oktype_tmp
+    type(outer), target :: outer_tmp
+    type(Size), target :: len
 end module
