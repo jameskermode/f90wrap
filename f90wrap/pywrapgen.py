@@ -495,6 +495,28 @@ except ValueError:
         self.write('continue')
         self.dedent()
         self.dedent()
+        self.write()
+
+        if self.type_check:
+            self.write('argTypes=[]')
+            self.write('for arg in args:')
+            self.indent()
+            self.write('try:')
+            self.indent()
+            self.write('argTypes.append("%s: dims \'%s\', type \'%s\'"%(str(type(arg)),'
+                        'arg.ndim, arg.dtype))')
+            self.dedent()
+            self.write('except AttributeError:')
+            self.indent()
+            self.write('argTypes.append(str(type(arg)))')
+            self.dedent()
+            self.dedent()
+
+            self.write('raise TypeError("Not able to call a version of "')
+            self.indent()
+            self.write('"\'%(intf_name)s\' compatible with the provided args:"' % dct)
+            self.write('"\\n%s\\n"%"\\n".join(argTypes))')
+            self.dedent()
         self.dedent()
         self.write()
 
