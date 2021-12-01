@@ -20,7 +20,7 @@
 
   You should have received a copy of the GNU Lesser General Public License
   along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
- 
+
   If you would like to license the source code under different terms,
   please contact James Kermode, james.kermode@gmail.com
 """
@@ -48,6 +48,7 @@ from f90wrap import transform as tf
 from f90wrap import f90wrapgen as fwrap
 from f90wrap import pywrapgen as pywrap
 
+logging.basicConfig(stream=sys.stdout)
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -131,6 +132,8 @@ USAGE
                             help="File containing Python dictionary mapping modules defining times to list of additional modules defining methods")
         parser.add_argument('-m', '--mod-name', default='mod',
                             help="Name of output extension module (without .so extension).")
+        parser.add_argument('--f90-mod-name', default=None,
+                            help="Full name of compiled extension module. Default is _MOD_NAME. Set to PACKAGE._MOD_NAME if extension will be included in a package")
         parser.add_argument('-M', '--move-methods', action='store_true',
                             help="Convert routines with derived type instance as first agument into class methods")
         parser.add_argument('--shorten-routine-names', action='store_true',
@@ -158,9 +161,9 @@ USAGE
         args = parser.parse_args()
 
         if args.verbose:
-            logging.root.setLevel(logging.DEBUG)
+            logging.getLogger().setLevel(logging.DEBUG)
         else:
-            logging.root.setLevel(logging.INFO)
+            logging.getLogger().setLevel(logging.INFO)
 
         # set defaults, to be overridden by command line args and config file
         kind_map = {}
@@ -208,7 +211,7 @@ USAGE
             argument_name_map = eval(open(args.argument_name_map).read())
 
         if args.only:
-            only = args.only.lower()
+            only = [o.lower() for o in args.only]
 
         if args.skip:
             skip = [s.lower() for s in args.skip]
@@ -375,6 +378,7 @@ USAGE
 
         pywrap.PythonWrapperGenerator(prefix, mod_name,
                                       types, make_package=package,
+                                      f90_mod_name=f90_mod_name,
                                       kind_map=kind_map,
                                       init_file=args.init_file,
                                       py_mod_names=py_mod_names,

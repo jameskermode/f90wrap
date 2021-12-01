@@ -32,6 +32,8 @@ from f90wrap import fortran as ft
 from f90wrap.six import string_types  # Python 2/3 compatibility library
 from f90wrap.transform import ArrayDimensionConverter
 
+log = logging.getLogger(__name__)
+
 
 class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     """
@@ -113,7 +115,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         Subroutines and elements within each module are properly wrapped.
         """
-        logging.info('F90WrapperGenerator visiting module %s' % node.name)
+        log.info('F90WrapperGenerator visiting module %s' % node.name)
         self.code = []
         self.write('! Module %s defined in file %s' % (node.name, node.filename))
         self.write()
@@ -167,6 +169,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     if only is None:
                         continue
                     for symbol in only:
+                        if all_uses[mod] is None:
+                            all_uses[mod] = []
                         if symbol not in all_uses[mod]:
                             all_uses[mod] += [symbol]
                 elif only is not None:
@@ -189,7 +193,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write('end type ' + ty.name)
         self.write()
 
-    def write_type_lines(self, tname):
+    def write_type_lines(self, tname, recursive=False):
         """
         Write a pointer type for a given type name
 
@@ -197,11 +201,19 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         ----------
         tname : `str`
             Should be the name of a derived type in the wrapped code.
+
+        recursive : `boolean`
+            Adjusts array pointer for recursive derived type array
         """
         tname = ft.strip_type(tname)
-        self.write("""type %(typename)s_ptr_type
+        if not recursive:
+            self.write("""type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
 end type %(typename)s_ptr_type""" % {'typename': tname})
+        else:
+            self.write("""type %(typename)s_rec_ptr_type
+    type(%(typename)s), pointer :: p => NULL()
+end type %(typename)s_rec_ptr_type""" % {'typename': tname})
 
     def write_arg_decl_lines(self, node):
         """
@@ -229,6 +241,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             arg_dict['arg_attribs'] = ', '.join(attributes)
             arg_dict['comma'] = len(attributes) != 0 and ', ' or ''
 
+            #character array definition
+            #https://github.com/numpy/numpy/issues/18684
+            if arg.type == 'character(*)' :
+                arg_dict['arg_type'] = 'character*(*)'
             self.write('%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s' % arg_dict)
             if hasattr(arg, 'f2py_line'):
                 self.write(arg.f2py_line)
@@ -352,7 +368,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         call_name = node.name
         if hasattr(node, 'call_name'):
             call_name = node.call_name
-        logging.info(
+        log.info(
             'F90WrapperGenerator visiting routine %s call_name %s mod_name %r' % (node.name, call_name, node.mod_name))
         self.write("subroutine %(sub_name)s%(arg_names)s" %
                    {'sub_name': self.prefix + node.name,
@@ -387,7 +403,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         """
         Properly wraps derived types, including derived-type arrays.
         """
-        logging.info('F90WrapperGenerator visiting type %s' % node.name)
+        log.info('F90WrapperGenerator visiting type %s' % node.name)
 
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
@@ -587,9 +603,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         if 'super-type' in t.doc:
             self.write_super_type_lines(t)
 
+        # Check if the type has recursive definition:
+        same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
+
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
-        self.write_type_lines(el.type)
+        self.write_type_lines(el.type,same_type)
 
         self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
@@ -599,7 +618,10 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             array_name = '%s_%s' % (t.name, el.name)
         self.write('integer, intent(in) :: %s' % (safe_i))
         self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name + 'item', sizeof_fortran_t))
-        self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
+        if not same_type:
+            self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
+        else:
+            self.write('type(%s_rec_ptr_type) :: %s_ptr' % (ft.strip_type(el.type),el.name))
         self.write()
         if isinstance(t, ft.Type):
             self.write('this_ptr = transfer(%s, this_ptr)' % (this))
@@ -687,9 +709,12 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
         self.write()
         if 'super-type' in t.doc:
             self.write_super_type_lines(t)
+
+        # Check if the type has recursive definition:
+        same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
-        self.write_type_lines(el.type)
+        self.write_type_lines(el.type,same_type)
         self.write('integer, intent(out) :: %s' % (safe_n))
         self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
@@ -737,7 +762,7 @@ end type %(typename)s_ptr_type""" % {'typename': tname})
             String indicating whether to write a get routine, or a set routine.
         """
 
-        logging.debug('writing %s wrapper for %s.%s' % (getset, t.name, el.name))
+        log.debug('writing %s wrapper for %s.%s' % (getset, t.name, el.name))
 
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"

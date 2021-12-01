@@ -1,7 +1,7 @@
 f90wrap: Fortran to Python interface generator with derived type support
 ========================================================================
 
-[![Build Status](https://travis-ci.org/jameskermode/f90wrap.svg?branch=master)](https://travis-ci.org/jameskermode/f90wrap)
+![Build Status](https://github.com/jameskermode/f90wrap/actions/workflows/python-package.yml/badge.svg)
 
 f90wrap is a tool to automatically generate Python extension modules
 which interface to Fortran code that makes use of derived types. It
@@ -12,7 +12,7 @@ suitable for wrapping with f2py, together with a higher-level Pythonic
 wrapper that makes the existance of an additional layer transparent to
 the final user.
 
-Copyright (C) James Kermode 2011-2020. Released under the GNU Lesser General
+Copyright (C) James Kermode 2011-2021. Released under the GNU Lesser General
 Public License, version 3. Parts originally based on f90doc - automatic
 documentation generator for Fortran 90. Copyright (C) 2004 Ian Rutt.
 
@@ -29,10 +29,16 @@ Dependencies
 Installation
 ------------
 
-For the latest stable release, install with either `pip`:
+For the latest stable release, install with `pip`:
 
 ```
 pip install f90wrap
+```
+
+There is also a [conda package](https://anaconda.org/conda-forge/f90wrap) on conda-forge:
+
+```
+conda install -c conda-forge f90wrap
 ```
 
 For the development version, installation is as follows:

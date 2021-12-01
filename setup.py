@@ -25,11 +25,11 @@
 
 import os
 import sys
-from f90wrap import __version__
-major, minor = sys.version_info[0:2]
-if (major, minor) < (3, 6):
-    sys.stderr.write('Python 3.6 or later is needed to use this package\n')
-    sys.exit(1)
+
+version = {}
+with open('f90wrap/__init__.py') as fp:
+    exec(fp.read(), version)
+__version__ = version['__version__']
 
 try:
     import setuptools
@@ -46,11 +46,11 @@ arraydata_ext = Extension(name='f90wrap.arraydata',
                           include_dirs=f2py_info['include_dirs'])
 
 description = 'Fortran to Python interface generator with derived type support'
-long_description = description
-if os.path.exists('README.rst'):
-    long_description = open('README.rst', 'r').read()
-elif os.path.exists('README.md'):
-    long_description = open('README.md', 'r').read()
+
+
+this_directory = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(name='f90wrap',
       packages=['f90wrap'],
@@ -59,8 +59,10 @@ setup(name='f90wrap',
       version=__version__,
       description=description,
       long_description=long_description,
+      long_description_content_type='text/markdown',
       author='James Kermode',
       author_email='james.kermode@gmail.com',
       url='https://github.com/jameskermode/f90wrap',
-      download_url='https://github.com/jameskermode/f90wrap/archive/v%s.tar.gz' % __version__,
-      install_requires=['numpy>=1.3.0'])
+      download_url=f'https://github.com/jameskermode/f90wrap/archive/refs/tags/v{__version__}.tar.gz',
+      install_requires=['numpy>=1.13'],
+      python_requires=">=3.6")

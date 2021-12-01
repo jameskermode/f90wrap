@@ -71,11 +71,11 @@ class FortranDerivedType(object):
             init_array(self)
 
     @classmethod
-    def from_handle(cls, handle):
+    def from_handle(cls, handle, alloc=False):
         self = cls.__new__(cls)
         FortranDerivedType.__init__(self)  # always call the base constructor only
         self._handle = handle
-        self._alloc = False
+        self._alloc = alloc
         return self
 
 
