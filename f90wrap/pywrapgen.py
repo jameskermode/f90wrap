@@ -688,13 +688,13 @@ return %(el_name)s''' % dct)
             node.array_initialisers.append(dct['el_name_get'])
 
         self.write("""array_ndim, array_type, array_shape, array_handle = \
-    %(mod_name)s.%(prefix)s%(type_name)s__array__%(orig_name)s(%(handle)s)
+    %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s(%(handle)s)
 if array_handle in %(selfdot)s_arrays:
     %(el_name)s = %(selfdot)s_arrays[array_handle]
 else:
     %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
                             %(handle)s,
-                            %(mod_name)s.%(prefix)s%(type_name)s__array__%(orig_name)s)
+                            %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s)
     %(selfdot)s_arrays[array_handle] = %(el_name)s
 return %(el_name)s""" % dct)
         self.dedent()

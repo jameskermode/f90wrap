@@ -365,7 +365,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
-        call_name = node.name
+        call_name = node.orig_name
         if hasattr(node, 'call_name'):
             call_name = node.call_name
         log.info(
@@ -381,7 +381,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         if node.mod_name is None:
             self.write('external %s' % call_name)
             if hasattr(node, 'orig_node') and isinstance(node.orig_node, ft.Function):
-                self.write('%s %s' % (node.orig_node.ret_val.type, node.name))
+                self.write('%s %s' % (node.orig_node.ret_val.type, node.orig_name))
 
         self.write()
         for tname in node.types:
@@ -440,19 +440,19 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         else:
             this = 'dummy_this, '
 
-        self.write('subroutine %s%s__array__%s(%snd, dtype, dshape, dloc)' % (self.prefix, t.name, el.orig_name, this))
+        self.write('subroutine %s%s__array__%s(%snd, dtype, dshape, dloc)' % (self.prefix, t.name, el.name, this))
         self.indent()
 
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.orig_name)]})
+            self.write_uses_lines(t, {t.orig_name: ['%s_%s => %s' % (t.name, el.name, el.orig_name)]})
         else:
             self.write_uses_lines(t)
 
         self.write('implicit none')
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
+            self.write_type_lines(t.orig_name)
             self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write('type(%s_ptr_type) :: this_ptr' % t.orig_name)
         else:
             self.write('integer, intent(in) :: dummy_this(%d)' % sizeof_fortran_t)
 
@@ -493,7 +493,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             self.write('end if')
 
         self.dedent()
-        self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.orig_name))
+        self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.name))
         self.write()
 
     def _write_dt_array_wrapper(self, t, element, dims,
@@ -779,7 +779,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         # Get appropriate use statements
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
+            extra_uses[t.orig_name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
         elif isinstance(t, ft.Type):
             extra_uses[self.types[t.name].mod_name] = [t.name]
 
@@ -799,21 +799,21 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         localvar = self.prefix + el.orig_name
 
         self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
-                                                      getset, el.orig_name, this, localvar))
+                                                      getset, el.name, this, localvar))
         self.indent()
 
         self.write_uses_lines(el, extra_uses)
 
         self.write('implicit none')
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
+            self.write_type_lines(t.orig_name)
 
-        if el.type.startswith('type') and not (el.type == 'type(' + t.name + ')'):
+        if el.type.startswith('type') and not (el.type == 'type(' + t.orig_name + ')'):
             self.write_type_lines(el.type)
 
         if isinstance(t, ft.Type):
             self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write('type(%s_ptr_type) :: this_ptr' % t.orig_name)
 
         # Return/set by value
         attributes = [attr for attr in el.attributes if attr not in
@@ -863,5 +863,5 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
                     self.write('%s_%s = %s' % (t.name, el.orig_name, localvar))
         self.dedent()
         self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
-                                                    el.orig_name))
+                                                    el.name))
         self.write()
