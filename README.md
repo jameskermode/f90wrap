@@ -102,7 +102,7 @@ applications:
  - [QUIP](http://libatoms.github.io/QUIP/) - molecular dynamics code
  - [CASTEP](http://www.castep.org) - electronic structure code
 
-See this [Jupyter notebook](https://github.com/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo-feb-2020.ipynb) 
+See this [Jupyter notebook](https://github.com/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo.ipynb) 
 from a recent seminar for more details.
 
 Usage
