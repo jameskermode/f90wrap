@@ -9,6 +9,7 @@ EXAMPLES = arrayderivedtypes \
 	extends \
 	interface \
 	issue105_function_definition_with_empty_lines \
+	keyword_renaming_issue160 \
 	issue32 \
 	mockderivetype \
 	mod_arg_clash \

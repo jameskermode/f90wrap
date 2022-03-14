@@ -1,0 +1,6 @@
+{
+ 'integer' : {'' : 'long_long',
+	 		  '4': 'int',
+	          '8': 'long_long',
+	          'dp': 'long_long' },
+}

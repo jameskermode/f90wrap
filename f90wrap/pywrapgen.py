@@ -658,7 +658,8 @@ return %(el_name)s''' % dct)
             self.write()
 
     def write_sc_array_wrapper(self, node, el, dims, properties):
-        dct = dict(el_name=el.name,
+        dct = dict(orig_name=el.orig_name,
+                   el_name=el.name,
                    el_name_get=el.name,
                    el_name_set=el.name,
                    mod_name=self.f90_mod_name,
