@@ -444,13 +444,13 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         self.indent()
 
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
+            self.write_uses_lines(t, {t.orig_name: ['%s_%s => %s' % (t.orig_name, el.orig_name, el.orig_name)]})
         else:
             self.write_uses_lines(t)
 
         self.write('implicit none')
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
+            self.write_type_lines(t.orig_name)
             self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
         else:
@@ -607,7 +607,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
 
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
+            self.write_type_lines(t.orig_name)
         self.write_type_lines(el.type,same_type)
 
         self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
@@ -779,10 +779,13 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         # Get appropriate use statements
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
+            extra_uses[t.orig_name] = ['%s_%s => %s' % (t.orig_name, el.orig_name, el.orig_name)]
         elif isinstance(t, ft.Type):
-            extra_uses[self.types[t.name].mod_name] = [t.name]
-
+            orig_name = t.orig_name.lower()
+            try:
+                extra_uses[self.types[t.name].mod_name] = [orig_name]
+            except:
+                extra_uses[self.types[orig_name].mod_name] = [orig_name]
         # Check if the type has recursive definition:
         same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
 
@@ -798,7 +801,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         #   -- Since some cases require a safer localvar name, we always transform it
         localvar = self.prefix + el.orig_name
 
-        self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
+        self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.orig_name,
                                                       getset, el.orig_name, this, localvar))
         self.indent()
 
@@ -806,14 +809,14 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
 
         self.write('implicit none')
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
+            self.write_type_lines(t.orig_name)
 
         if el.type.startswith('type') and not (el.type == 'type(' + t.name + ')'):
             self.write_type_lines(el.type)
 
         if isinstance(t, ft.Type):
             self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write('type(%s_ptr_type) :: this_ptr' % t.orig_name)
 
         # Return/set by value
         attributes = [attr for attr in el.attributes if attr not in
@@ -855,13 +858,13 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
                 if isinstance(t, ft.Type):
                     self.write('%s = this_ptr%%p%%%s' % (localvar, el.orig_name))
                 else:
-                    self.write('%s = %s_%s' % (localvar, t.name, el.orig_name))
+                    self.write('%s = %s_%s' % (localvar, t.orig_name, el.orig_name))
             else:
                 if isinstance(t, ft.Type):
                     self.write('this_ptr%%p%%%s = %s' % (el.orig_name, localvar))
                 else:
-                    self.write('%s_%s = %s' % (t.name, el.orig_name, localvar))
+                    self.write('%s_%s = %s' % (t.orig_name, el.orig_name, localvar))
         self.dedent()
-        self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
+        self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.orig_name, getset,
                                                     el.orig_name))
         self.write()
