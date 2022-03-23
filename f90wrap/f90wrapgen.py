@@ -448,7 +448,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         else:
             self.write_uses_lines(t)
 
-        self.write('use, intrinsic :: iso_c_binding, only : c_int'
+        self.write('use, intrinsic :: iso_c_binding, only : c_int')
         self.write('implicit none')
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
