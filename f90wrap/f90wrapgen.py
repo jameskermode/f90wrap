@@ -448,23 +448,24 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         else:
             self.write_uses_lines(t)
 
+        self.write('use, intrinsic :: iso_c_binding, only : c_int'
         self.write('implicit none')
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
-            self.write('integer, intent(in) :: this(%d)' % sizeof_fortran_t)
+            self.write('integer(c_int), intent(in) :: this(%d)' % sizeof_fortran_t)
             self.write('type(%s_ptr_type) :: this_ptr' % t.name)
         else:
             self.write('integer, intent(in) :: dummy_this(%d)' % sizeof_fortran_t)
 
-        self.write('integer, intent(out) :: nd')
-        self.write('integer, intent(out) :: dtype')
+        self.write('integer(c_int), intent(out) :: nd')
+        self.write('integer(c_int), intent(out) :: dtype')
         try:
             rank = len(ArrayDimensionConverter.split_dimensions(dims))
             if el.type.startswith('character'):
                 rank += 1
         except ValueError:
             rank = 1
-        self.write('integer, dimension(10), intent(out) :: dshape')
+        self.write('integer(c_int), dimension(10), intent(out) :: dshape')
         self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
         self.write()
         self.write('nd = %d' % rank)
