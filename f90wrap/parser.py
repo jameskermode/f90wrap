@@ -349,11 +349,15 @@ def check_uses(cline, file):
 def check_doc(cline, file):
     out = None
     if cline:
-        for pattern in [fdoc_mark, doxygen_brief, doxygen_param]:
-            if re.search(pattern, cline) != None:
+        for pattern in [fdoc_mark, doxygen_keys, doxygen_param]:
+            match = re.search(pattern, cline)
+            if match != None:
                 if pattern == doxygen_param:
                     # Leave pattern for later parsing in check_arg
                     out = cline
+                elif pattern == doxygen_keys:
+                    key = match.group(1)
+                    out = key.capitalize() + ': ' + pattern.sub('', cline).strip(' ')
                 else:
                     out = pattern.sub('', cline).strip(' ')
                 out = out.rstrip()

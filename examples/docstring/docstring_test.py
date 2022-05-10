@@ -29,7 +29,7 @@ def test_docstring():
   circle : T_Circle, [in,out] t_circle to initialize
   radius : float, [in] radius of the circle
 
-  Initialize circle
+  Brief: Initialize circle
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
@@ -48,7 +48,7 @@ def test_no_direction():
   circle : T_Circle, t_circle to initialize
   radius : float, radius of the circle
 
-  Without direction
+  Brief: Without direction
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
@@ -67,7 +67,7 @@ def test_docstring_incomplet():
   circle : T_Circle
   radius : float, [in] radius of the circle
 
-  Incomplete doc
+  Brief: Incomplete doc
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
@@ -86,7 +86,7 @@ def test_param_return():
   -------
   output : float, [out] this is 1
 
-  subroutine output_1 outputs 1
+  Brief: subroutine output_1 outputs 1
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
@@ -108,7 +108,7 @@ def test_function_return():
   -------
   function_2 : int, return value
 
-  this is a function
+  Brief: this is a function
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
@@ -128,7 +128,7 @@ def test_doc_inside():
   circle : T_Circle, [in,out] t_circle to initialize
   radius : float, [in] radius of the circle
 
-  Doc inside
+  Brief: Doc inside
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
