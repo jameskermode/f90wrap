@@ -1,4 +1,5 @@
 import pytest
+import re
 
 from pywrapper import m_circle
 
@@ -11,6 +12,7 @@ def clean_str(in_str):
   docstring_lines = in_str.split('\n')
   for i,line in enumerate(docstring_lines):
     docstring_lines[i] = line.strip(' \n\t')
+    docstring_lines[i] = re.sub('Defined at main\\.f90 lines \\d+-\\d+', '', docstring_lines[i])
   return '\n'.join(docstring_lines)
 
 def test_docstring():
