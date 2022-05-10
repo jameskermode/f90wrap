@@ -7,8 +7,8 @@ module m_circle
   end type t_circle
 
   public :: construct_circle,incomplete_doc_sub
-  public :: no_direction, doc_inside
-  public :: output_1
+  public :: no_direction,doc_inside
+  public :: output_1,function_2
 
 contains
 
@@ -69,6 +69,17 @@ contains
     real, intent(out) :: output
     output = 1
   end subroutine output_1
+
+  !===========================================================================
+  !>
+  !! \brief this is a function
+  !! \returns return value
+  !! \param[in] input value
+  !>
+  integer function function_2(input)
+    character(len=*),intent(in)    :: input
+    function_2 = 2
+  end function function_2
 
 end module m_circle
 

@@ -128,8 +128,8 @@ fdoc_mark = re.compile('_FD\s*')
 fdoc_rv_mark = re.compile('_FDRV\s*')
 
 doxygen_brief = re.compile('_COMMENT.*\\\\brief')
-doxygen_param = re.compile('_COMMENT.*\\\\param')
-doxygen_param_group = re.compile('_COMMENT.*\\\\param\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
+doxygen_param = re.compile('_COMMENT.*\\\\(param|returns)')
+doxygen_param_group = re.compile('_COMMENT.*\\\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
 
 result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
 
@@ -1019,6 +1019,14 @@ def check_funct(cl, file, grab_hold_doc=True):
             if ret_var != None and i.name.lower().strip() == ret_var.lower().strip():
                 out.ret_val = i
 
+        if hold_doc:
+            for line in hold_doc[:]:
+                match = re.match(doxygen_param_group, line)
+                if match and match.group(1) == 'returns':
+                    comm = '%s %s'%(match.group(3), match.group(4))
+                    out.ret_val.doxygen = comm
+                    hold_doc.remove(line)
+
         implicit_to_explicit_arguments(argl, ag_temp)
 
         out.arguments = ag_temp
@@ -1428,13 +1436,13 @@ def check_arg(cl, file):
             for line in hold_doc[:]:
                 match = re.match(doxygen_param_group, line)
                 if match:
-                    direction = match.group(1)
-                    name = match.group(2)
-                    comm = match.group(3)
-                    if name in nl:
-                        hold_doc.remove(line)
-                        doxygen_map[name] = ' '.join([direction, comm]).strip(' ')
-                        print(direction, name, comm)
+                    if match.group(1) == 'param':
+                        direction = match.group(2)
+                        name = match.group(3)
+                        comm = match.group(4)
+                        if name in nl:
+                            hold_doc.remove(line)
+                            doxygen_map[name] = ' '.join([direction, comm]).strip(' ')
 
         dc = []
 

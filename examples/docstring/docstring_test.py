@@ -70,7 +70,7 @@ def test_docstring_incomplet():
 
   assert clean_str(ref_docstring) == clean_str(docstring)
 
-def test_function_return():
+def test_param_return():
   circle = m_circle.t_circle()
   docstring = m_circle.output_1.__doc__
   ref_docstring = """
@@ -85,6 +85,28 @@ def test_function_return():
   output : float, [out] this is 1
 
   subroutine output_1 outputs 1
+  """
+
+  assert clean_str(ref_docstring) == clean_str(docstring)
+
+def test_function_return():
+  circle = m_circle.t_circle()
+  docstring = m_circle.function_2.__doc__
+  ref_docstring = """
+  function_2 = function_2(input)
+
+
+  Defined at main.f90 lines 69-71
+
+  Parameters
+  ----------
+  input : str, [in] value
+
+  Returns
+  -------
+  function_2 : int, return value
+
+  this is a function
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
