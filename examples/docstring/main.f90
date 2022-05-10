@@ -1,3 +1,9 @@
+!>
+!! \file main.f90
+!! \brief Test program docstring
+!! \author Total E&P
+!! \copyright Total E&P
+!>
 module m_circle
   implicit none
   private
@@ -8,7 +14,7 @@ module m_circle
 
   public :: construct_circle,incomplete_doc_sub
   public :: no_direction,doc_inside
-  public :: output_1,function_2
+  public :: output_1,function_2,details_doc
 
 contains
 
@@ -80,6 +86,18 @@ contains
     character(len=*),intent(in)    :: input
     function_2 = 2
   end function function_2
+
+    !===========================================================================
+    !>
+    !! \brief Initialize circle
+    !! \details Those are very informative details
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius      radius of the circle
+    !<
+  subroutine details_doc(circle,radius)
+    type(t_circle) :: circle
+    real, intent(in) :: radius
+  end subroutine details_doc
 
 end module m_circle
 

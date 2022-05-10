@@ -127,7 +127,7 @@ fdoc_comm_mid = re.compile(r'!\s*\*FD')
 fdoc_mark = re.compile('_FD\s*')
 fdoc_rv_mark = re.compile('_FDRV\s*')
 
-doxygen_brief = re.compile('_COMMENT.*\\\\brief')
+doxygen_keys = re.compile('_COMMENT.*\\\\(brief|details|file|author|copyright)')
 doxygen_param = re.compile('_COMMENT.*\\\\(param|returns)')
 doxygen_param_group = re.compile('_COMMENT.*\\\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
 

@@ -15,6 +15,23 @@ def clean_str(in_str):
     docstring_lines[i] = re.sub('Defined at main\\.f90 lines \\d+-\\d+', '', docstring_lines[i])
   return '\n'.join(docstring_lines)
 
+def test_module_doc():
+  circle = m_circle.t_circle()
+  docstring = m_circle.__doc__
+  ref_docstring = """
+    Module m_circle
+
+
+    Defined at main.f90 lines 7-89
+
+    File: main.f90
+    Brief: Test program docstring
+    Author: Total E&P
+    Copyright: Total E&P
+  """
+
+  assert clean_str(ref_docstring) == clean_str(docstring)
+
 def test_docstring():
   circle = m_circle.t_circle()
   docstring = m_circle.construct_circle.__doc__
@@ -109,6 +126,26 @@ def test_function_return():
   function_2 : int, return value
 
   Brief: this is a function
+  """
+
+  assert clean_str(ref_docstring) == clean_str(docstring)
+
+def test_details():
+  circle = m_circle.t_circle()
+  docstring = m_circle.details_doc.__doc__
+  ref_docstring = """
+  details_doc(self, radius)
+
+
+  Defined at main.f90 lines 80-82
+
+  Parameters
+  ----------
+  circle : T_Circle, [in,out] t_circle to initialize
+  radius : float, [in] radius of the circle
+
+  Brief: Initialize circle
+  Details: Those are very informative details
   """
 
   assert clean_str(ref_docstring) == clean_str(docstring)
