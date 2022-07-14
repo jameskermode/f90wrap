@@ -53,7 +53,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='f90wrap',
-      packages=['f90wrap'],
+      packages=['f90wrap', 'f90wrap/scripts'],
       scripts=['scripts/f90doc', 'scripts/f90wrap', 'scripts/f2py-f90wrap'],
       ext_modules=[fortran_t, arraydata_ext],
       version=__version__,
