@@ -62,7 +62,7 @@ jobs:
                 python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
              done
         env:
-           CIBW_SKIP: cp27-* cp35-* cp36-* cp311-*
+           CIBW_SKIP: cp27-* cp35-* cp36-* cp311-* pp*
            CIBW_BEFORE_ALL_MACOS: "[[ ! -f /usr/local/bin/gfortran ]] && ln -s $(which gfortran-10) /usr/local/bin/gfortran || echo skipping linking"
            CIBW_BEFORE_ALL_LINUX: "yum install -y gcc-gfortran"
            CIBW_BEFORE_BUILD: "pip install oldest-supported-numpy"
