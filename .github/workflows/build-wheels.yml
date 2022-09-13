@@ -36,7 +36,7 @@ jobs:
                 echo "ARCH=${ARCH}"
                 export CIBW_ENVIRONMENT="ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
 
-                if [[ $ARCH == "arm64"]]; then
+                if [[ $ARCH == "arm64" ]]; then
                   # taken from https://github.com/MacPython/gfortran-install/blob/master/gfortran_utils.sh#L97
                   curl -L -O https://github.com/isuruf/gcc/releases/download/gcc-10-arm-20210228/gfortran-darwin-arm64.tar.gz
                   export GFORTRAN_SHA=f26990f6f08e19b2ec150b9da9d59bd0558261dd
