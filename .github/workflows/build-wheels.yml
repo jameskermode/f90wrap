@@ -51,11 +51,9 @@ jobs:
                         sudo rm gfortran-darwin-arm64.tar.gz
                   popd
                   export FC_ARM64="$(find /opt/gfortran-darwin-arm64/bin -name "*-gfortran")"
-                  local libgfortran="$(find /opt/gfortran-darwin-arm64/lib -name libgfortran.dylib)"
-                  local libdir=$(dirname $libgfortran)
-
+                  libgfortran="$(find /opt/gfortran-darwin-arm64/lib -name libgfortran.dylib)"
+                  libdir=$(dirname $libgfortran)
                   export FC_ARM64_LDFLAGS="-L$libdir -Wl,-rpath,$libdir"
-
                   export CIBW_ENVIRONMENT="$CIBW_ENVIRONMENT FC=$FC_ARM64 F90=$FC_ARM64 F95=$FC_ARM64 F77=$FC_ARM64 LDFLAGS=$FC_ARM64_LDFLAGS"
                 fi
 
