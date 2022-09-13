@@ -61,13 +61,12 @@ jobs:
                 python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
              done
         env:
-           CIBW_SKIP: cp27-* cp35-* cp36-
-           CIBW_ARCHS_LINUX: "auto64"
-           CIBW_ARCHS_MACOS: "x86_64 arm64"           
+           CIBW_SKIP: cp27-* cp35-* cp36-* cp311-*
            CIBW_BEFORE_ALL_MACOS: "ln -s $(which gfortran-10) /usr/local/bin/gfortran"
            CIBW_BEFORE_ALL_LINUX: "yum install -y gcc-gfortran"
            CIBW_BEFORE_BUILD: "pip install oldest-supported-numpy"
            CIBW_TEST_COMMAND: "cd {project}/examples; make clean; make test"
+           CIBW_TEST_SKIP: *-macosx_arm64           
            
       # Uncomment to get SSH access for testing
       - name: Setup tmate session
