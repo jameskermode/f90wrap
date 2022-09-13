@@ -1,4 +1,7 @@
-if [ "$(uname)" == "Darwin" ]; then
+echo "prepare-build.sh received environment ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
+
+
+if [ "${RUNNER_OS}" == "macOS" ]; then
 
     # taken from https://github.com/MacPython/gfortran-install/blob/master/gfortran_utils.sh#L97
     function install_arm64_cross_gfortran {
@@ -19,7 +22,7 @@ if [ "$(uname)" == "Darwin" ]; then
 	local libdir=$(dirname $libgfortran)
 
 	export FC_ARM64_LDFLAGS="-L$libdir -Wl,-rpath,$libdir"
-	if [[ "${PLAT:-}" == "arm64" ]]; then
+	if [[ "$ARCH" == "arm64" ]]; then
         export FC=$FC_ARM64
 	    export F90=$FC
 	    export F95=$FC
@@ -27,7 +30,8 @@ if [ "$(uname)" == "Darwin" ]; then
 	fi
     }
 
-    if [ "$PLAT" == "arm64" ]; then
+    if [ "$ARCH" == "arm64" ]; then
+		echo "Installing arm64 cross compiler..."
 		install_arm64_cross_gfortran
     fi
 fi

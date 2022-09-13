@@ -14,9 +14,28 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.9.0
+
       - name: Build wheels
-        uses: pypa/cibuildwheel
-        env:
+        run: |
+             if [ "$RUNNER_OS" == "Linux" ]; then
+                ARCHS=auto64
+             elif [ "$RUNNER_OS" == "macOS" ]; then
+                ARCHS="arm64 x86_64"
+             else
+               echo "RUNNER_OS=$RUNNER_OS not supported!"
+               exit 1
+             fi
+             echo "RUNNER_OS=$RUNNER_OS"
+             echo "ARCHS=${ARCHS}"
+
+             for ARCH in $ARCHS; do
+                echo "ARCH=${ARCH}"
+                export CIBW_ENVIRONMENT="ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
+                python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
+             done
+        env:        env:
            CIBW_SKIP: cp27-* cp35-* cp36-
            CIBW_ARCHS_LINUX: "auto64"
            CIBW_ARCHS_MACOS: "x86_64 arm64"           
