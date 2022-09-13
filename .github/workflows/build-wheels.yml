@@ -38,7 +38,6 @@ jobs:
 
                 if [[ $ARCH == "arm64"]]; then
                   # taken from https://github.com/MacPython/gfortran-install/blob/master/gfortran_utils.sh#L97
-                    function install_arm64_cross_gfortran {
                   curl -L -O https://github.com/isuruf/gcc/releases/download/gcc-10-arm-20210228/gfortran-darwin-arm64.tar.gz
                   export GFORTRAN_SHA=f26990f6f08e19b2ec150b9da9d59bd0558261dd
                   if [[ "$(shasum gfortran-darwin-arm64.tar.gz)" != "${GFORTRAN_SHA}  gfortran-darwin-arm64.tar.gz" ]]; then
