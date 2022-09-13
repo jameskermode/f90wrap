@@ -34,7 +34,6 @@ jobs:
 
              for ARCH in $ARCHS; do
                 echo "ARCH=${ARCH}"
-                export CIBW_ENVIRONMENT="ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
 
                 if [[ $ARCH == "arm64" ]]; then
                   # taken from https://github.com/MacPython/gfortran-install/blob/master/gfortran_utils.sh#L97
@@ -54,7 +53,7 @@ jobs:
                   libgfortran="$(find /opt/gfortran-darwin-arm64/lib -name libgfortran.dylib)"
                   libdir=$(dirname $libgfortran)
                   export FC_ARM64_LDFLAGS="-L$libdir -Wl,-rpath,$libdir"
-                  export CIBW_ENVIRONMENT="$CIBW_ENVIRONMENT FC=$FC_ARM64 F90=$FC_ARM64 F95=$FC_ARM64 F77=$FC_ARM64 LDFLAGS=\"$FC_ARM64_LDFLAGS\" NPY_DISTUTILS_APPEND_FLAGS=1"
+                  export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS} FC=$FC_ARM64 F90=$FC_ARM64 F95=$FC_ARM64 F77=$FC_ARM64 LDFLAGS=\"$FC_ARM64_LDFLAGS\" NPY_DISTUTILS_APPEND_FLAGS=1"
                 fi
 
                 echo "CIBW_ENVIRONMENT=$CIBW_ENVIRONMENT"
