@@ -35,7 +35,7 @@ jobs:
                 export CIBW_ENVIRONMENT="ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
                 python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
              done
-        env:        env:
+        env:
            CIBW_SKIP: cp27-* cp35-* cp36-
            CIBW_ARCHS_LINUX: "auto64"
            CIBW_ARCHS_MACOS: "x86_64 arm64"           
