@@ -53,7 +53,7 @@ jobs:
                   libgfortran="$(find /opt/gfortran-darwin-arm64/lib -name libgfortran.dylib)"
                   libdir=$(dirname $libgfortran)
                   export FC_ARM64_LDFLAGS="-L$libdir -Wl,-rpath,$libdir"
-                  export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS} FC=$FC_ARM64 F90=$FC_ARM64 F95=$FC_ARM64 F77=$FC_ARM64 LDFLAGS=\"$FC_ARM64_LDFLAGS\" NPY_DISTUTILS_APPEND_FLAGS=1"
+                  export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS} FC=$FC_ARM64 F90=$FC_ARM64 F95=$FC_ARM64 F77=$FC_ARM64 LDFLAGS=\"$FC_ARM64_LDFLAGS\" NPY_DISTUTILS_APPEND_FLAGS=1 MACOSX_DEPLOYMENT_TARGET=11.0 SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX11.3.sdk"
                 else
                   export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
                 fi
