@@ -293,3 +293,32 @@ Contributors
 - [yvesch](https://github.com/yvesch)
 - [Matthias Cuntz](https://github.com/mcuntz)
 - Balthasar Reuter [reuterbal](https://github.com/reuterbal)
+
+
+Developer Notes
+---------------
+
+### Source release of `f90wrap`
+
+### Triggering the wheel build
+
+Wheels are built on push and pull requests to `master` using cibuildwheel
+with [this workflow](.github/workflows/build-wheels.yml).
+
+To make a release candidate create a tag with a suffix such as `-rc1` for the first attempt, 
+push to trigger the build:
+
+```bash
+git commit -m 'release v0.x.z-rc1'
+git tag v0.x.y-rc1
+git push --tags
+```
+
+If all goes well, the `.whl` files will show up as assets within a new GitHub
+release. The installation process can now be tested locally.
+
+### Release wheels to PyPI
+
+Once everything works correctly, make a full release (i.e. create a tag named
+just `v0.x.y` without the `-rc1` suffix). This will trigger the upload of wheels
+and source distribution to PyPI.
