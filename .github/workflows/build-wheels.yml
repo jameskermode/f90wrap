@@ -1,6 +1,17 @@
 name: Build wheels
 
-on: [push, pull_request, workflow_dispatch]
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+    tags:
+      - v*
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   build_wheels:
@@ -97,8 +108,10 @@ jobs:
       - name: Deploy to PyPI
         if: steps.check-tag.outputs.match == 'true'
         run: |
-          pip install twine
+          pip install twine build
+          python -m build
           twine upload wheelhouse/*.whl
+          twine upload dist/f90wrap-*.tar.gz # sdist only
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
