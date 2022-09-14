@@ -108,10 +108,14 @@ jobs:
       - name: Deploy to PyPI
         if: steps.check-tag.outputs.match == 'true'
         run: |
-          pip install twine build
-          python -m build
+          pip install twine
+          if [ "$RUNNER_OS" == "Linux" ]; then
+               # build and upload sdist only once
+               pip install build
+               python -m build
+               twine upload dist/f90wrap-*.tar.gz
+          fi
           twine upload wheelhouse/*.whl
-          twine upload dist/f90wrap-*.tar.gz # sdist only
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
