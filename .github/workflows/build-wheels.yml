@@ -63,10 +63,10 @@ jobs:
                   export FC_ARM64="$(find /opt/gfortran-darwin-arm64/bin -name "*-gfortran")"
                   libgfortran="$(find /opt/gfortran-darwin-arm64/lib -name libgfortran.dylib)"
                   libdir=$(dirname $libgfortran)
-                  export FC_ARM64_LDFLAGS="-L$libdir -Wl,-rpath,$libdir"
+                  export FC_ARM64_LDFLAGS="-L$libdir -Wl,-rpath,$libdir -static-libgfortran"
                   export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS} FC=$FC_ARM64 F90=$FC_ARM64 F95=$FC_ARM64 F77=$FC_ARM64 LDFLAGS=\"$FC_ARM64_LDFLAGS\" NPY_DISTUTILS_APPEND_FLAGS=1 MACOSX_DEPLOYMENT_TARGET=11.0 SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX11.3.sdk"
                 else
-                  export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
+                  export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS} LDFLAGS=-static-libgfortran"
                 fi
 
                 echo "CIBW_ENVIRONMENT=$CIBW_ENVIRONMENT"
@@ -74,8 +74,8 @@ jobs:
              done
         env:
            CIBW_SKIP: cp27-* cp35-* cp36-* cp311-* pp* *musllinux*
-           CIBW_BEFORE_ALL_MACOS: "brew install gfortran && brew unlink gfortran && brew link gfortran"
-           CIBW_BEFORE_ALL_LINUX: "which yum && yum install -y gcc-gfortran || apk add gfortran"
+           CIBW_BEFORE_ALL_MACOS: "brew install gfortran@9 && brew unlink gfortran && brew link gfortran@9"
+          #  CIBW_BEFORE_ALL_LINUX: "which yum && yum install -y gcc-gfortran || apk add gfortran"
            CIBW_BEFORE_BUILD: "pip install oldest-supported-numpy"
            CIBW_TEST_COMMAND: "cd {project}/examples; make clean; make test"
            CIBW_TEST_SKIP: "*-macosx_arm64"
