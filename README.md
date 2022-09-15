@@ -298,8 +298,6 @@ Contributors
 Developer Notes
 ---------------
 
-### Source release of `f90wrap`
-
 ### Triggering the wheel build
 
 Wheels are built on push and pull requests to `master` using cibuildwheel
