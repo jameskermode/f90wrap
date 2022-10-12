@@ -100,7 +100,8 @@ f90wrap has been used to wrap the following large-scale scientific
 applications:
 
  - [QUIP](http://libatoms.github.io/QUIP/) - molecular dynamics code
- - [CASTEP](http://www.castep.org) - electronic structure code
+ - [CASTEP](http://www.castep.org) - CasPyTep wrappers for electronic structure code
+ - [QEpy](http://qepy.rutgers.edu/index.html) - Python wrapper for Quantum Espresso electronic structure code
 
 See this [Jupyter notebook](https://github.com/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo.ipynb) 
 from a recent seminar for more details.
@@ -307,8 +308,8 @@ To make a release candidate create a tag with a suffix such as `-rc1` for the fi
 push to trigger the build:
 
 ```bash
-git commit -m 'release v0.x.z-rc1'
-git tag v0.x.y-rc1
+git commit -m 'release v0.x.z.rc1'
+git tag v0.x.y.rc1
 git push --tags
 ```
 
