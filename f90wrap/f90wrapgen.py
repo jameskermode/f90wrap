@@ -31,6 +31,7 @@ from f90wrap import codegen as cg
 from f90wrap import fortran as ft
 from f90wrap.six import string_types  # Python 2/3 compatibility library
 from f90wrap.transform import ArrayDimensionConverter
+from f90wrap.transform import shorten_long_name
 
 log = logging.getLogger(__name__)
 
@@ -440,7 +441,10 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         else:
             this = 'dummy_this, '
 
-        self.write('subroutine %s%s__array__%s(%snd, dtype, dshape, dloc)' % (self.prefix, t.name, el.orig_name, this))
+        subroutine_name = '%s%s__array__%s' % (self.prefix, t.name, el.orig_name)
+        subroutine_name = shorten_long_name(subroutine_name)
+
+        self.write('subroutine %s(%snd, dtype, dshape, dloc)' % (subroutine_name, this))
         self.indent()
 
         if isinstance(t, ft.Module):
@@ -494,7 +498,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             self.write('end if')
 
         self.dedent()
-        self.write('end subroutine %s%s__array__%s' % (self.prefix, t.name, el.orig_name))
+        self.write('end subroutine %s' % (subroutine_name))
         self.write()
 
     def _write_dt_array_wrapper(self, t, element, dims,
@@ -571,11 +575,14 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             this = 'dummy_this'
         safe_i = self.prefix + 'i'  # YANN: i could be in the "uses" clauses
         # TODO: check if el.orig_name would be needed here instead of el.name
-        self.write('subroutine %s%s__array_%sitem__%s(%s, %s, %s)' % (self.prefix, t.name,
-                                                                      getset, el.name,
-                                                                      this,
-                                                                      safe_i,
-                                                                      el.name + 'item'))
+        subroutine_name = '%s%s__array_%sitem__%s' % (self.prefix, t.name,
+                                                        getset, el.name)
+        subroutine_name = shorten_long_name(subroutine_name)
+
+        self.write('subroutine %s(%s, %s, %s)' % (subroutine_name,
+                                                  this,
+                                                  safe_i,
+                                                  el.name + 'item'))
         self.indent()
         self.write()
         extra_uses = {}
@@ -657,8 +664,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             self.write('end if')
 
         self.dedent()
-        self.write('end subroutine %s%s__array_%sitem__%s' % (self.prefix, t.name,
-                                                              getset, el.name))
+        self.write('end subroutine %s' % (subroutine_name))
         self.write()
 
     def _write_array_len(self, t, el, sizeof_fortran_t):
@@ -682,7 +688,10 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             this = 'dummy_this'
         safe_n = self.prefix + 'n'  # YANN: "n" could be in the "uses"
 
-        self.write('subroutine %s%s__array_len__%s(%s, %s)' % (self.prefix, t.name, el.name, this, safe_n))
+        subroutine_name = '%s%s__array_len__%s' % (self.prefix, t.name, el.name)
+        subroutine_name = shorten_long_name(subroutine_name)
+
+        self.write('subroutine %s(%s, %s)' % (subroutine_name, this, safe_n))
         self.indent()
         self.write()
         extra_uses = {}
@@ -741,7 +750,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             self.write('end if')
 
         self.dedent()
-        self.write('end subroutine %s%s__array_len__%s' % (self.prefix, t.name, el.name))
+        self.write('end subroutine %s' % (subroutine_name))
         self.write()
 
     def _write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
@@ -799,8 +808,10 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         #   -- Since some cases require a safer localvar name, we always transform it
         localvar = self.prefix + el.orig_name
 
-        self.write('subroutine %s%s__%s__%s(%s%s)' % (self.prefix, t.name,
-                                                      getset, el.orig_name, this, localvar))
+        subroutine_name = '%s%s__%s__%s' % (self.prefix, t.name, getset, el.orig_name)
+        subroutine_name = shorten_long_name(subroutine_name)
+
+        self.write('subroutine %s(%s%s)' % (subroutine_name, this, localvar))
         self.indent()
 
         self.write_uses_lines(el, extra_uses)
@@ -863,6 +874,5 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
                 else:
                     self.write('%s_%s = %s' % (t.name, el.orig_name, localvar))
         self.dedent()
-        self.write('end subroutine %s%s__%s__%s' % (self.prefix, t.name, getset,
-                                                    el.orig_name))
+        self.write('end subroutine %s' % (subroutine_name))
         self.write()

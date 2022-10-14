@@ -26,6 +26,7 @@ import logging
 import re
 
 from f90wrap.transform import ArrayDimensionConverter
+from f90wrap.transform import shorten_long_name
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
@@ -556,10 +557,12 @@ except ValueError:
             if dct['el_name_set'] in procs:
                 dct['el_name_set'] += '_'
 
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(type_name)s__get__%(el_name)s' % dct)
+
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
         self.write(format_doc_string(el))
-        self.write('return %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)' % dct)
+        self.write('return %(mod_name)s.%(subroutine_name)s(%(handle)s)' % dct)
         self.dedent()
         self.write()
         if 'parameter' in el.attributes and isinstance(node, ft.Module) and self.make_package:
@@ -686,14 +689,16 @@ return %(el_name)s''' % dct)
             self.write('global %(el_name)s' % dct)
             node.array_initialisers.append(dct['el_name_get'])
 
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(type_name)s__array__%(el_name)s' % dct)
+
         self.write("""array_ndim, array_type, array_shape, array_handle = \
-    %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s(%(handle)s)
+    %(mod_name)s.%(subroutine_name)s(%(handle)s)
 if array_handle in %(selfdot)s_arrays:
     %(el_name)s = %(selfdot)s_arrays[array_handle]
 else:
     %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
                             %(handle)s,
-                            %(mod_name)s.%(prefix)s%(type_name)s__array__%(el_name)s)
+                            %(mod_name)s.%(subroutine_name)s)
     %(selfdot)s_arrays[array_handle] = %(el_name)s
 return %(el_name)s""" % dct)
         self.dedent()
@@ -742,10 +747,15 @@ return %(el_name)s""" % dct)
         self.indent()
         if isinstance(node, ft.Module) and self.make_package:
             self.write('global %(el_name)s' % dct)
+
+        dct['getitem_name'] = shorten_long_name('%(prefix)s%(mod_name)s__array_getitem__%(el_name)s' % dct)
+        dct['setitem_name'] = shorten_long_name('%(prefix)s%(mod_name)s__array_setitem__%(el_name)s' % dct)
+        dct['len_name'] = shorten_long_name('%(prefix)s%(mod_name)s__array_len__%(el_name)s' % dct)
+
         self.write('''%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
-                                %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_getitem__%(el_name)s,
-                                %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_setitem__%(el_name)s,
-                                %(f90_mod_name)s.%(prefix)s%(mod_name)s__array_len__%(el_name)s,
+                                %(f90_mod_name)s.%(getitem_name)s,
+                                %(f90_mod_name)s.%(setitem_name)s,
+                                %(f90_mod_name)s.%(len_name)s,
                                 %(doc)s, %(cls_mod_name)s%(cls_name)s)''' % dct)
         self.write('return %(selfdot)s%(el_name)s' % dct)
         self.dedent()
