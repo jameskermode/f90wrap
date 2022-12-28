@@ -726,7 +726,7 @@ return %(el_name)s""" % dct)
                    parent='self',
                    doc=format_doc_string(el),
                    cls_name=cls_name,
-                   cls_mod_name=cls_mod_name + '.')
+                   cls_mod_name=normalise_class_name(cls_mod_name, self.class_names) + '.')
 
         if isinstance(node, ft.Module):
             dct['parent'] = 'f90wrap.runtime.empty_type'
