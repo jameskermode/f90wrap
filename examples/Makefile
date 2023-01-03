@@ -2,6 +2,7 @@ EXAMPLES = arrayderivedtypes \
 	arrays \
 	arrays_fixed \
 	arrays_in_derived_types_issue50 \
+	class_names \
 	cylinder \
 	derivedtypes \
 	elemental \
