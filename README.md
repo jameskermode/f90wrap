@@ -158,7 +158,7 @@ Notes
 - Scalar arguments without `intent` are treated as `intent(in)` by `f2py`. To have `inout` scalars, you need to call `f90wrap` with the `--default-to-inout` flag and declare the python variables as 1-length numpy arrays (`numpy.zeros(1)` for example).
 - Pointer arguments are not supported.
 - Arrays of derived types are currently not fully supported: a workaround is provided for 1D-fixed-length arrays, i.e. `type(a), dimension(b) :: c`. In this case, the super-type `Type_a_Xb_Array` will be created, and the array of types can be accessed through `c.items`. Note that dimension b can not be `:`, but can be a parameter.
-
+- Doxygen documentation in Fortran sources are parsed and given as docstring in corresponding python interfaces. Doxygen support is partial and keyword support is limited to `brief`, `details`, `file`, `author` and `copyright`.
 
 How f90wrap works
 -----------------
