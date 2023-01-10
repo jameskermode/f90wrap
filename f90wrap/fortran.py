@@ -66,12 +66,13 @@ class Fortran(object):
     _fields = []
 
     def __init__(self, name='', filename='', doc=None,
-                 lineno=0):
+                 lineno=0, doxygen=''):
         self.name = name
         self.filename = filename
         if doc is None:
             doc = []
         self.doc = doc
+        self.doxygen = doxygen
         self.lineno = lineno
 
     def __repr__(self):
@@ -293,8 +294,8 @@ class Declaration(Fortran):
     """
     __doc__ = _rep_des(Fortran.__doc__, "Base class representing a declaration statement") + __doc__
     def __init__(self, name='', filename='', doc=None, lineno=0,
-                 attributes=None, type='', value=''):
-        Fortran.__init__(self, name, filename, doc, lineno)
+                 attributes=None, type='', value='', doxygen=''):
+        Fortran.__init__(self, name, filename, doc, lineno, doxygen=doxygen)
         if attributes is None: attributes = []
         self.attributes = attributes
         self.type = type

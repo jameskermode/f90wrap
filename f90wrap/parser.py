@@ -127,6 +127,10 @@ fdoc_comm_mid = re.compile(r'!\s*\*FD')
 fdoc_mark = re.compile('_FD\s*')
 fdoc_rv_mark = re.compile('_FDRV\s*')
 
+doxygen_brief = re.compile('_COMMENT.*\\\\brief')
+doxygen_param = re.compile('_COMMENT.*\\\\param')
+doxygen_param_group = re.compile('_COMMENT.*\\\\param\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
+
 result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
 
 arg_split = re.compile(r'\s*(\w*)\s*(\(.+?\))?\s*(=\s*[\w\.]+\s*)?,?\s*')
@@ -343,13 +347,20 @@ def check_uses(cline, file):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def check_doc(cline, file):
-    if cline and re.match(fdoc_mark, cline) != None:
-        out = fdoc_mark.sub('', cline)
-        out = out.rstrip()
-        cline = file.next()
-        return [out, cline]
-    else:
-        return [None, cline]
+    out = None
+    if cline:
+        for pattern in [fdoc_mark, doxygen_brief, doxygen_param]:
+            if re.search(pattern, cline) != None:
+                if pattern == doxygen_param:
+                    # Leave pattern for later parsing in check_arg
+                    out = cline
+                else:
+                    out = pattern.sub('', cline).strip(' ')
+                out = out.rstrip()
+                cline = file.next()
+                return [out, cline]
+    return [out, cline]
+
 
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1370,6 +1381,7 @@ def splitnames(names):
 
 
 def check_arg(cl, file):
+    global hold_doc
     out = []
 
     if cl and re.match(decl_a, cl) != None:
@@ -1402,6 +1414,7 @@ def check_arg(cl, file):
         names = re.sub(r'=.*$', '', names)
 
         nl, sizes = splitnames(names)
+        nl = [name.strip() for name in nl]
 
         alist = []
         for j in range(len(atrl)):
@@ -1409,6 +1422,19 @@ def check_arg(cl, file):
 
         cl = file.next()
         check = check_doc(cl, file)
+
+        doxygen_map = {}
+        if hold_doc:
+            for line in hold_doc[:]:
+                match = re.match(doxygen_param_group, line)
+                if match:
+                    direction = match.group(1)
+                    name = match.group(2)
+                    comm = match.group(3)
+                    if name in nl:
+                        hold_doc.remove(line)
+                        doxygen_map[name] = ' '.join([direction, comm]).strip(' ')
+                        print(direction, name, comm)
 
         dc = []
 
@@ -1420,10 +1446,14 @@ def check_arg(cl, file):
 
         cl = check[1]
 
-        for i in range(len(nl)):
-            nl[i] = nl[i].strip()
-            temp = Argument(name=nl[i], doc=dc, type=tp, attributes=alist[:],
-                            filename=filename, lineno=lineno)
+        for i, arg_name in enumerate(nl):
+            try:
+                doxy_doc = doxygen_map[arg_name]
+            except KeyError:
+                doxy_doc = ''
+
+            temp = Argument(name=arg_name, doc=dc, type=tp, attributes=alist[:],
+                            filename=filename, lineno=lineno, doxygen=doxy_doc)
 
             # Append dimension if necessary
             if sizes[i] != '':

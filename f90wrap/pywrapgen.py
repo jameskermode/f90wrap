@@ -118,7 +118,8 @@ def format_doc_string(node):
             if i == 0:
                 doc.append("Parameters")
                 doc.append("----------")
-            doc.append("%s : %s" % (arg.name, pytype))
+            arg_doc = "%s : %s, %s" % (arg.name, pytype, arg.doxygen)
+            doc.append(arg_doc.strip(', '))
             if arg.doc:
                 for d in arg.doc:
                     doc.append("\t%s" % d)
@@ -131,7 +132,8 @@ def format_doc_string(node):
                     doc.append("")
                     doc.append("Returns")
                     doc.append("-------")
-                doc.append("%s : %s" % (arg.name, pytype))
+                arg_doc = "%s : %s, %s" % (arg.name, pytype, arg.doxygen)
+                doc.append(arg_doc.strip(', '))
                 if arg.doc:
                     for d in arg.doc:
                         doc.append("\t%s" % d)
