@@ -26,6 +26,7 @@ from __future__ import print_function
 import copy
 import logging
 import re
+import hashlib
 
 from f90wrap import fortran as ft
 
@@ -1471,3 +1472,13 @@ def extract_dimensions_parameters(d, tree):
             for el in mod.elements:
                 if d == el.name and "parameter" in el.attributes:
                     return (mod.name, el.name)
+
+def shorten_long_name(name):
+    fortran_max_name_length = 63
+    hash_length = 4
+    if len(name) > fortran_max_name_length:
+        name_hash = hashlib.md5(name.lower().encode('utf-8')).hexdigest()
+        shorter_name = name[:fortran_max_name_length-hash_length] + name_hash[:hash_length]
+        log.info('Renaming "%s" to "%s" to comply with Fortran 2003'%(name, shorter_name))
+        return shorter_name
+    return name
