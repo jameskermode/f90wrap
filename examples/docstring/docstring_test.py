@@ -28,8 +28,8 @@ class TestDocstring(unittest.TestCase):
 
       File: main.f90
       Brief: Test program docstring
-      Author: Total E&P
-      Copyright: Total E&P
+      Author: test_author
+      Copyright: test_copyright
     """
 
     assert clean_str(ref_docstring) == clean_str(docstring)

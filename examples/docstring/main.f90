@@ -1,8 +1,8 @@
 !>
 !! \file main.f90
 !! \brief Test program docstring
-!! \author Total E&P
-!! \copyright Total E&P
+!! \author test_author
+!! \copyright test_copyright
 !>
 module m_circle
   implicit none
