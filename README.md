@@ -294,6 +294,7 @@ Contributors
 - [yvesch](https://github.com/yvesch)
 - [Matthias Cuntz](https://github.com/mcuntz)
 - Balthasar Reuter [reuterbal](https://github.com/reuterbal)
+- Daniel Vanzo [danbeibei](https://github.com/danbeibei)
 
 
 Developer Notes
