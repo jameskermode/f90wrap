@@ -39,4 +39,4 @@ f2py: ${F90WRAP_SRC}
 wrapper: f2py
 
 test: wrapper
-	pytest
+	python docstring_test.py
