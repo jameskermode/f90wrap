@@ -18,7 +18,8 @@ EXAMPLES = arrayderivedtypes \
 	passbyreference \
 	strings \
 	subroutine_contains_issue101 \
-	type_bn
+	type_bn \
+	docstring
 
 PYTHON = python
 
