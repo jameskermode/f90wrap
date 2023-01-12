@@ -19,7 +19,8 @@ EXAMPLES = arrayderivedtypes \
 	strings \
 	subroutine_contains_issue101 \
 	type_bn \
-	docstring
+	docstring \
+	type_check
 
 PYTHON = python
 
