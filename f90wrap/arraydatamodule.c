@@ -168,7 +168,7 @@ PyMODINIT_FUNC
 PyInit_arraydata(void)
 {
   PyObject *mod = PyModule_Create(&arraydataModuleDef);
-#ifdef PY_MINOR_VERSION >= 11 // https://peps.python.org/pep-0674/#port-c-extensions-to-python-3-11
+#if PY_MINOR_VERSION >= 11 // https://peps.python.org/pep-0674/#port-c-extensions-to-python-3-11
   Py_SET_TYPE(&PyFortran_Type, &PyType_Type);
 #else
   Py_TYPE(&PyFortran_Type) = &PyType_Type;
