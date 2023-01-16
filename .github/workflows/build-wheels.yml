@@ -77,6 +77,11 @@ jobs:
                 else
                   for CIBW_MANYLINUX_X86_64_IMAGE in manylinux2010 manylinux2014; do
                     export CIBW_MANYLINUX_X86_64_IMAGE
+                    if [[ $CIBW_MANYLINUX_X86_64_IMAGE == manylinux2010 ]]; then
+                      export CIBW_SKIP="cp27-* cp35-* cp36-* cp311-* pp* *musllinux*"
+                    else
+                      export CIBW_SKIP="cp27-* cp35-* cp36-* pp* *musllinux*"
+                    fi
                     python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
                   done
                 fi
