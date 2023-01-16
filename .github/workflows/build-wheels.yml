@@ -30,7 +30,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.9.0
+        run: python -m pip install cibuildwheel==2.11.4
 
       - name: Build wheels
         run: |
@@ -77,12 +77,17 @@ jobs:
                 else
                   for CIBW_MANYLINUX_X86_64_IMAGE in manylinux2010 manylinux2014; do
                     export CIBW_MANYLINUX_X86_64_IMAGE
+                    if [[ $CIBW_MANYLINUX_X86_64_IMAGE == manylinux2010 ]]; then
+                      export CIBW_SKIP="cp27-* cp35-* cp36-* cp311-* pp* *musllinux*"
+                    else
+                      export CIBW_SKIP="cp27-* cp35-* cp36-* pp* *musllinux*"
+                    fi
                     python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
                   done
                 fi
              done
         env:
-           CIBW_SKIP: cp27-* cp35-* cp36-* cp311-* pp* *musllinux*
+           CIBW_SKIP: cp27-* cp35-* cp36-* pp* *musllinux*
            CIBW_BEFORE_ALL_MACOS: "brew install gfortran && brew unlink gfortran && brew link gfortran"
           #  CIBW_BEFORE_ALL_LINUX: "which yum && yum install -y gcc-gfortran || apk add gfortran"
            CIBW_BEFORE_BUILD: "pip install oldest-supported-numpy"
