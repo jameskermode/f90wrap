@@ -82,7 +82,7 @@ jobs:
                 fi
              done
         env:
-           CIBW_SKIP: cp27-* cp35-* cp36-* cp311-* pp* *musllinux*
+           CIBW_SKIP: cp27-* cp35-* cp36-* pp* *musllinux*
            CIBW_BEFORE_ALL_MACOS: "brew install gfortran && brew unlink gfortran && brew link gfortran"
           #  CIBW_BEFORE_ALL_LINUX: "which yum && yum install -y gcc-gfortran || apk add gfortran"
            CIBW_BEFORE_BUILD: "pip install oldest-supported-numpy"
