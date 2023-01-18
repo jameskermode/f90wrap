@@ -275,6 +275,7 @@ some of the options are used:
       --f90-max-line-length F90_MAX_LINE_LENGTH
                             Maximum length of lines in fortan files written.
                             Default: 120
+      --type-check          Check for type/shape matching of Python argument with the wrapped Fortran subroutine
          
 
 Author

@@ -155,7 +155,8 @@ def format_doc_string(node):
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
                  make_package=False, kind_map=None, init_file=None,
-                 py_mod_names=None, class_names=None, max_length=None):
+                 py_mod_names=None, class_names=None, max_length=None,
+                 type_check=False):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
@@ -177,11 +178,13 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             kind_map = {}
         self.kind_map = kind_map
         self.init_file = init_file
+        self.type_check = type_check
 
     def write_imports(self, insert=0):
         default_imports = [(self.f90_mod_name, None),
                            ('f90wrap.runtime', None),
-                           ('logging', None)]
+                           ('logging', None),
+                           ('numpy', None)]
         imp_lines = ['from __future__ import print_function, absolute_import, division']
         for (mod, symbol) in default_imports + list(self.imports):
             if symbol is None:
@@ -416,6 +419,10 @@ except ValueError:
             self.write("def %(method_name)s(%(py_arg_names)s):" % dct)
             self.indent()
             self.write(format_doc_string(node))
+
+            if self.type_check:
+                self.write_type_checks(node)
+
             for arg in node.arguments:
                 if 'optional' in arg.attributes and '._handle' in arg.py_value:
                     dct['f90_arg_names'] = dct['f90_arg_names'].replace(arg.py_value,
@@ -488,6 +495,28 @@ except ValueError:
         self.write('continue')
         self.dedent()
         self.dedent()
+        self.write()
+
+        if self.type_check:
+            self.write('argTypes=[]')
+            self.write('for arg in args:')
+            self.indent()
+            self.write('try:')
+            self.indent()
+            self.write('argTypes.append("%s: dims \'%s\', type \'%s\'"%(str(type(arg)),'
+                        'arg.ndim, arg.dtype))')
+            self.dedent()
+            self.write('except AttributeError:')
+            self.indent()
+            self.write('argTypes.append(str(type(arg)))')
+            self.dedent()
+            self.dedent()
+
+            self.write('raise TypeError("Not able to call a version of "')
+            self.indent()
+            self.write('"\'%(intf_name)s\' compatible with the provided args:"' % dct)
+            self.write('"\\n%s\\n"%"\\n".join(argTypes))')
+            self.dedent()
         self.dedent()
         self.write()
 
@@ -762,3 +791,74 @@ return %(el_name)s""" % dct)
         self.write('return %(selfdot)s%(el_name)s' % dct)
         self.dedent()
         self.write()
+
+    def write_type_checks(self, node):
+        # This adds tests that checks data types and dimensions
+        # to ensure either the correct version of an interface is used
+        # either an exception is returned
+        for arg in node.arguments:
+            if 'optional' not in arg.attributes:
+                ft_array_dim_list = list(filter(lambda x: x.startswith("dimension"),
+                        arg.attributes))
+                if ft_array_dim_list:
+                    if ':' in ft_array_dim_list[0]:
+                        ft_array_dim = ft_array_dim_list[0].count(',')+1
+                    else:
+                        ft_array_dim = -1
+                else:
+                    ft_array_dim = 0
+
+                # Checks for derived types
+                if (arg.type.startswith('type') or arg.type.startswith('class')):
+                    cls_mod_name = self.types[ft.strip_type(arg.type)].mod_name
+                    cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
+
+                    cls_name = normalise_class_name(ft.strip_type(arg.type), self.class_names)
+                    self.write('if not isinstance({0}, {1}.{2}) :'\
+                        .format(arg.py_name, cls_mod_name, cls_name) )
+                    self.indent()
+                    self.write('raise TypeError')
+                    self.dedent()
+
+                    if self.make_package:
+                        self.imports.add((self.py_mod_name, cls_mod_name))
+                else:
+                    # Checks for Numpy array dimension and types
+                    # It will fail for types that are not in the kind map
+                    # Good enough for now if it works on standrad types
+                    try:
+                        array_type=ft.fortran_array_type(arg.type, self.kind_map)
+                    except RuntimeError:
+                        continue
+
+                    py_type = ft.f2py_type(arg.type)
+
+                    # bool are ignored because fortran logical are mapped to integers
+                    if py_type not in  ['bool']:
+                        self.write('if isinstance({0},(numpy.ndarray, numpy.generic)):'\
+                                  .format(arg.py_name))
+                        self.indent()
+                        if ft_array_dim == -1:
+                            self.write('if {0}.dtype.num != {1}:'\
+                                    .format(arg.py_name, array_type))
+                        else:
+                            self.write('if {0}.ndim != {1} or {0}.dtype.num != {2}:'\
+                                    .format(arg.py_name, str(ft_array_dim), array_type))
+
+                        self.indent()
+                        self.write('raise TypeError')
+                        self.dedent()
+                        self.dedent()
+                        if ft_array_dim == 0:
+                            # Do not write checks for unknown types
+                            if py_type not in  ['unknown']:
+                                self.write('elif not isinstance({0},{1}):'\
+                                          .format(arg.py_name,py_type))
+                                self.indent()
+                                self.write('raise TypeError')
+                                self.dedent()
+                        else:
+                            self.write('else:')
+                            self.indent()
+                            self.write('raise TypeError')
+                            self.dedent()
