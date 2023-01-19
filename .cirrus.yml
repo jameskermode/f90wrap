@@ -5,6 +5,11 @@ build_and_store_wheels: &BUILD_AND_STORE_WHEELS
     - python -m pip install cibuildwheel==2.11.4
   cibuildwheel_script:
     - cibuildwheel
+    - tools/wheels/release-wheels.sh
+  env:
+    GITHUB_TOKEN: ENCRYPTED[442a58e6ea575035b2894e799eca4d2639c539e264a4a7e54f03952460c10f8690c388009aebd9eeee26b1d62726d5bb]
+    TWINE_USERNAME: __token__
+    TWINE_PASSWORD: ENCRYPTED[e0e8298d5f80b1badbcf84fbead7557701c9365b82eae0326df13e82659a8003f52c09a6b23142479a5c36ab8c1f2b4e]
   wheels_artifacts:
     path: "wheelhouse/*"
 
