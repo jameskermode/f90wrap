@@ -1,3 +1,7 @@
+# This is partially adopted from scipy.
+# See: https://github.com/scipy/scipy/blob/main/.github/workflows/wheels.yml
+# License: 3-clause BSD, https://github.com/scipy/scipy/blob/main/LICENSE.txt
+
 name: Build wheels
 
 # Controls when the action will run.
@@ -15,94 +19,45 @@ on:
 
 jobs:
   build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build wheel for ${{ matrix.python }}-${{ matrix.buildplat[1] }} ${{ matrix.buildplat[2] }}
+    runs-on: ${{ matrix.buildplat[0] }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        buildplat:
+        - [ubuntu-20.04, manylinux, x86_64]
+        - [macos-10.15, macosx, x86_64]
+        # - [windows-2019, win, AMD64]
+
+        python: ["cp38", "cp39", "cp310", "cp311"]
       fail-fast: false
 
+    env:
+      IS_32_BIT: ${{ matrix.buildplat[2] == 'x86' }}
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
-
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.11.4
+          python-version: '3.8'
 
       - name: Build wheels
-        run: |
-             if [ "$RUNNER_OS" == "Linux" ]; then
-                ARCHS=auto64
-             elif [ "$RUNNER_OS" == "macOS" ]; then
-                ARCHS="x86_64 arm64"
-             else
-               echo "RUNNER_OS=$RUNNER_OS not supported!"
-               exit 1
-             fi
-             echo "RUNNER_OS=$RUNNER_OS"
-             echo "ARCHS=${ARCHS}"
-
-             for ARCH in $ARCHS; do
-                echo "ARCH=${ARCH}"
-
-                if [[ $ARCH == "arm64" ]]; then
-                  # taken from https://github.com/MacPython/gfortran-install/blob/master/gfortran_utils.sh#L97
-                  curl -L -O https://github.com/isuruf/gcc/releases/download/gcc-10-arm-20210228/gfortran-darwin-arm64.tar.gz
-                  export GFORTRAN_SHA=f26990f6f08e19b2ec150b9da9d59bd0558261dd
-                  if [[ "$(shasum gfortran-darwin-arm64.tar.gz)" != "${GFORTRAN_SHA}  gfortran-darwin-arm64.tar.gz" ]]; then
-                            echo "shasum mismatch for gfortran-darwin-arm64"
-                            exit 1
-                  fi
-                  sudo mkdir -p /opt/
-                  sudo cp "gfortran-darwin-arm64.tar.gz" /opt/gfortran-darwin-arm64.tar.gz
-                  pushd /opt
-                        sudo tar -xvf gfortran-darwin-arm64.tar.gz
-                        sudo rm gfortran-darwin-arm64.tar.gz
-                  popd
-                  export FC_ARM64="$(find /opt/gfortran-darwin-arm64/bin -name "*-gfortran")"
-                  libgfortran="$(find /opt/gfortran-darwin-arm64/lib -name libgfortran.dylib)"
-                  libdir=$(dirname $libgfortran)
-                  export FC_ARM64_LDFLAGS="-L$libdir -Wl,-rpath,$libdir"
-                  export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS} FC=$FC_ARM64 F90=$FC_ARM64 F95=$FC_ARM64 F77=$FC_ARM64 LDFLAGS=\"$FC_ARM64_LDFLAGS\" NPY_DISTUTILS_APPEND_FLAGS=1 MACOSX_DEPLOYMENT_TARGET=11.0 SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
-                else
-                  export CIBW_ENVIRONMENT="$ARCH=${ARCH} RUNNER_OS=${RUNNER_OS}"
-                fi
-
-                echo "CIBW_ENVIRONMENT=$CIBW_ENVIRONMENT"
-                if [ "$RUNNER_OS" == "macOS" ]; then
-                  python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
-                else
-                  for CIBW_MANYLINUX_X86_64_IMAGE in manylinux2010 manylinux2014; do
-                    export CIBW_MANYLINUX_X86_64_IMAGE
-                    if [[ $CIBW_MANYLINUX_X86_64_IMAGE == manylinux2010 ]]; then
-                      export CIBW_SKIP="cp27-* cp35-* cp36-* cp311-* pp* *musllinux*"
-                    else
-                      export CIBW_SKIP="cp27-* cp35-* cp36-* pp* *musllinux*"
-                    fi
-                    python -m cibuildwheel --output-dir wheelhouse --archs $ARCH
-                  done
-                fi
-             done
+        uses: pypa/cibuildwheel@v2.11.4
         env:
-           CIBW_SKIP: cp27-* cp35-* cp36-* pp* *musllinux*
-           CIBW_BEFORE_ALL_MACOS: "brew install gfortran && brew unlink gfortran && brew link gfortran"
-          #  CIBW_BEFORE_ALL_LINUX: "which yum && yum install -y gcc-gfortran || apk add gfortran"
-           CIBW_BEFORE_BUILD: "pip install oldest-supported-numpy"
-           CIBW_TEST_COMMAND: "cd {project}/examples; make clean; make test"
-           CIBW_TEST_SKIP: "*-macosx_arm64"
-           
-      # Uncomment to get SSH access for testing
-      - name: Setup tmate session
-        if: failure()
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
+          CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}*
+          CIBW_ARCHS: ${{ matrix.buildplat[2] }}
+          CIBW_ENVIRONMENT_PASS_LINUX: RUNNER_OS
+          CIBW_BEFORE_ALL_MACOS: "brew install gfortran && brew unlink gfortran && brew link gfortran"
+          CIBW_TEST_COMMAND_MACOS: "cd {project}/examples; make clean; make test"
+          CIBW_TEST_COMMAND_LINUX: "cd {project}/examples; make clean; make test"
+          CIBW_TEST_COMMAND_WINDOWS: "python -m f90wrap --version"
 
       - uses: actions/upload-artifact@v2
         with:
           path: ./wheelhouse/*.whl
+          name: ${{ matrix.python }}-${{ matrix.buildplat[1] }}-${{ matrix.buildplat[2] }}
 
       - name: Release wheels
         uses: softprops/action-gh-release@v1
@@ -115,21 +70,28 @@ jobs:
       - name: Check tag
         id: check-tag
         run: |
-          if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
               echo ::set-output name=match::true
           fi
+        shell: bash
 
-      - name: Deploy to PyPI
+      - name: Deploy wheels to PyPI
         if: steps.check-tag.outputs.match == 'true'
         run: |
           pip install twine
-          if [ "$RUNNER_OS" == "Linux" ]; then
-               # build and upload sdist only once
-               pip install build
-               python -m build
-               twine upload dist/f90wrap-*.tar.gz
-          fi
           twine upload wheelhouse/*.whl
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        shell: bash
+
+      - name: Deploy sdist to PyPI
+        if: ${{ steps.check-tag.outputs.match == 'true' && startsWith(matrix.buildplat[0], 'ubuntu') && matrix.python == 'cp311' }}
+        run: |
+          pip install build
+          python -m build
+          twine upload dist/f90wrap-*.tar.gz
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        shell: bash
