@@ -49,7 +49,10 @@ cirrus_wheels_macos_arm64_task:
     image: ghcr.io/cirruslabs/macos-monterey-xcode:13.3.1
   matrix:
     - env:
-        CIBW_BUILD: cp38-* cp39-* cp310-* cp311-*
+        CIBW_BUILD: cp38-*
+        CIBW_BEFORE_ALL: bash tools/wheels/cibw_before_all_cp38_macosx_arm64.sh
+    - env:
+        CIBW_BUILD: cp39-* cp310-* cp311-*
   env:
     PATH: /opt/homebrew/opt/python@3.10/bin:$PATH
     CIBW_ENVIRONMENT: MACOSX_DEPLOYMENT_TARGET=12.0 _PYTHON_HOST_PLATFORM="macosx-12.0-arm64"
