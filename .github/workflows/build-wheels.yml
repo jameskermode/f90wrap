@@ -26,7 +26,7 @@ jobs:
         buildplat:
         - [ubuntu-20.04, manylinux, x86_64]
         - [macos-10.15, macosx, x86_64]
-        # - [windows-2019, win, AMD64]
+        - [windows-2019, win, AMD64]
 
         python: ["cp38", "cp39", "cp310", "cp311"]
       fail-fast: false
@@ -53,6 +53,11 @@ jobs:
           CIBW_TEST_COMMAND_MACOS: "cd {project}/examples; make clean; make test"
           CIBW_TEST_COMMAND_LINUX: "cd {project}/examples; make clean; make test"
           CIBW_TEST_COMMAND_WINDOWS: "python -m f90wrap --version"
+
+      - name: Setup tmate session
+        if: failure()
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
 
       - uses: actions/upload-artifact@v2
         with:
