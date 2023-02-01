@@ -3,7 +3,9 @@ module library
     use parameters, only: idp, isp
     implicit none
     private
-    public :: do_array_stuff, only_manipulate, return_array
+    public :: do_array_stuff, only_manipulate, return_array, ia, iarray
+    integer(4) :: ia
+    integer(4) :: iarray(3)
 
 contains
 

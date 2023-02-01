@@ -736,8 +736,13 @@ return %(el_name)s""" % dct)
         self.write()
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write("@%(el_name)s.setter" % dct)
-        self.write("""def %(el_name_set)s(%(selfcomma)s%(el_name)s):
+        if dct['selfdot'] :
+            self.write("""def %(el_name_set)s(%(selfcomma)s%(el_name)s):
     %(selfdot)s%(el_name)s[...] = %(el_name)s
+""" % dct)
+        else :
+            self.write("""def %(el_name_set)s(%(selfcomma)s%(el_name)s):
+    globals()['%(selfdot)s%(el_name)s'][...] = %(el_name)s
 """ % dct)
         self.write()
 
