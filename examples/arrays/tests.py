@@ -33,7 +33,7 @@ import unittest
 
 import numpy as np
 
-import ExampleArray as lib
+import ExampleArray_pkg as lib
 
 
 class TestExample(unittest.TestCase):
@@ -79,6 +79,17 @@ class TestExample(unittest.TestCase):
         ii += 1
         jj += 1
         np.testing.assert_equal(ii*jj + jj, arr)
+
+    def test_set_value(self):
+        lib.library.set_ia(1)
+        ia = lib.library.get_ia()
+        np.testing.assert_equal(ia, 1)
+
+    def test_set_array(self):
+        iarray_ref = np.arange(0, 3, dtype=np.int32)
+        lib.library.set_array_iarray(iarray_ref)
+        iarray = lib.library.get_array_iarray()
+        np.testing.assert_allclose(iarray, iarray_ref)
 
 
 if __name__ == '__main__':
