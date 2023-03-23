@@ -20,7 +20,8 @@ EXAMPLES = arrayderivedtypes \
 	subroutine_contains_issue101 \
 	type_bn \
 	docstring \
-	type_check
+	type_check \
+	derivedtypes_procedure
 
 PYTHON = python
 

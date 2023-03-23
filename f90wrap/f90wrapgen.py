@@ -231,7 +231,8 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
                                                                       'intent(out)', 'intent(inout)') or
                           attr.startswith('dimension')]
             arg_dict = {'arg_type': arg.type,
-                        'type_name': arg.type.startswith('type') and arg.type[5:-1] or None,
+                        'type_name': (arg.type.startswith('type') and arg.type[5:-1]) or
+                        (arg.type.startswith('class') and arg.type[6:-1]) or None,
                         'arg_name': arg.name}  # self.prefix+arg.name}
 
             if arg.name in node.transfer_in or arg.name in node.transfer_out:
@@ -327,6 +328,29 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         else:
             arg_names = [actual_arg_name(arg) for arg in arg_node.arguments
                          if 'intent(hide)' not in arg.attributes]
+
+        # Check type-bound procedure
+        obj = None
+        if hasattr(node, 'binding_name') and node.binding_name :
+            for i, arg in enumerate(arg_node.arguments):
+                if arg.type.startswith('class') and arg.type[6:-1] :
+                    obj = arg_names.pop(i).split('=')[1]
+                    break
+
+        # Write type-bound procedure
+        if obj and func_name != 'assignment(=)':
+            if isinstance(orig_node, ft.Function):
+                self.write('%(ret_val)s = %(obj)s%(func_name)s(%(arg_names)s)' %
+                           {'ret_val': actual_arg_name(orig_node.ret_val),
+                            'obj': obj + '%',
+                            'func_name': func_name,
+                            'arg_names': ', '.join(arg_names)})
+            else:
+                self.write('call %(obj)s%(sub_name)s(%(arg_names)s)' %
+                           {'sub_name': func_name,
+                            'obj': obj + '%',
+                            'arg_names': ', '.join(arg_names)})
+            return
 
         if isinstance(orig_node, ft.Function):
             self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %

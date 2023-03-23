@@ -402,7 +402,8 @@ except ValueError:
             self.write_destructor(node)
         else:
             dct = dict(func_name=node.name,
-                       method_name=hasattr(node, 'method_name') and node.method_name or node.name,
+                       method_name= (hasattr(node, 'binding_name') and node.binding_name) or
+                           (hasattr(node, 'method_name') and node.method_name) or node.name,
                        prefix=self.prefix,
                        mod_name=self.f90_mod_name,
                        py_arg_names=', '.join([arg.py_name + py_arg_value(arg) for arg in node.arguments]),
