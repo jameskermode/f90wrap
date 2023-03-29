@@ -113,6 +113,9 @@ class AccessUpdater(ft.FortranTransformer):
             return self.generic_visit(node)
         self.type = node
         self.update_access(node, self.mod, self.mod.default_access)
+        if node.name in self.mod.public_symbols :
+            binding_names = [b.procedures[0].name for b in node.bindings]
+            self.mod.public_symbols.extend(binding_names)
         node.default_access = 'public'
         if 'private' in node.attributes:
             node.default_access = 'private'
@@ -495,7 +498,6 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
                 sub.transfer_in.append(arg.name)
 
     return tree
-
 
 def convert_array_intent_out_to_intent_inout(tree):
     """
@@ -899,6 +901,8 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
             new_node.call_name = node.call_name
         if hasattr(node, 'type'):
             new_node.type = node.type
+        if hasattr(node, 'binding_name'):
+            new_node.binding_name = node.binding_name
         new_node.orig_name = node.orig_name
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
@@ -944,6 +948,8 @@ class IntentOutToReturnValues(ft.FortranTransformer):
             new_node.orig_node = node
             if hasattr(node, 'method_name'):
                 new_node.method_name = node.method_name
+            if hasattr(node, 'binding_name'):
+                new_node.binding_name = node.binding_name
         return new_node
 
 
@@ -1178,10 +1184,14 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
                 if binding.type == 'generic':
                     continue
                 proto = binding.procedures[0]  # Only generics have multiple procedures
-                proc = procedure_map.pop(proto.name)
+                proc = procedure_map[proto.name]
+                proc = copy.deepcopy(proc)
                 log.debug('Creating method for %s from procedure %s.', type.name, proc.name)
                 proc.type_name = type.name
-                proc.method_name = binding.name
+                proc.method_name = binding.name + '__binding__' + type.name
+                proc.name = proc.method_name
+                proc.binding_name = binding.name
+                proc.call_name = binding.name
                 proc.attributes.append('method')
                 if binding.type == 'final':
                     log.debug('Marking method %s as destructor for %s', proc.method_name, type.name)
