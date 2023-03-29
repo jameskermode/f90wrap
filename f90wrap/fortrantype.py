@@ -78,6 +78,24 @@ class FortranDerivedType(object):
         self._alloc = alloc
         return self
 
+    def __copy__(self):
+        out = FortranDerivedType()
+        for attr in dir(self):
+            if attr.startswith('_') : continue
+            # skip some attributes
+            if attr in ['from_handle', 'copy'] : continue
+            try:
+                value = getattr(self, attr)
+            except Exception :
+                pass
+            else:
+                if hasattr(value, 'copy') : value = value.copy()
+                setattr(out, attr, value)
+        return out
+
+    def copy(self):
+        return self.__copy__()
+
 
 class FortranDerivedTypeArray(object):
     def __init__(self, parent, getfunc, setfunc, lenfunc, doc, arraytype):
@@ -129,3 +147,13 @@ class FortranDerivedTypeArray(object):
         # i += 1 # convert from 0-based (Python) to 1-based indices (Fortran)
         # YANN: Same issue
         self.setfunc(parent._handle, i + 1, value._handle)
+
+    def __copy__(self):
+        out = []
+        for item in self :
+            if hasattr(item, 'copy') : item = item.copy()
+            out.append(item)
+        return out
+
+    def copy(self):
+        return self.__copy__()
