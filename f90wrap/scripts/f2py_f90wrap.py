@@ -51,7 +51,8 @@ from numpy.f2py.auxfuncs import *
 def main():
 
     import numpy
-    if not tuple([int(x) for x in numpy.__version__.split('.')[0:2]]) >= (1,3):
+    numpy_version = tuple([int(x) for x in numpy.__version__.split('.')[0:2]])
+    if not numpy_version >= (1,3):
        raise ImportError('f2py-f90wrap tested with numpy version 1.3 or later, found version %s' % numpy.__version__)
 
 
@@ -160,25 +161,53 @@ def main():
     numpy.f2py.rules.arg_rules[26]['callfortran'] = {isintent_out:'#varname#,', l_and(isoptional, l_not(isintent_out)):'#varname#_capi == Py_None ? NULL : #varname#,',
                                                      l_and(l_not(isoptional), l_not(isintent_out)): '#varname#,'}
 
-    numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(2, {isoptional: 'if (#varname#_capi != Py_None) {'})
-    numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(5, {isoptional: '}'})
+    if numpy_version < (1,24):
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(2, {isoptional: 'if (#varname#_capi != Py_None) {'})
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(5, {isoptional: '}'})
 
-    del numpy.f2py.rules.arg_rules[33]['frompyobj'][6]
-    numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(6, {l_not(isoptional): """\
-    \tif (capi_#varname#_tmp == NULL) {
-    \t\tif (!PyErr_Occurred())
-    \t\t\tPyErr_SetString(#modulename#_error,\"failed in converting #nth# `#varname#\' of #pyname# to C/Fortran array\" );
-    \t} else {
-    \t\t#varname# = (#ctype# *)(capi_#varname#_tmp->data);
-    """})
+        del numpy.f2py.rules.arg_rules[33]['frompyobj'][6]
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(6, {l_not(isoptional): """\
+        \tif (capi_#varname#_tmp == NULL) {
+        \t\tif (!PyErr_Occurred())
+        \t\t\tPyErr_SetString(#modulename#_error,\"failed in converting #nth# `#varname#\' of #pyname# to C/Fortran array\" );
+        \t} else {
+        \t\t#varname# = (#ctype# *)(capi_#varname#_tmp->data);
+        """})
 
-    numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(7, {isoptional:"""\
-    \tif (#varname#_capi != Py_None && capi_#varname#_tmp == NULL) {
-    \t\tif (!PyErr_Occurred())
-    \t\t\tPyErr_SetString(#modulename#_error,\"failed in converting #nth# `#varname#\' of #pyname# to C/Fortran array\" );
-    \t} else {
-    \t\tif (#varname#_capi != Py_None) #varname# = (#ctype# *)(capi_#varname#_tmp->data);
-    """})
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(7, {isoptional:"""\
+        \tif (#varname#_capi != Py_None && capi_#varname#_tmp == NULL) {
+        \t\tif (!PyErr_Occurred())
+        \t\t\tPyErr_SetString(#modulename#_error,\"failed in converting #nth# `#varname#\' of #pyname# to C/Fortran array\" );
+        \t} else {
+        \t\tif (#varname#_capi != Py_None) #varname# = (#ctype# *)(capi_#varname#_tmp->data);
+        """})
+
+    else:
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(3, {isoptional: 'if (#varname#_capi != Py_None) {'})
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(6, {isoptional: '}'})
+
+        del numpy.f2py.rules.arg_rules[33]['frompyobj'][7]
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(7, {l_not(isoptional): """\
+        \tif (capi_#varname#_as_array == NULL) {
+        \t\tPyObject* capi_err = PyErr_Occurred();
+        \t\tif (capi_err == NULL) {
+        \t\t\tcapi_err = #modulename#_error;
+        \t\t\tPyErr_SetString(capi_err, capi_errmess);
+        \t\t}
+        \t} else {
+        \t\t#varname# = (#ctype# *)(PyArray_DATA(capi_#varname#_as_array));
+        """})
+
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(9, {isoptional:"""\
+        \tif (#varname#_capi != Py_None && capi_#varname#_as_array == NULL) {
+        \t\tPyObject* capi_err = PyErr_Occurred();
+        \t\tif (capi_err == NULL) {
+        \t\t\tcapi_err = #modulename#_error;
+        \t\t\tPyErr_SetString(capi_err, capi_errmess);
+        \t\t}
+        \t} else {
+        \t\tif (#varname#_capi != Py_None) #varname# = (#ctype# *)(PyArray_DATA(capi_#varname#_as_array));
+        """})
 
     # now call the main function
     print('\n!! f90wrap patched version of f2py - James Kermode <james.kermode@gmail.com> !!\n')

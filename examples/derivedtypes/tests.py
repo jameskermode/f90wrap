@@ -136,7 +136,7 @@ class BaseTests(object):
         self.assert_(isinstance(dt, self.lib.datatypes.fixed_shape_arrays))
 
         self.assertEqual(dt.eta.dtype, np.int32)
-        eta = np.ones((10,4), dtype=np.int)
+        eta = np.ones((10,4), dtype=np.int32)
         np.testing.assert_array_equal(dt.eta, eta*10)
 
         # FIXME: Fails because dt.theta is not float32 (single precision)
