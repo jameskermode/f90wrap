@@ -52,8 +52,8 @@ def main():
 
     import numpy
     numpy_version = tuple([int(x) for x in numpy.__version__.split('.')[0:2]])
-    if not numpy_version >= (1,3):
-       raise ImportError('f2py-f90wrap tested with numpy version 1.3 or later, found version %s' % numpy.__version__)
+    if not numpy_version >= (1,13):
+       raise ImportError('f2py-f90wrap tested with numpy version 1.13 or later, found version %s' % numpy.__version__)
 
 
     import numpy.f2py.auxfuncs
