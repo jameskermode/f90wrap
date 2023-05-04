@@ -76,7 +76,7 @@ class TestTypeCheck(unittest.TestCase):
             m_circle.is_circle(1., 1.)
 
     def test_no_suitable_version_2(self):
-        out = np.array([-1], dtype=np.complex)
+        out = np.array([-1], dtype=np.complex128)
 
         with self.assertRaises(TypeError):
             m_circle.write_array(out)

@@ -9,7 +9,7 @@ description = "Fortran to Python interface generator with derived type support"
 authors = [{name = "James Kermode", email = "james.kermode@gmail.com"}]
 python-requires = ">=3.6"
 urls = {Homepage = "https://github.com/jameskermode/f90wrap"}
-dependencies = ["numpy>=1.13,<1.24"]
+dependencies = ["numpy>=1.13"]
 dynamic = ["version"]
 
 [project.readme]
