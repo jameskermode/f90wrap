@@ -565,7 +565,7 @@ end type %(typename)s_rec_ptr_type"""
         if isinstance(t, ft.Type):
             self.write_type_lines(t.orig_name)
             self.write("integer(c_int), intent(in) :: this(%d)" % sizeof_fortran_t)
-            self.write("type(%s_ptr_type) :: this_ptr" % t.orign_name)
+            self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
         else:
             self.write("integer, intent(in) :: dummy_this(%d)" % sizeof_fortran_t)
 
