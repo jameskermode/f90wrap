@@ -2,9 +2,9 @@ module global
 
     implicit none
     
-    type class
+    type class2
         integer :: x = 456
-    end type class
+    end type class2
 
     integer :: abc=0
     integer, parameter :: lambda=1
