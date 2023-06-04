@@ -5,7 +5,7 @@ name: Python package
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main_off ]
   pull_request:
     branches: [ master ]
 

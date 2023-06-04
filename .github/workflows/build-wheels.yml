@@ -8,7 +8,7 @@ name: Build wheels
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master ]
+    branches: [ master, main_off ]
     tags:
       - v*
   pull_request:
