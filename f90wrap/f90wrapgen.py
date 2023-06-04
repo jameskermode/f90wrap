@@ -72,14 +72,22 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         Dictionary mapping type names to Fortran modules where they are defined
     """
 
-    def __init__(self, prefix, sizeof_fortran_t, string_lengths, abort_func,
-                 kind_map, types, default_to_inout, max_length=None):
+    def __init__(
+        self,
+        prefix,
+        sizeof_fortran_t,
+        string_lengths,
+        abort_func,
+        kind_map,
+        types,
+        default_to_inout,
+        max_length=None,
+    ):
         if max_length is None:
             max_length = 120
-        cg.CodeGenerator.__init__(self, indent=' ' * 4,
-                                  max_length=max_length,
-                                  continuation='&',
-                                  comment='!')
+        cg.CodeGenerator.__init__(
+            self, indent=" " * 4, max_length=max_length, continuation="&", comment="!"
+        )
         ft.FortranVisitor.__init__(self)
         self.prefix = prefix
         self.sizeof_fortran_t = sizeof_fortran_t
@@ -94,11 +102,12 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         Write a wrapper for top-level procedures.
         """
         # clean up any previous wrapper files
-        top_level_wrapper_file = '%s%s.f90' % (self.prefix, 'toplevel')
-        f90_wrapper_files = (['%s%s.f90' % (self.prefix,
-                                            os.path.splitext(os.path.basename(mod.filename))[0])
-                              for mod in node.modules] +
-                             [top_level_wrapper_file])
+        top_level_wrapper_file = "%s%s.f90" % (self.prefix, "toplevel")
+        f90_wrapper_files = [
+            "%s%s.f90"
+            % (self.prefix, os.path.splitext(os.path.basename(mod.filename))[0])
+            for mod in node.modules
+        ] + [top_level_wrapper_file]
 
         for f90_wrapper_file in f90_wrapper_files:
             if os.path.exists(f90_wrapper_file):
@@ -106,7 +115,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.code = []
         self.generic_visit(node)
         if len(self.code) > 0:
-            f90_wrapper_file = open(top_level_wrapper_file, 'w')
+            f90_wrapper_file = open(top_level_wrapper_file, "w")
             f90_wrapper_file.write(str(self))
             f90_wrapper_file.close()
 
@@ -116,29 +125,37 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         Subroutines and elements within each module are properly wrapped.
         """
-        log.info('F90WrapperGenerator visiting module %s' % node.name)
+        log.info("F90WrapperGenerator visiting module %s" % node.name)
         self.code = []
-        self.write('! Module %s defined in file %s' % (node.name, node.filename))
+        self.write("! Module %s defined in file %s" % (node.name, node.filename))
         self.write()
         self.generic_visit(node)
 
         for el in node.elements:
-            dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
+            dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
-            elif el.type.startswith('type'):  # array of derived types
+            elif el.type.startswith("type"):  # array of derived types
                 self._write_dt_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
             else:
-                if 'parameter' not in el.attributes:
-                    self._write_sc_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
+                if "parameter" not in el.attributes:
+                    self._write_sc_array_wrapper(
+                        node, el, dims[0], self.sizeof_fortran_t
+                    )
 
-        self.write('! End of module %s defined in file %s' % (node.name, node.filename))
+        self.write("! End of module %s defined in file %s" % (node.name, node.filename))
         self.write()
         if len(self.code) > 0:
-            f90_wrapper_name = '%s%s.f90' % (self.prefix, os.path.splitext(os.path.basename(node.filename))[0])
+            f90_wrapper_name = "%s%s.f90" % (
+                self.prefix,
+                os.path.splitext(os.path.basename(node.filename))[0],
+            )
             if os.path.exists(f90_wrapper_name):
-                warnings.warn('Source file %s contains code for more than one module!' % node.filename)
-            f90_wrapper_file = open(f90_wrapper_name, 'a')
+                warnings.warn(
+                    "Source file %s contains code for more than one module!"
+                    % node.filename
+                )
+            f90_wrapper_file = open(f90_wrapper_name, "a")
             f90_wrapper_file.write(str(self))
             f90_wrapper_file.close()
         self.code = []
@@ -153,7 +170,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         """
         all_uses = {}
         node_uses = []
-        if hasattr(node, 'uses'):
+        if hasattr(node, "uses"):
             for use in node.uses:
                 if isinstance(use, string_types):
                     node_uses.append((use, None))
@@ -161,11 +178,11 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     node_uses.append(use)
 
         if extra_uses_dict is not None:
-            for (mod, only) in extra_uses_dict.items():
+            for mod, only in extra_uses_dict.items():
                 node_uses.append((mod, only))
 
         if node_uses:
-            for (mod, only) in node_uses:
+            for mod, only in node_uses:
                 if mod in all_uses:
                     if only is None:
                         continue
@@ -181,17 +198,24 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         for mod, only in all_uses.items():
             if only is not None:
-                self.write('use %s, only: %s' % (mod, ', '.join(set(only))))  # YANN: "set" to avoid derundancy
+                self.write(
+                    "use %s, only: %s" % (mod, ", ".join(set(only)))
+                )  # YANN: "set" to avoid derundancy
             else:
-                self.write('use %s' % mod)
+                self.write("use %s" % mod)
 
     def write_super_type_lines(self, ty):
-        self.write('type ' + ty.name)
+        self.write("type " + ty.name)
         self.indent()
         for el in ty.elements:
-            self.write(el.type + ''.join(', ' + attr for attr in el.attributes) + ' :: ' + el.name)
+            self.write(
+                el.type
+                + "".join(", " + attr for attr in el.attributes)
+                + " :: "
+                + el.name
+            )
         self.dedent()
-        self.write('end type ' + ty.name)
+        self.write("end type " + ty.name)
         self.write()
 
     def write_type_lines(self, tname, recursive=False):
@@ -208,13 +232,19 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         """
         tname = ft.strip_type(tname)
         if not recursive:
-            self.write("""type %(typename)s_ptr_type
+            self.write(
+                """type %(typename)s_ptr_type
     type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_ptr_type""" % {'typename': tname})
+end type %(typename)s_ptr_type"""
+                % {"typename": tname}
+            )
         else:
-            self.write("""type %(typename)s_rec_ptr_type
+            self.write(
+                """type %(typename)s_rec_ptr_type
     type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_rec_ptr_type""" % {'typename': tname})
+end type %(typename)s_rec_ptr_type"""
+                % {"typename": tname}
+            )
 
     def write_arg_decl_lines(self, node):
         """
@@ -224,73 +254,93 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         types, as well as f2py-specific lines.
         """
         for arg in node.arguments:
-            if 'callback' in arg.attributes:
-                return 'external ' + arg.name
+            if "callback" in arg.attributes:
+                return "external " + arg.name
 
-            attributes = [attr for attr in arg.attributes if attr in ('optional', 'pointer', 'intent(in)',
-                                                                      'intent(out)', 'intent(inout)') or
-                          attr.startswith('dimension')]
-            arg_dict = {'arg_type': arg.type,
-                        'type_name': (arg.type.startswith('type') and arg.type[5:-1]) or
-                        (arg.type.startswith('class') and arg.type[6:-1]) or None,
-                        'arg_name': arg.name}  # self.prefix+arg.name}
+            attributes = [
+                attr
+                for attr in arg.attributes
+                if attr
+                in ("optional", "pointer", "intent(in)", "intent(out)", "intent(inout)")
+                or attr.startswith("dimension")
+            ]
+            arg_dict = {
+                "arg_type": arg.type,
+                "type_name": (arg.type.startswith("type") and arg.type[5:-1])
+                or (arg.type.startswith("class") and arg.type[6:-1])
+                or None,
+                "arg_name": arg.name,
+            }  # self.prefix+arg.name}
 
             if arg.name in node.transfer_in or arg.name in node.transfer_out:
-                self.write('type(%(type_name)s_ptr_type) :: %(arg_name)s_ptr' % arg_dict)
-                arg_dict['arg_type'] = arg.wrapper_type
-                attributes.append('dimension(%d)' % arg.wrapper_dim)
+                self.write(
+                    "type(%(type_name)s_ptr_type) :: %(arg_name)s_ptr" % arg_dict
+                )
+                arg_dict["arg_type"] = arg.wrapper_type
+                attributes.append("dimension(%d)" % arg.wrapper_dim)
 
-            arg_dict['arg_attribs'] = ', '.join(attributes)
-            arg_dict['comma'] = len(attributes) != 0 and ', ' or ''
+            arg_dict["arg_attribs"] = ", ".join(attributes)
+            arg_dict["comma"] = len(attributes) != 0 and ", " or ""
 
-            #character array definition
-            #https://github.com/numpy/numpy/issues/18684
-            if arg.type == 'character(*)' :
-                arg_dict['arg_type'] = 'character*(*)'
-            self.write('%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s' % arg_dict)
-            if hasattr(arg, 'f2py_line'):
+            # character array definition
+            # https://github.com/numpy/numpy/issues/18684
+            if arg.type == "character(*)":
+                arg_dict["arg_type"] = "character*(*)"
+            self.write(
+                "%(arg_type)s%(comma)s%(arg_attribs)s :: %(arg_name)s" % arg_dict
+            )
+            if hasattr(arg, "f2py_line"):
                 self.write(arg.f2py_line)
-            elif self.default_to_inout and all('intent' not in attr for attr in arg.attributes):
+            elif self.default_to_inout and all(
+                "intent" not in attr for attr in arg.attributes
+            ):
                 # No f2py instruction and no explicit intent : force f2py to make the argument intent(inout)
                 # This is put as an option to prserve backwards compatibility
-                self.write('!f2py intent(inout) ' + arg.name)
+                self.write("!f2py intent(inout) " + arg.name)
 
     def write_transfer_in_lines(self, node):
         """
         Write transfer of opaque references.
         """
         for arg in node.arguments:
-            arg_dict = {'arg_name': arg.name,  # self.prefix+arg.name,
-                        'arg_type': arg.type}
+            arg_dict = {
+                "arg_name": arg.name,  # self.prefix+arg.name,
+                "arg_type": arg.type,
+            }
             if arg.name in node.transfer_in:
-                if 'optional' in arg.attributes:
+                if "optional" in arg.attributes:
                     self.write("if (present(%(arg_name)s)) then" % arg_dict)
                     self.indent()
 
-                self.write('%(arg_name)s_ptr = transfer(%(arg_name)s, %(arg_name)s_ptr)' % arg_dict)
+                self.write(
+                    "%(arg_name)s_ptr = transfer(%(arg_name)s, %(arg_name)s_ptr)"
+                    % arg_dict
+                )
 
-                if 'optional' in arg.attributes:
+                if "optional" in arg.attributes:
                     self.dedent()
-                    self.write('else')
+                    self.write("else")
                     self.indent()
-                    self.write('%(arg_name)s_ptr%%p => null()' % arg_dict)
+                    self.write("%(arg_name)s_ptr%%p => null()" % arg_dict)
                     self.dedent()
-                    self.write('end if')
+                    self.write("end if")
 
     def write_init_lines(self, node):
         """
         Write special user-provided init lines to a node.
         """
         for alloc in node.allocate:
-            self.write('allocate(%s_ptr%%p)' % alloc)  # (self.prefix, alloc))
+            self.write("allocate(%s_ptr%%p)" % alloc)  # (self.prefix, alloc))
         for arg in node.arguments:
-            if not hasattr(arg, 'init_lines'):
+            if not hasattr(arg, "init_lines"):
                 continue
             exe_optional, exe = arg.init_lines
-            D = {'OLD_ARG': arg.name,
-                 'ARG': arg.name,  # self.prefix+arg.name,
-                 'PTR': arg.name + '_ptr%p'}
-            if 'optional' in arg.attributes:
+            D = {
+                "OLD_ARG": arg.name,
+                "ARG": arg.name,  # self.prefix+arg.name,
+                "PTR": arg.name + "_ptr%p",
+            }
+            if "optional" in arg.attributes:
                 self.write(exe_optional % D)
             else:
                 self.write(exe % D)
@@ -299,12 +349,12 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         """
         Write line that calls a single wrapped Fortran routine
         """
-        if 'skip_call' in node.attributes:
+        if "skip_call" in node.attributes:
             return
 
         orig_node = node
         arg_node = node
-        if hasattr(node, 'orig_node'):
+        if hasattr(node, "orig_node"):
             orig_node = node.orig_node
             arg_node = orig_node  # get arguemnt list from original node
 
@@ -313,62 +363,83 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
 
         def actual_arg_name(arg):
             name = arg.name
-            if ((hasattr(node, 'transfer_in') and arg.name in node.transfer_in) or
-                    (hasattr(node, 'transfer_out') and arg.name in node.transfer_out)):
-                name += '_ptr%p'
-            if 'super-type' in arg.doc:
-                name += '%items'
+            if (hasattr(node, "transfer_in") and arg.name in node.transfer_in) or (
+                hasattr(node, "transfer_out") and arg.name in node.transfer_out
+            ):
+                name += "_ptr%p"
+            if "super-type" in arg.doc:
+                name += "%items"
             return name
 
         if node.mod_name is not None:
             # use keyword arguments if subroutine is in a module and we have an explicit interface
-            arg_names = ['%s=%s' % (dummy_arg_name(arg), actual_arg_name(arg))
-                         for arg in arg_node.arguments
-                         if 'intent(hide)' not in arg.attributes]
+            arg_names = [
+                "%s=%s" % (dummy_arg_name(arg), actual_arg_name(arg))
+                for arg in arg_node.arguments
+                if "intent(hide)" not in arg.attributes
+            ]
         else:
-            arg_names = [actual_arg_name(arg) for arg in arg_node.arguments
-                         if 'intent(hide)' not in arg.attributes]
+            arg_names = [
+                actual_arg_name(arg)
+                for arg in arg_node.arguments
+                if "intent(hide)" not in arg.attributes
+            ]
 
         # Check type-bound procedure
         obj = None
-        if hasattr(node, 'binding_name') and node.binding_name :
+        if hasattr(node, "binding_name") and node.binding_name:
             for i, arg in enumerate(arg_node.arguments):
-                if arg.type.startswith('class') and arg.type[6:-1] :
-                    obj = arg_names.pop(i).split('=')[1]
+                if arg.type.startswith("class") and arg.type[6:-1]:
+                    obj = arg_names.pop(i).split("=")[1]
                     break
 
         # Write type-bound procedure
-        if obj and func_name != 'assignment(=)':
+        if obj and func_name != "assignment(=)":
             if isinstance(orig_node, ft.Function):
-                self.write('%(ret_val)s = %(obj)s%(func_name)s(%(arg_names)s)' %
-                           {'ret_val': actual_arg_name(orig_node.ret_val),
-                            'obj': obj + '%',
-                            'func_name': func_name,
-                            'arg_names': ', '.join(arg_names)})
+                self.write(
+                    "%(ret_val)s = %(obj)s%(func_name)s(%(arg_names)s)"
+                    % {
+                        "ret_val": actual_arg_name(orig_node.ret_val),
+                        "obj": obj + "%",
+                        "func_name": func_name,
+                        "arg_names": ", ".join(arg_names),
+                    }
+                )
             else:
-                self.write('call %(obj)s%(sub_name)s(%(arg_names)s)' %
-                           {'sub_name': func_name,
-                            'obj': obj + '%',
-                            'arg_names': ', '.join(arg_names)})
+                self.write(
+                    "call %(obj)s%(sub_name)s(%(arg_names)s)"
+                    % {
+                        "sub_name": func_name,
+                        "obj": obj + "%",
+                        "arg_names": ", ".join(arg_names),
+                    }
+                )
             return
 
         if isinstance(orig_node, ft.Function):
-            self.write('%(ret_val)s = %(func_name)s(%(arg_names)s)' %
-                       {'ret_val': actual_arg_name(orig_node.ret_val),
-                        'func_name': func_name,
-                        'arg_names': ', '.join(arg_names)})
+            self.write(
+                "%(ret_val)s = %(func_name)s(%(arg_names)s)"
+                % {
+                    "ret_val": actual_arg_name(orig_node.ret_val),
+                    "func_name": func_name,
+                    "arg_names": ", ".join(arg_names),
+                }
+            )
         else:
-            if func_name == 'assignment(=)':
+            if func_name == "assignment(=)":
                 if len(arg_names) != 2:
-                    raise RuntimeError("assignment(=) interface with len(arg_names) != 2")
-                arg_names = [arg_name.split('=')[1] for arg_name in arg_names]
-                self.write('%(lhs)s = %(rhs)s' %
-                           {'lhs': arg_names[0],
-                            'rhs': arg_names[1]})
+                    raise RuntimeError(
+                        "assignment(=) interface with len(arg_names) != 2"
+                    )
+                arg_names = [arg_name.split("=")[1] for arg_name in arg_names]
+                self.write(
+                    "%(lhs)s = %(rhs)s" % {"lhs": arg_names[0], "rhs": arg_names[1]}
+                )
             else:
-                self.write('call %(sub_name)s(%(arg_names)s)' %
-                           {'sub_name': func_name,
-                            'arg_names': ', '.join(arg_names)})
+                self.write(
+                    "call %(sub_name)s(%(arg_names)s)"
+                    % {"sub_name": func_name, "arg_names": ", ".join(arg_names)}
+                )
 
     def write_transfer_out_lines(self, node):
         """
@@ -376,41 +447,50 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         """
         for arg in node.arguments:
             if arg.name in node.transfer_out:
-                self.write('%(arg_name)s = transfer(%(arg_name)s_ptr, %(arg_name)s)' %
-                           {'arg_name': arg.name})
+                self.write(
+                    "%(arg_name)s = transfer(%(arg_name)s_ptr, %(arg_name)s)"
+                    % {"arg_name": arg.name}
+                )
 
     def write_finalise_lines(self, node):
         """
         Deallocate the opaque reference to clean up.
         """
         for dealloc in node.deallocate:
-            self.write('deallocate(%s_ptr%%p)' % dealloc)  # (self.prefix, dealloc))
+            self.write("deallocate(%s_ptr%%p)" % dealloc)  # (self.prefix, dealloc))
 
     def visit_Procedure(self, node):
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
-        call_name = node.name
-        if hasattr(node, 'call_name'):
+        call_name = node.orig_name
+        if hasattr(node, "call_name"):
             call_name = node.call_name
         log.info(
-            'F90WrapperGenerator visiting routine %s call_name %s mod_name %r' % (node.name, call_name, node.mod_name))
-        self.write("subroutine %(sub_name)s%(arg_names)s" %
-                   {'sub_name': self.prefix + node.name,
-                    'arg_names': '(' + ', '.join([arg.name for arg in node.arguments]) + ')'
-                    if node.arguments else ''})
+            "F90WrapperGenerator visiting routine %s call_name %s mod_name %r"
+            % (node.name, call_name, node.mod_name)
+        )
+        self.write(
+            "subroutine %(sub_name)s%(arg_names)s"
+            % {
+                "sub_name": self.prefix + node.name,
+                "arg_names": "(" + ", ".join([arg.name for arg in node.arguments]) + ")"
+                if node.arguments
+                else "",
+            }
+        )
         self.indent()
         self.write_uses_lines(node)
         self.write("implicit none")
 
         if node.mod_name is None:
-            self.write('external %s' % call_name)
-            if hasattr(node, 'orig_node') and isinstance(node.orig_node, ft.Function):
-                self.write('%s %s' % (node.orig_node.ret_val.type, node.name))
+            self.write("external %s" % call_name)
+            if hasattr(node, "orig_node") and isinstance(node.orig_node, ft.Function):
+                self.write("%s %s" % (node.orig_node.ret_val.type, node.orig_name))
 
         self.write()
         for tname in node.types:
-            if tname in self.types and 'super-type' in self.types[tname].doc:
+            if tname in self.types and "super-type" in self.types[tname].doc:
                 self.write_super_type_lines(self.types[tname])
             self.write_type_lines(tname)
         self.write_arg_decl_lines(node)
@@ -420,7 +500,9 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         self.write_transfer_out_lines(node)
         self.write_finalise_lines(node)
         self.dedent()
-        self.write("end subroutine %(sub_name)s" % {'sub_name': self.prefix + node.name})
+        self.write(
+            "end subroutine %(sub_name)s" % {"sub_name": self.prefix + node.name}
+        )
         self.write()
         return self.generic_visit(node)
 
@@ -428,13 +510,13 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         """
         Properly wraps derived types, including derived-type arrays.
         """
-        log.info('F90WrapperGenerator visiting type %s' % node.name)
+        log.info("F90WrapperGenerator visiting type %s" % node.name)
 
         for el in node.elements:
-            dims = list(filter(lambda x: x.startswith('dimension'), el.attributes))
+            dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
-            elif el.type.startswith('type'):  # array of derived types
+            elif el.type.startswith("type"):  # array of derived types
                 self._write_dt_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
             else:
                 self._write_sc_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
@@ -461,72 +543,76 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
 
         """
         if isinstance(t, ft.Type):
-            this = 'this, '
+            this = "this, "
         else:
-            this = 'dummy_this, '
+            this = "dummy_this, "
 
-        subroutine_name = '%s%s__array__%s' % (self.prefix, t.name, el.orig_name)
+        subroutine_name = "%s%s__array__%s" % (self.prefix, t.name, el.name)
         subroutine_name = shorten_long_name(subroutine_name)
 
-        self.write('subroutine %s(%snd, dtype, dshape, dloc)' % (subroutine_name, this))
+        self.write("subroutine %s(%snd, dtype, dshape, dloc)" % (subroutine_name, this))
         self.indent()
 
         if isinstance(t, ft.Module):
-            self.write_uses_lines(t, {t.name: ['%s_%s => %s' % (t.name, el.name, el.name)]})
+            self.write_uses_lines(
+                t, {t.orig_name: ["%s_%s => %s" % (t.name, el.name, el.orig_name)]}
+            )
         else:
             self.write_uses_lines(t)
 
-        self.write('use, intrinsic :: iso_c_binding, only : c_int')
-        self.write('implicit none')
+        self.write("use, intrinsic :: iso_c_binding, only : c_int")
+        self.write("implicit none")
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
-            self.write('integer(c_int), intent(in) :: this(%d)' % sizeof_fortran_t)
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write_type_lines(t.orig_name)
+            self.write("integer(c_int), intent(in) :: this(%d)" % sizeof_fortran_t)
+            self.write("type(%s_ptr_type) :: this_ptr" % t.orign_name)
         else:
-            self.write('integer, intent(in) :: dummy_this(%d)' % sizeof_fortran_t)
+            self.write("integer, intent(in) :: dummy_this(%d)" % sizeof_fortran_t)
 
-        self.write('integer(c_int), intent(out) :: nd')
-        self.write('integer(c_int), intent(out) :: dtype')
+        self.write("integer(c_int), intent(out) :: nd")
+        self.write("integer(c_int), intent(out) :: dtype")
         try:
             rank = len(ArrayDimensionConverter.split_dimensions(dims))
-            if el.type.startswith('character'):
+            if el.type.startswith("character"):
                 rank += 1
         except ValueError:
             rank = 1
-        self.write('integer(c_int), dimension(10), intent(out) :: dshape')
-        self.write('integer*%d, intent(out) :: dloc' % np.dtype('O').itemsize)
+        self.write("integer(c_int), dimension(10), intent(out) :: dshape")
+        self.write("integer*%d, intent(out) :: dloc" % np.dtype("O").itemsize)
         self.write()
-        self.write('nd = %d' % rank)
-        self.write('dtype = %s' % ft.fortran_array_type(el.type, self.kind_map))
+        self.write("nd = %d" % rank)
+        self.write("dtype = %s" % ft.fortran_array_type(el.type, self.kind_map))
         if isinstance(t, ft.Type):
-            self.write('this_ptr = transfer(this, this_ptr)')
-            array_name = 'this_ptr%%p%%%s' % el.orig_name
+            self.write("this_ptr = transfer(this, this_ptr)")
+            array_name = "this_ptr%%p%%%s" % el.orig_name
         else:
-            array_name = '%s_%s' % (t.name, el.orig_name)
+            array_name = "%s_%s" % (t.name, el.name)
 
-        if 'allocatable' in el.attributes:
-            self.write('if (allocated(%s)) then' % array_name)
+        if "allocatable" in el.attributes:
+            self.write("if (allocated(%s)) then" % array_name)
             self.indent()
-        if el.type.startswith('character'):
-            first = ','.join(['1' for i in range(rank - 1)])
-            self.write('dshape(1:%d) = (/len(%s(%s)), shape(%s)/)' % (rank, array_name, first, array_name))
+        if el.type.startswith("character"):
+            first = ",".join(["1" for i in range(rank - 1)])
+            self.write(
+                "dshape(1:%d) = (/len(%s(%s)), shape(%s)/)"
+                % (rank, array_name, first, array_name)
+            )
         else:
-            self.write('dshape(1:%d) = shape(%s)' % (rank, array_name))
-        self.write('dloc = loc(%s)' % array_name)
-        if 'allocatable' in el.attributes:
+            self.write("dshape(1:%d) = shape(%s)" % (rank, array_name))
+        self.write("dloc = loc(%s)" % array_name)
+        if "allocatable" in el.attributes:
             self.dedent()
-            self.write('else')
+            self.write("else")
             self.indent()
-            self.write('dloc = 0')
+            self.write("dloc = 0")
             self.dedent()
-            self.write('end if')
+            self.write("end if")
 
         self.dedent()
-        self.write('end subroutine %s' % (subroutine_name))
+        self.write("end subroutine %s" % (subroutine_name))
         self.write()
 
-    def _write_dt_array_wrapper(self, t, element, dims,
-                                sizeof_fortran_t):
+    def _write_dt_array_wrapper(self, t, element, dims, sizeof_fortran_t):
         """
         Write fortran get/set/len routines for a (1-dimensional) derived-type array.
 
@@ -544,11 +630,14 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         sizeof_fortan_t : `int`
             The size, in bytes, of a pointer to a fortran derived type ??
         """
-        if element.type.startswith('type') and len(ArrayDimensionConverter.split_dimensions(dims)) != 1:
+        if (
+            element.type.startswith("type")
+            and len(ArrayDimensionConverter.split_dimensions(dims)) != 1
+        ):
             return
 
-        self._write_array_getset_item(t, element, sizeof_fortran_t, 'get')
-        self._write_array_getset_item(t, element, sizeof_fortran_t, 'set')
+        self._write_array_getset_item(t, element, sizeof_fortran_t, "get")
+        self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
         self._write_array_len(t, element, sizeof_fortran_t)
 
     def _write_scalar_wrappers(self, t, element, sizeof_fortran_t):
@@ -567,7 +656,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             The size, in bytes, of a pointer to a fortran derived type ??
         """
         self._write_scalar_wrapper(t, element, sizeof_fortran_t, "get")
-        if 'parameter' not in element.attributes:
+        if "parameter" not in element.attributes:
             self._write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
 
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
@@ -594,26 +683,30 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             inout = "out"
 
         if isinstance(t, ft.Type):
-            this = self.prefix + 'this'
+            this = self.prefix + "this"
         else:
-            this = 'dummy_this'
-        safe_i = self.prefix + 'i'  # YANN: i could be in the "uses" clauses
+            this = "dummy_this"
+        safe_i = self.prefix + "i"  # YANN: i could be in the "uses" clauses
         # TODO: check if el.orig_name would be needed here instead of el.name
-        subroutine_name = '%s%s__array_%sitem__%s' % (self.prefix, t.name,
-                                                        getset, el.name)
+        subroutine_name = "%s%s__array_%sitem__%s" % (
+            self.prefix,
+            t.name,
+            getset,
+            el.name,
+        )
         subroutine_name = shorten_long_name(subroutine_name)
 
-        self.write('subroutine %s(%s, %s, %s)' % (subroutine_name,
-                                                  this,
-                                                  safe_i,
-                                                  el.name + 'item'))
+        self.write(
+            "subroutine %s(%s, %s, %s)"
+            % (subroutine_name, this, safe_i, el.name + "item")
+        )
         self.indent()
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
+            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
-            if 'super-type' in t.doc:
+            if "super-type" in t.doc:
                 # YANN: propagate parameter uses
                 for use in t.uses:
                     if use[0] in extra_uses and use[1][0] not in extra_uses[use[0]]:
@@ -629,66 +722,78 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         else:
             extra_uses[mod] = [el_tname]
         self.write_uses_lines(el, extra_uses)
-        self.write('implicit none')
+        self.write("implicit none")
         self.write()
 
-        if 'super-type' in t.doc:
+        if "super-type" in t.doc:
             self.write_super_type_lines(t)
 
         # Check if the type has recursive definition:
-        same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
+        same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
 
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
-        self.write_type_lines(el.type,same_type)
+        self.write_type_lines(el.type, same_type)
 
-        self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
+        self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
-            array_name = 'this_ptr%%p%%%s' % el.name
+            self.write("type(%s_ptr_type) :: this_ptr" % t.name)
+            array_name = "this_ptr%%p%%%s" % el.name
         else:
-            array_name = '%s_%s' % (t.name, el.name)
-        self.write('integer, intent(in) :: %s' % (safe_i))
-        self.write('integer, intent(%s) :: %s(%d)' % (inout, el.name + 'item', sizeof_fortran_t))
+            array_name = "%s_%s" % (t.name, el.name)
+        self.write("integer, intent(in) :: %s" % (safe_i))
+        self.write(
+            "integer, intent(%s) :: %s(%d)"
+            % (inout, el.name + "item", sizeof_fortran_t)
+        )
         if not same_type:
-            self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.name))
+            self.write(
+                "type(%s_ptr_type) :: %s_ptr" % (ft.strip_type(el.type), el.name)
+            )
         else:
-            self.write('type(%s_rec_ptr_type) :: %s_ptr' % (ft.strip_type(el.type),el.name))
+            self.write(
+                "type(%s_rec_ptr_type) :: %s_ptr" % (ft.strip_type(el.type), el.name)
+            )
         self.write()
         if isinstance(t, ft.Type):
-            self.write('this_ptr = transfer(%s, this_ptr)' % (this))
+            self.write("this_ptr = transfer(%s, this_ptr)" % (this))
 
-        if 'allocatable' in el.attributes:
-            self.write('if (allocated(%s)) then' % array_name)
+        if "allocatable" in el.attributes:
+            self.write("if (allocated(%s)) then" % array_name)
             self.indent()
 
-        self.write('if (%s < 1 .or. %s > size(%s)) then' % (safe_i, safe_i, array_name))
+        self.write("if (%s < 1 .or. %s > size(%s)) then" % (safe_i, safe_i, array_name))
         self.indent()
         self.write('call %s("array index out of range")' % self.abort_func)
         self.dedent()
-        self.write('else')
+        self.write("else")
         self.indent()
 
         if getset == "get":
-            self.write('%s_ptr%%p => %s(%s)' % (el.name, array_name, safe_i))
-            self.write('%s = transfer(%s_ptr,%s)' % (el.name + 'item', el.name, el.name + 'item'))
+            self.write("%s_ptr%%p => %s(%s)" % (el.name, array_name, safe_i))
+            self.write(
+                "%s = transfer(%s_ptr,%s)"
+                % (el.name + "item", el.name, el.name + "item")
+            )
         else:
-            self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.name, el.name + 'item', el.name))
-            self.write('%s(%s) = %s_ptr%%p' % (array_name, safe_i, el.name))
+            self.write(
+                "%s_ptr = transfer(%s,%s_ptr)" % (el.name, el.name + "item", el.name)
+            )
+            self.write("%s(%s) = %s_ptr%%p" % (array_name, safe_i, el.name))
 
         self.dedent()
-        self.write('endif')
+        self.write("endif")
 
-        if 'allocatable' in el.attributes:
+        if "allocatable" in el.attributes:
             self.dedent()
-            self.write('else')
+            self.write("else")
             self.indent()
             self.write('call %s("derived type array not allocated")' % self.abort_func)
             self.dedent()
-            self.write('end if')
+            self.write("end if")
 
         self.dedent()
-        self.write('end subroutine %s' % (subroutine_name))
+        self.write("end subroutine %s" % (subroutine_name))
         self.write()
 
     def _write_array_len(self, t, el, sizeof_fortran_t):
@@ -707,22 +812,22 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             The size, in bytes, of a pointer to a fortran derived type ??
         """
         if isinstance(t, ft.Type):
-            this = self.prefix + 'this'
+            this = self.prefix + "this"
         else:
-            this = 'dummy_this'
-        safe_n = self.prefix + 'n'  # YANN: "n" could be in the "uses"
+            this = "dummy_this"
+        safe_n = self.prefix + "n"  # YANN: "n" could be in the "uses"
 
-        subroutine_name = '%s%s__array_len__%s' % (self.prefix, t.name, el.name)
+        subroutine_name = "%s%s__array_len__%s" % (self.prefix, t.name, el.name)
         subroutine_name = shorten_long_name(subroutine_name)
 
-        self.write('subroutine %s(%s, %s)' % (subroutine_name, this, safe_n))
+        self.write("subroutine %s(%s, %s)" % (subroutine_name, this, safe_n))
         self.indent()
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.name, el.name)]
+            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.name)]
         elif isinstance(t, ft.Type):
-            if 'super-type' in t.doc:
+            if "super-type" in t.doc:
                 # YANN: propagate parameter uses
                 for use in t.uses:
                     if use[0] in extra_uses and use[1][0] not in extra_uses[use[0]]:
@@ -739,42 +844,42 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         else:
             extra_uses[mod] = [el_tname]
         self.write_uses_lines(el, extra_uses)
-        self.write('implicit none')
+        self.write("implicit none")
         self.write()
-        if 'super-type' in t.doc:
+        if "super-type" in t.doc:
             self.write_super_type_lines(t)
 
         # Check if the type has recursive definition:
-        same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
+        same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
         if isinstance(t, ft.Type):
             self.write_type_lines(t.name)
-        self.write_type_lines(el.type,same_type)
-        self.write('integer, intent(out) :: %s' % (safe_n))
-        self.write('integer, intent(in) :: %s(%d)' % (this, sizeof_fortran_t))
+        self.write_type_lines(el.type, same_type)
+        self.write("integer, intent(out) :: %s" % (safe_n))
+        self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             self.write()
-            self.write('this_ptr = transfer(%s, this_ptr)' % (this))
-            array_name = 'this_ptr%%p%%%s' % el.name
+            self.write("this_ptr = transfer(%s, this_ptr)" % (this))
+            array_name = "this_ptr%%p%%%s" % el.name
         else:
-            array_name = '%s_%s' % (t.name, el.name)
+            array_name = "%s_%s" % (t.name, el.name)
 
-        if 'allocatable' in el.attributes:
-            self.write('if (allocated(%s)) then' % array_name)
+        if "allocatable" in el.attributes:
+            self.write("if (allocated(%s)) then" % array_name)
             self.indent()
 
-        self.write('%s = size(%s)' % (safe_n, array_name))
+        self.write("%s = size(%s)" % (safe_n, array_name))
 
-        if 'allocatable' in el.attributes:
+        if "allocatable" in el.attributes:
             self.dedent()
-            self.write('else')
+            self.write("else")
             self.indent()
-            self.write('%s = 0' % (safe_n))
+            self.write("%s = 0" % (safe_n))
             self.dedent()
-            self.write('end if')
+            self.write("end if")
 
         self.dedent()
-        self.write('end subroutine %s' % (subroutine_name))
+        self.write("end subroutine %s" % (subroutine_name))
         self.write()
 
     def _write_scalar_wrapper(self, t, el, sizeof_fortran_t, getset):
@@ -796,7 +901,7 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             String indicating whether to write a get routine, or a set routine.
         """
 
-        log.debug('writing %s wrapper for %s.%s' % (getset, t.name, el.name))
+        log.debug("writing %s wrapper for %s.%s" % (getset, t.name, el.name))
 
         # getset and inout just change things simply from a get to a set routine.
         inout = "in"
@@ -804,23 +909,27 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
             inout = "out"
 
         if isinstance(t, ft.Type):
-            this = 'this, '
+            this = "this, "
         elif isinstance(t, ft.Module):
-            this = ''
+            this = ""
         else:
-            raise ValueError("Don't know how to write scalar wrappers for %s type %s"(t, type(t)))
+            raise ValueError(
+                "Don't know how to write scalar wrappers for %s type %s"(t, type(t))
+            )
 
         # Get appropriate use statements
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ['%s_%s => %s' % (t.name, el.orig_name, el.orig_name)]
+            extra_uses[t.orig_name] = [
+                "%s_%s => %s" % (t.name, el.orig_name, el.orig_name)
+            ]
         elif isinstance(t, ft.Type):
             extra_uses[self.types[t.name].mod_name] = [t.name]
 
         # Check if the type has recursive definition:
-        same_type = (ft.strip_type(t.name) == ft.strip_type(el.type))
+        same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
 
-        if el.type.startswith('type') and not same_type:
+        if el.type.startswith("type") and not same_type:
             mod = self.types[el.type].mod_name
             el_tname = ft.strip_type(el.type)
             if mod in extra_uses:
@@ -832,71 +941,90 @@ end type %(typename)s_rec_ptr_type""" % {'typename': tname})
         #   -- Since some cases require a safer localvar name, we always transform it
         localvar = self.prefix + el.orig_name
 
-        subroutine_name = '%s%s__%s__%s' % (self.prefix, t.name, getset, el.orig_name)
+        subroutine_name = "%s%s__%s__%s" % (self.prefix, t.name, getset, el.name)
         subroutine_name = shorten_long_name(subroutine_name)
 
-        self.write('subroutine %s(%s%s)' % (subroutine_name, this, localvar))
+        self.write("subroutine %s(%s%s)" % (subroutine_name, this, localvar))
         self.indent()
 
         self.write_uses_lines(el, extra_uses)
 
-        self.write('implicit none')
+        self.write("implicit none")
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
+            self.write_type_lines(t.orig_name)
 
-        if el.type.startswith('type') and not (el.type == 'type(' + t.name + ')'):
+        if el.type.startswith("type") and not (el.type == "type(" + t.orig_name + ")"):
             self.write_type_lines(el.type)
 
         if isinstance(t, ft.Type):
-            self.write('integer, intent(in)   :: this(%d)' % sizeof_fortran_t)
-            self.write('type(%s_ptr_type) :: this_ptr' % t.name)
+            self.write("integer, intent(in)   :: this(%d)" % sizeof_fortran_t)
+            self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
 
         # Return/set by value
-        attributes = [attr for attr in el.attributes if attr not in
-                      ['pointer', 'allocatable', 'public', 'parameter', 'save']]
+        attributes = [
+            attr
+            for attr in el.attributes
+            if attr not in ["pointer", "allocatable", "public", "parameter", "save"]
+        ]
 
-        if el.type.startswith('type'):
+        if el.type.startswith("type"):
             # For derived types elements, treat as opaque reference
-            self.write('integer, intent(%s) :: %s(%d)' % (inout, localvar, sizeof_fortran_t))
+            self.write(
+                "integer, intent(%s) :: %s(%d)" % (inout, localvar, sizeof_fortran_t)
+            )
 
-            self.write('type(%s_ptr_type) :: %s_ptr' % (ft.strip_type(el.type), el.orig_name))
+            self.write(
+                "type(%s_ptr_type) :: %s_ptr" % (ft.strip_type(el.type), el.orig_name)
+            )
             self.write()
             if isinstance(t, ft.Type):
-                self.write('this_ptr = transfer(this, this_ptr)')
+                self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write('%s_ptr%%p => this_ptr%%p%%%s' % (el.orig_name, el.orig_name))
+                    self.write(
+                        "%s_ptr%%p => this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
+                    )
                 else:
-                    self.write('%s_ptr%%p => %s_%s' % (el.orig_name, t.name, el.orig_name))
-                self.write('%s = transfer(%s_ptr,%s)' % (localvar, el.orig_name, localvar))
+                    self.write(
+                        "%s_ptr%%p => %s_%s" % (el.orig_name, t.name, el.orig_name)
+                    )
+                self.write(
+                    "%s = transfer(%s_ptr,%s)" % (localvar, el.orig_name, localvar)
+                )
             else:
-                self.write('%s_ptr = transfer(%s,%s_ptr)' % (el.orig_name,
-                                                             localvar,
-                                                             el.orig_name))
+                self.write(
+                    "%s_ptr = transfer(%s,%s_ptr)"
+                    % (el.orig_name, localvar, el.orig_name)
+                )
                 if isinstance(t, ft.Type):
-                    self.write('this_ptr%%p%%%s = %s_ptr%%p' % (el.orig_name, el.orig_name))
+                    self.write(
+                        "this_ptr%%p%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
+                    )
                 else:
-                    self.write('%s_%s = %s_ptr%%p' % (t.name, el.orig_name, el.orig_name))
+                    self.write(
+                        "%s_%s = %s_ptr%%p" % (t.name, el.orig_name, el.orig_name)
+                    )
         else:
             if attributes != []:
-                self.write('%s, %s, intent(%s) :: %s' % (el.type,
-                                                         ','.join(attributes),
-                                                         inout, localvar))
+                self.write(
+                    "%s, %s, intent(%s) :: %s"
+                    % (el.type, ",".join(attributes), inout, localvar)
+                )
             else:
-                self.write('%s, intent(%s) :: %s' % (el.type, inout, localvar))
+                self.write("%s, intent(%s) :: %s" % (el.type, inout, localvar))
             self.write()
             if isinstance(t, ft.Type):
-                self.write('this_ptr = transfer(this, this_ptr)')
+                self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write('%s = this_ptr%%p%%%s' % (localvar, el.orig_name))
+                    self.write("%s = this_ptr%%p%%%s" % (localvar, el.orig_name))
                 else:
-                    self.write('%s = %s_%s' % (localvar, t.name, el.orig_name))
+                    self.write("%s = %s_%s" % (localvar, t.name, el.orig_name))
             else:
                 if isinstance(t, ft.Type):
-                    self.write('this_ptr%%p%%%s = %s' % (el.orig_name, localvar))
+                    self.write("this_ptr%%p%%%s = %s" % (el.orig_name, localvar))
                 else:
-                    self.write('%s_%s = %s' % (t.name, el.orig_name, localvar))
+                    self.write("%s_%s = %s" % (t.name, el.orig_name, localvar))
         self.dedent()
-        self.write('end subroutine %s' % (subroutine_name))
+        self.write("end subroutine %s" % (subroutine_name))
         self.write()
