@@ -41,7 +41,7 @@ def test():
     # rename keyword in normal types
     assert lib.global_.lambda_ == 1
     # rename keyword in derived types
-    y = lib.global_.Class2()
+    y = lib.global_.class2()
     assert y.x == 456
     # rename keyword in array
     assert len(lib.global_.with_) == 9
