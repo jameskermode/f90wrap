@@ -704,7 +704,7 @@ end type %(typename)s_rec_ptr_type"""
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.name)]
+            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.orig_name)]
         elif isinstance(t, ft.Type):
             if "super-type" in t.doc:
                 # YANN: propagate parameter uses
@@ -825,7 +825,7 @@ end type %(typename)s_rec_ptr_type"""
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.name)]
+            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.orig_name)]
         elif isinstance(t, ft.Type):
             if "super-type" in t.doc:
                 # YANN: propagate parameter uses
