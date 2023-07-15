@@ -1076,7 +1076,8 @@ class OnlyAndSkip(ft.FortranTransformer):
     def visit_Procedure(self, node):
         if len(self.kept_subs) > 0:
             if node not in self.kept_subs:
-                return None
+                if "__binding__" not in node.name: # don't remove procedures associated with derived types
+                    return None
         return self.generic_visit(node)
 
     def visit_Module(self, node):
