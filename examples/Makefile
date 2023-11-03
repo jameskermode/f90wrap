@@ -11,6 +11,7 @@ EXAMPLES = arrayderivedtypes \
 	interface \
 	issue105_function_definition_with_empty_lines \
 	issue32 \
+	keyword_renaming_issue160 \
 	mockderivetype \
 	mod_arg_clash \
 	optional_args_issue53 \
