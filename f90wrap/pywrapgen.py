@@ -156,7 +156,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(self, prefix, mod_name, types, f90_mod_name=None,
                  make_package=False, kind_map=None, init_file=None,
                  py_mod_names=None, class_names=None, max_length=None,
-                 type_check=False):
+                 type_check=False, relative=False):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(self, indent=' ' * 4,
@@ -179,16 +179,21 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.kind_map = kind_map
         self.init_file = init_file
         self.type_check = type_check
+        self.relative = relative
 
     def write_imports(self, insert=0):
         default_imports = [(self.f90_mod_name, None),
                            ('f90wrap.runtime', None),
                            ('logging', None),
                            ('numpy', None)]
+        if self.relative: default_imports[0] = ('..', self.f90_mod_name)
         imp_lines = ['from __future__ import print_function, absolute_import, division']
         for (mod, symbol) in default_imports + list(self.imports):
             if symbol is None:
-                imp_lines.append('import %s' % mod)
+                if self.relative and mod.startswith(self.py_mod_name + '.'):
+                    imp_lines.append('from . import %s' % mod.partition('.')[2])
+                else:
+                    imp_lines.append('import %s' % mod)
             elif isinstance(symbol, tuple):
                 imp_lines.append('from %s import %s' % (mod, ', '.join(symbol)))
             else:

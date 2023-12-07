@@ -107,7 +107,7 @@ all: _${PYTHON_MODN}.so _${PYTHON_MODN}_pkg.so test
 clean:
 	-rm -f ${LIBSRC_OBJECTS} ${LIBSRC_FPP_FILES} libsrc.a _${PYTHON_MODN}*.so \
 	_${PYTHON_MODN}_pkg.so *.mod *.fpp f90wrap*.f90 f90wrap*.o *.o ${PYTHON_MODN}.py
-	-rm -rf ${PYTHON_MODN}_pkg/
+	-rm -rf ${PYTHON_MODN}_*/
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
 
 
@@ -136,7 +136,14 @@ _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN}_pkg ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v -P
 	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90
 
+_${PYTHON_MODN}_relative.so: libsrc.a ${LIBSRC_FPP_FILES}
+	f90wrap -m ${PYTHON_MODN}_relative ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v -P --relative
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _${PYTHON_MODN}_relative -L. -lsrc f90wrap*.f90
+	mkdir ${PYTHON_MODN}_top
+	mv ${PYTHON_MODN}_relative/ _${PYTHON_MODN}_relative.*so ${PYTHON_MODN}_top/
+	touch ${PYTHON_MODN}_top/__init__.py
 
-test: _${PYTHON_MODN}_pkg.so _${PYTHON_MODN}.so 
+
+test: _${PYTHON_MODN}_pkg.so _${PYTHON_MODN}.so  _${PYTHON_MODN}_relative.so 
 	${PYTHON} tests.py
 

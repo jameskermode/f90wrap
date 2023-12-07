@@ -160,6 +160,8 @@ USAGE
                                                           "Default: 120")
         parser.add_argument('--type-check', action='store_true', default=False,
                             help="Check for type/shape matching of Python argument with the wrapped Fortran subroutine")
+        parser.add_argument('--relative', action='store_true', default=False,
+                            help="Using relative import instead of package name in the package")
 
         args = parser.parse_args()
 
@@ -387,7 +389,9 @@ USAGE
                                       py_mod_names=py_mod_names,
                                       class_names=class_names,
                                       max_length=py_max_line_length,
-                                      type_check=type_check).visit(py_tree)
+                                      type_check=type_check,
+                                      relative = relative,
+                                      ).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
                                   abort_func, kind_map, types, default_to_inout,
                                   max_length=f90_max_line_length).visit(f90_tree)
