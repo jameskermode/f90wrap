@@ -198,6 +198,11 @@ def main():
         "\n\t\t\t#varname# = (#ctype# *)(PyArray_DATA(capi_#varname#_as_array));"
         })
 
+        del numpy.f2py.rules.arg_rules[33]['frompyobj'][8]
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(8, {isstringarray:\
+        "\t\tif (#varname#_capi != Py_None) slen(#varname#) = f2py_itemsize(#varname#);"
+        })
+
         numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(9, {isoptional:\
         "\n\t\tif (#varname#_capi != Py_None && capi_#varname#_as_array == NULL) {"
         "\n\t\t\tPyObject* capi_err = PyErr_Occurred();"
