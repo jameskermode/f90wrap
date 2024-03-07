@@ -16,9 +16,9 @@ class TestTypeCheck(unittest.TestCase):
         m_string_test.string_in(np.string_('yo'))
 
     def test_string_to_string(self):
-        in_string = b'yo'
+        in_string = 'yo'
         out_string = m_string_test.string_to_string(in_string)
-        self.assertEqual(in_string, out_string)
+        self.assertEqual(in_string, out_string.decode("utf-8").strip())
 
     @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
     def test_string_to_string_array(self):
@@ -30,7 +30,7 @@ class TestTypeCheck(unittest.TestCase):
 
     def test_string_out(self):
         out_string = m_string_test.string_out()
-        self.assertEqual(out_string, b"output string")
+        self.assertEqual(out_string.decode("utf-8").strip(), "output string")
 
     @unittest.skipIf(version.parse(np.version.version) < version.parse("1.23.5") , "This test is known to fail on numpy version older than 1.23.5")
     def test_string_out_optional(self):
