@@ -142,8 +142,8 @@ alnum = string.ascii_letters + string.digits + '_'
 
 valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$', re.IGNORECASE)
 
-public = re.compile('(^public$)|(^public\s*(\w+)\s*$)|(^public\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
-private = re.compile('(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
+public = re.compile('(^public$)|(^public\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
+private = re.compile('(^private$)|(^private\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 
 rmspace = re.compile(r'(\w+)\s+\(', re.IGNORECASE)
 def remove_delimited(line, d1, d2):
