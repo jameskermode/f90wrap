@@ -1,0 +1,45 @@
+project('fib',
+  ['c', 'fortran'],
+  version : '0.1',
+  meson_version: '>= 1.1.0',
+  default_options : [
+    'warning_level=1',
+    'buildtype=release'
+    ])
+
+add_languages('fortran', native: false)
+ff = meson.get_compiler('fortran')
+if ff.has_argument('-Wno-conversion')
+  add_project_arguments('-Wno-conversion', language: 'fortran')
+endif
+
+py = import('python').find_installation(pure: false)
+py_dep = py.dependency()
+
+incdir_numpy = run_command(py,
+  ['-c', 'import os; os.chdir(".."); import numpy; print(numpy.get_include())'],
+  check : true
+).stdout().strip()
+
+incdir_f2py = run_command(py,
+    ['-c', 'import os; os.chdir(".."); import numpy.f2py; print(numpy.f2py.get_include())'],
+    check : true
+).stdout().strip()
+
+fortranobject_c = incdir_f2py / 'fortranobject.c'
+inc_np = include_directories(incdir_numpy, incdir_f2py)
+quadmath_dep = ff.find_library('quadmath', required: false)
+
+name = ${name}
+source = ${source}
+source = source.split()
+source += [ name+'module.c', fortranobject_c]
+
+# additional_flags
+
+py.extension_module(name,
+  source,
+  include_directories: inc_np,
+  dependencies : [py_dep, quadmath_dep],
+  install : true
+  )

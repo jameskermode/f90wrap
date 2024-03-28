@@ -1,0 +1,16 @@
+include ../make.meson.inc
+
+NAME     := example
+NAME2    := examplepkg
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+test: build2
+	$(PYTHON) test.py
+	$(PYTHON) test_pkg.py
+
+build2: build
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS=-P
+
+clean: 
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME)
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME2)

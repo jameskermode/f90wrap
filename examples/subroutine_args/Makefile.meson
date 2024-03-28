@@ -1,0 +1,16 @@
+include ../make.meson.inc
+
+NAME     := subroutine_mod
+NAME2    := subroutine_mod_pkg
+WRAPFLAGS += -k kind_map
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+test: build2
+	$(PYTHON) tests.py
+
+build2: build
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS="$(WRAPFLAGS) -P"
+
+clean: 
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME)
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME2)

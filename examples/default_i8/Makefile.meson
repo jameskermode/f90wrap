@@ -1,0 +1,8 @@
+include ../make.meson.inc
+
+NAME     := testmodule
+F90FLAGS += -fdefault-integer-8
+WRAPFLAGS += -k kind_map -P 
+
+test: build
+	$(PYTHON) tests.py

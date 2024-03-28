@@ -1,0 +1,24 @@
+include ../make.meson.inc
+
+NAME     := ExampleArray_pkg
+NAME2    := ExampleArray_relative
+NAME3    := ExampleArray_top
+WRAPFLAGS += -k kind_map -P
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+test: build2
+	$(PYTHON) tests.py
+
+build2_pre: build
+	$(eval WRAPFLAGS += --relative)
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS="$(WRAPFLAGS)"
+
+build2: build2_pre
+	mkdir ${NAME3} 
+	mv ${NAME2}/ _${NAME2}.*so ${NAME3}/
+	touch ${NAME3}/__init__.py
+
+clean: 
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME)
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME2)
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME3)

@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME     := mymodule
+
+test: build
+	$(PYTHON) example_mymodule.py

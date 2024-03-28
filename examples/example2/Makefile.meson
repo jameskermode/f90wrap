@@ -1,0 +1,22 @@
+include ../make.meson.inc
+
+NAME     := mockdt
+NAME2    := mockdtpkg
+WRAPFLAGS += -k kind_map
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+LIBSRC_WRAP_FILES := $(shell find ./ -name '*.F90')
+
+test: build2
+	$(PYTHON) test_module.py
+	$(PYTHON) test_package.py
+
+build2:
+	@ rm -rf f90wrap_*.f90
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME) WRAPFLAGS="$(WRAPFLAGS)" LIBSRC_WRAP_FILES="$(LIBSRC_WRAP_FILES)"
+	@ rm -rf f90wrap_*.f90
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS="$(WRAPFLAGS) -P" LIBSRC_WRAP_FILES="$(LIBSRC_WRAP_FILES)"
+
+clean: 
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME)
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME2)
