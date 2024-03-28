@@ -13,6 +13,14 @@ F2PYFLAGS := --lower
 
 all: test
 
+UNAME = $(shell uname)
+ifeq (${UNAME}, Darwin)
+   SEDI := gsed -i
+else
+   SEDI := sed -i
+endif
+SEDA := "/additional_flags/a add_project_arguments('$$item', language: 'fortran')"
+
 LIBSRC_WRAP_FILES := $(filter-out f90wrap_%.f90, $(wildcard *.f90 *.f *.F90))
 LIBSRC_WRAP_FPP_FILES := $(LIBSRC_WRAP_FILES:%.f90=%.fpp)
 
@@ -30,11 +38,10 @@ extension: ${LIBSRC_WRAP_FPP_FILES}
 build: extension
 	@echo 'Using via meson...'
 	@cp ../meson.build.template meson.build
-	sed -i 's/$${name}/'\''_${NAME}'\''/' meson.build
-	sed -i 's@$${source}@'\''${LIBSRC_WRAP_FILES} $(shell ls f90wrap_*.f90)'\''@' meson.build
+	${SEDI} "s/\$${name}/'_${NAME}'/" meson.build
+	${SEDI} "s@\$${source}@'${LIBSRC_WRAP_FILES} $(shell ls f90wrap_*.f90)'@" meson.build
 	for item in ${F90FLAGS}; do \
-		sed -i "/additional_flags/a add_project_arguments('$$item', language: 'fortran')" meson.build; \
-	done
+		${SEDI} ${SEDA} meson.build; done
 	meson setup --wipe _build_dir
 	meson compile -C _build_dir
 	mv _build_dir/_${NAME}*.so .
