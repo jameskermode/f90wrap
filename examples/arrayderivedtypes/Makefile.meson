@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME      := arrayderivedtype
+WRAPFLAGS += -k kind_map
+
+test: build
+	$(PYTHON) tests.py

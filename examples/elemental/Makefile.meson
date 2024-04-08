@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := elmod
+WRAPFLAGS += -k kind_map
+
+test: build
+	$(PYTHON) test.py

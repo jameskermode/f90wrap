@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := recursive_type_array
+WRAPFLAGS += -k kind_map
+
+test: build
+	$(PYTHON) tests.py

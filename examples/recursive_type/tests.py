@@ -44,7 +44,7 @@ class TestExample(unittest.TestCase):
 
 
     def test_basic(self):
-        tree = lib.Tree.Node()
+        tree = lib.Tree.node()
         print (tree)
         del tree
 

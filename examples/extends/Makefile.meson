@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME     := testextends
+
+test: build
+	$(PYTHON) testextends.py
