@@ -328,6 +328,9 @@ except ValueError:
                                            for arg in args]),
                    f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]))
 
+        if node.mod_name is not None:
+            dct['func_name'] = node.mod_name + '__' + node.name
+
         self.write("def __init__(self, %(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
@@ -361,6 +364,9 @@ except ValueError:
                                                                     ('None if %(arg_py_name)s is None else %('
                                                                      'arg_py_name)s._handle') %
                                                                     {'arg_py_name': arg.py_name})
+        if node.mod_name is not None:
+            dct['func_name'] = node.mod_name + '__' + node.name
+
         call_line = '%(call)s%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
 
         self.write('@classmethod')
@@ -386,6 +392,8 @@ except ValueError:
                                                      'optional' in arg.attributes and '=None' or '')
                                            for arg in node.arguments]),
                    f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]))
+        if node.mod_name is not None:
+            dct['func_name'] = node.mod_name + '__' + node.name
         self.write("def __del__(%(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
@@ -414,6 +422,8 @@ except ValueError:
                        py_arg_names=', '.join([arg.py_name + py_arg_value(arg) for arg in node.arguments]),
                        f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]),
                        call='')
+            if node.mod_name is not None:
+                dct['func_name'] = node.mod_name + '__' + node.name
 
             if isinstance(node, ft.Function):
                 dct['result'] = ', '.join([ret_val.name for ret_val in node.ret_val])

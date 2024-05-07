@@ -77,7 +77,7 @@ LIBSRC_FPP_FILES = $(addsuffix .fpp,${LIBSRC_SOURCES})
 #=======================================================================
 
 # names (without suffix), f90 sources
-LIBSRC_WRAP_SOURCES = library
+LIBSRC_WRAP_SOURCES = library parameters
 
 # file names
 LIBSRC_WRAP_FILES = $(addsuffix .f90,${LIBSRC_WRAP_SOURCES})
