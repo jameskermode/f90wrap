@@ -330,6 +330,7 @@ except ValueError:
 
         if node.mod_name is not None:
             dct['func_name'] = node.mod_name + '__' + node.name
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
 
         self.write("def __init__(self, %(py_arg_names)s):" % dct)
         self.indent()
@@ -342,7 +343,7 @@ except ValueError:
                                                                     {'arg_py_name': arg.py_name})
         self.write('f90wrap.runtime.FortranDerivedType.__init__(self)')
 
-        self.write('result = %(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct)
+        self.write('result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct)
         self.write('self._handle = result[0] if isinstance(result, tuple) else result')
         self.dedent()
         self.write()
@@ -366,8 +367,8 @@ except ValueError:
                                                                     {'arg_py_name': arg.py_name})
         if node.mod_name is not None:
             dct['func_name'] = node.mod_name + '__' + node.name
-
-        call_line = '%(call)s%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
+        call_line = '%(call)s%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct
 
         self.write('@classmethod')
         self.write("def %(method_name)s(cls, %(py_arg_names)s):" % dct)
@@ -394,12 +395,14 @@ except ValueError:
                    f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]))
         if node.mod_name is not None:
             dct['func_name'] = node.mod_name + '__' + node.name
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
+
         self.write("def __del__(%(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
         self.write('if self._alloc:')
         self.indent()
-        self.write('%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct)
+        self.write('%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct)
         self.dedent()
         self.dedent()
         self.write()
@@ -424,6 +427,7 @@ except ValueError:
                        call='')
             if node.mod_name is not None:
                 dct['func_name'] = node.mod_name + '__' + node.name
+            dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
 
             if isinstance(node, ft.Function):
                 dct['result'] = ', '.join([ret_val.name for ret_val in node.ret_val])
@@ -445,7 +449,7 @@ except ValueError:
                                                                         (
                                                                             'None if %(arg_py_name)s is None else %(arg_py_name)s._handle') %
                                                                         {'arg_py_name': arg.py_name})
-            call_line = '%(call)s%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)' % dct
+            call_line = '%(call)s%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct
             self.write(call_line)
 
             if isinstance(node, ft.Function):
@@ -604,12 +608,13 @@ except ValueError:
             if dct['el_name_set'] in procs:
                 dct['el_name_set'] += '_'
 
-        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(type_name)s__get__%(el_name)s' % dct)
+        dct['subroutine_name_get'] = shorten_long_name('%(prefix)s%(type_name)s__get__%(el_name)s' % dct)
+        dct['subroutine_name_set'] = shorten_long_name('%(prefix)s%(type_name)s__set__%(el_name)s' % dct)
 
         self.write('def %(el_name_get)s(%(self)s):' % dct)
         self.indent()
         self.write(format_doc_string(el))
-        self.write('return %(mod_name)s.%(subroutine_name)s(%(handle)s)' % dct)
+        self.write('return %(mod_name)s.%(subroutine_name_get)s(%(handle)s)' % dct)
         self.dedent()
         self.write()
         if 'parameter' in el.attributes and isinstance(node, ft.Module) and self.make_package:
@@ -620,7 +625,7 @@ except ValueError:
             if not isinstance(node, ft.Module) or not self.make_package:
                 self.write('@%(el_name_get)s.setter' % dct)
             self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-    %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
+    %(mod_name)s.%(subroutine_name_set)s(%(set_args)s)
     ''' % dct)
             self.write()
 

@@ -22,7 +22,8 @@ EXAMPLES = arrayderivedtypes \
 	docstring \
 	type_check \
 	derivedtypes_procedure \
-	optional_string
+	optional_string \
+	long_subroutine_name
 
 PYTHON = python
 
