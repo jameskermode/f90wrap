@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME     := pywrapper
+
+test: build
+	$(PYTHON) test.py
