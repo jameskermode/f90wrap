@@ -33,10 +33,10 @@ import unittest
 
 import numpy as np
 
-import ExampleArray_pkg as lib
-
 
 class TestExample(unittest.TestCase):
+
+    import ExampleArray_pkg as lib
 
     def setUp(self):
         pass
@@ -47,7 +47,7 @@ class TestExample(unittest.TestCase):
         br = np.zeros((ndata,), order='F')
         co = np.zeros((4, ndata), order='F')
 
-        lib.library.do_array_stuff(n=ndata, x=x, y=y, br=br, co=co)
+        self.lib.library.do_array_stuff(n=ndata, x=x, y=y, br=br, co=co)
 
         for k in range(4):
             np.testing.assert_allclose(x*y + x, co[k,:])
@@ -66,32 +66,34 @@ class TestExample(unittest.TestCase):
         br = np.zeros((n,), order='F')
         co = np.zeros((4, n), order='F')
 
-        lib.library.do_array_stuff(n=n, x=x, y=y, br=br, co=co)
-        lib.library.only_manipulate(n=n, array=co)
+        self.lib.library.do_array_stuff(n=n, x=x, y=y, br=br, co=co)
+        self.lib.library.only_manipulate(n=n, array=co)
         for k in range(4):
             np.testing.assert_allclose((x*y + x)**2, co[k,:])
 
     def test_return_array(self):
         m, n = 10, 4
         arr = np.ndarray((m,n), order='F', dtype=np.int32)
-        lib.library.return_array(m, n, arr)
+        self.lib.library.return_array(m, n, arr)
         ii, jj = np.mgrid[0:m,0:n]
         ii += 1
         jj += 1
         np.testing.assert_equal(ii*jj + jj, arr)
 
     def test_set_value(self):
-        lib.library.set_ia(1)
-        ia = lib.library.get_ia()
+        self.lib.library.set_ia(1)
+        ia = self.lib.library.get_ia()
         np.testing.assert_equal(ia, 1)
 
     def test_set_array(self):
         iarray_ref = np.arange(0, 3, dtype=np.int32)
-        lib.library.set_array_iarray(iarray_ref)
-        iarray = lib.library.get_array_iarray()
+        self.lib.library.set_array_iarray(iarray_ref)
+        iarray = self.lib.library.get_array_iarray()
         np.testing.assert_allclose(iarray, iarray_ref)
+
+class TestExampleRelative(TestExample):
+    import ExampleArray_top.ExampleArray_relative as lib
 
 
 if __name__ == '__main__':
-
     unittest.main()

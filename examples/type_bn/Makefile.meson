@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME     := type_bn
+
+test: build
+	$(PYTHON) test.py

@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := pywrapper
+WRAPFLAGS += --type-check
+
+test: build
+	$(PYTHON) type_check_test.py

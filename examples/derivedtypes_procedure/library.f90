@@ -2,7 +2,7 @@ module test
   implicit none
 
   private
-  public :: atype, btype
+  public atype, btype
   public :: create, asum
   public :: asum_class
 

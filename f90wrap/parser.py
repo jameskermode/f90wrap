@@ -142,8 +142,8 @@ alnum = string.ascii_letters + string.digits + '_'
 
 valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$', re.IGNORECASE)
 
-public = re.compile('(^public$)|(^public\s*(\w+)\s*$)|(^public\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
-private = re.compile('(^private$)|(^private\s*(\w+)\s*$)|(^private\s*::\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
+public = re.compile('(^public$)|(^public\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
+private = re.compile('(^private$)|(^private\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 
 rmspace = re.compile(r'(\w+)\s+\(', re.IGNORECASE)
 def remove_delimited(line, d1, d2):
@@ -668,7 +668,7 @@ def check_subt(cl, file, grab_hold_doc=True):
 
         # get argument list
 
-        if has_args:
+        if has_args and ')' in cl:
             cl = cl[:cl.find(')', 0)+1]
             cl = re.sub('\w+', '', cl, count=1)
             argl = re.split('[\W]+', cl)
@@ -930,6 +930,7 @@ def check_funct(cl, file, grab_hold_doc=True):
 
         cl = file.next()
 
+        cont = 0
         subroutine_lines = []
         while True:
 
@@ -956,35 +957,59 @@ def check_funct(cl, file, grab_hold_doc=True):
                     cl = file.next()
                     continue
 
-            # Doc comment - return value
-            check = check_doc_rv(cl, file)
-            if check[0] != None:
-                out.ret_val_doc.append(check[0])
+            # contains statement
+            check = check_cont(cl, file)
+            if check[0] is not None:
+                cont = 1
                 cl = check[1]
-                continue
 
-            # Doc comment
-            check = check_doc(cl, file)
-            if check[0] != None:
-                out.doc.append(check[0])
-                cl = check[1]
-                continue
-
-            # Interface section
-            check = check_interface_decl(cl, file)
-            if check[0] != None:
-                for a in check[0].procedures:
-                    out.arguments.append(a)
-                cl = check[1]
-                continue
-
-            # Argument
-            check = check_arg(cl, file)
-            if check[0] != None:
-                for a in check[0]:
-                    out.arguments.append(a)
+            if cont == 0:
+                # Doc comment - return value
+                check = check_doc_rv(cl, file)
+                if check[0] != None:
+                    out.ret_val_doc.append(check[0])
                     cl = check[1]
-                continue
+                    continue
+
+                # Doc comment
+                check = check_doc(cl, file)
+                if check[0] != None:
+                    out.doc.append(check[0])
+                    cl = check[1]
+                    continue
+
+                # Interface section
+                check = check_interface_decl(cl, file)
+                if check[0] != None:
+                    for a in check[0].procedures:
+                        out.arguments.append(a)
+                    cl = check[1]
+                    continue
+
+                # Argument
+                check = check_arg(cl, file)
+                if check[0] != None:
+                    for a in check[0]:
+                        out.arguments.append(a)
+                        cl = check[1]
+                    continue
+
+            else:
+                while True :
+                    # Subroutine definition
+                    check = check_subt(cl, file)
+                    if check[0] is not None:
+                        # Discard contained subroutine
+                        cl = check[1]
+                        continue
+
+                    # Function definition
+                    check = check_funct(cl, file)
+                    if check[0] is not None:
+                        # Discard contained function
+                        cl = check[1]
+                        continue
+                    break
 
             m = re.match(funct_end, cl)
 

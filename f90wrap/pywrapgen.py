@@ -171,7 +171,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         class_names=None,
         max_length=None,
         type_check=False,
-    ):
+    , relative=False):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(
@@ -193,18 +193,21 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.kind_map = kind_map
         self.init_file = init_file
         self.type_check = type_check
+        self.relative = relative
 
     def write_imports(self, insert=0):
-        default_imports = [
-            (self.f90_mod_name, None),
-            ("f90wrap.runtime", None),
-            ("logging", None),
-            ("numpy", None),
-        ]
-        imp_lines = ["from __future__ import print_function, absolute_import, division"]
-        for mod, symbol in default_imports + list(self.imports):
+        default_imports = [(self.f90_mod_name, None),
+                           ('f90wrap.runtime', None),
+                           ('logging', None),
+                           ('numpy', None)]
+        if self.relative: default_imports[0] = ('..', self.f90_mod_name)
+        imp_lines = ['from __future__ import print_function, absolute_import, division']
+        for (mod, symbol) in default_imports + list(self.imports):
             if symbol is None:
-                imp_lines.append("import %s" % mod)
+                if self.relative and mod.startswith(self.py_mod_name + '.'):
+                    imp_lines.append('from . import %s' % mod.partition('.')[2])
+                else:
+                    imp_lines.append('import %s' % mod)
             elif isinstance(symbol, tuple):
                 imp_lines.append("from %s import %s" % (mod, ", ".join(symbol)))
             else:
@@ -367,6 +370,10 @@ except ValueError:
             ),
         )
 
+        if node.mod_name is not None:
+            dct['func_name'] = node.mod_name + '__' + node.name
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
+
         self.write("def __init__(self, %(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
@@ -382,10 +389,8 @@ except ValueError:
                 )
         self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
 
-        self.write(
-            "result = %(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)" % dct
-        )
-        self.write("self._handle = result[0] if isinstance(result, tuple) else result")
+        self.write('result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct)
+        self.write('self._handle = result[0] if isinstance(result, tuple) else result')
         self.dedent()
         self.write()
 
@@ -406,15 +411,15 @@ except ValueError:
 
         dct["call"] = "result = "
         for arg in node.arguments:
-            if "optional" in arg.attributes and "._handle" in arg.py_value:
-                dct["f90_arg_names"] = dct["f90_arg_names"].replace(
-                    arg.py_value,
-                    ("None if %(arg_py_name)s is None else %(" "arg_py_name)s._handle")
-                    % {"arg_py_name": arg.py_name},
-                )
-        call_line = (
-            "%(call)s%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)" % dct
-        )
+            if 'optional' in arg.attributes and '._handle' in arg.py_value:
+                dct['f90_arg_names'] = dct['f90_arg_names'].replace(arg.py_value,
+                                                                    ('None if %(arg_py_name)s is None else %('
+                                                                     'arg_py_name)s._handle') %
+                                                                    {'arg_py_name': arg.py_name})
+        if node.mod_name is not None:
+            dct['func_name'] = node.mod_name + '__' + node.name
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
+        call_line = '%(call)s%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct
 
         self.write("@classmethod")
         self.write("def %(method_name)s(cls, %(py_arg_names)s):" % dct)
@@ -434,27 +439,23 @@ except ValueError:
         self.write()
 
     def write_destructor(self, node):
-        dct = dict(
-            func_name=node.name,
-            prefix=self.prefix,
-            mod_name=self.f90_mod_name,
-            py_arg_names=", ".join(
-                [
-                    "%s%s"
-                    % (arg.py_name, "optional" in arg.attributes and "=None" or "")
-                    for arg in node.arguments
-                ]
-            ),
-            f90_arg_names=", ".join(
-                ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
-            ),
-        )
+        dct = dict(func_name=node.name,
+                   prefix=self.prefix,
+                   mod_name=self.f90_mod_name,
+                   py_arg_names=', '.join(['%s%s' % (arg.py_name,
+                                                     'optional' in arg.attributes and '=None' or '')
+                                           for arg in node.arguments]),
+                   f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]))
+        if node.mod_name is not None:
+            dct['func_name'] = node.mod_name + '__' + node.name
+        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
+
         self.write("def __del__(%(py_arg_names)s):" % dct)
         self.indent()
         self.write(format_doc_string(node))
         self.write("if self._alloc:")
         self.indent()
-        self.write("%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)" % dct)
+        self.write('%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct)
         self.dedent()
         self.dedent()
         self.write()
@@ -483,6 +484,9 @@ except ValueError:
                 ),
                 call="",
             )
+            if node.mod_name is not None:
+                dct['func_name'] = node.mod_name + '__' + node.name
+            dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
 
             if isinstance(node, ft.Function):
                 dct["result"] = ", ".join([ret_val.name for ret_val in node.ret_val])
@@ -510,7 +514,7 @@ except ValueError:
                         % {"arg_py_name": arg.py_name},
                     )
             call_line = (
-                "%(call)s%(mod_name)s.%(prefix)s%(func_name)s(%(f90_arg_names)s)" % dct
+                "%(call)s%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
             )
             self.write(call_line)
 
@@ -685,14 +689,13 @@ except ValueError:
             if dct["el_name_set"] in procs:
                 dct["el_name_set"] += "_"
 
-        dct["subroutine_name"] = shorten_long_name(
-            "%(prefix)s%(type_name)s__get__%(el_name)s" % dct
-        )
+        dct['subroutine_name_get'] = shorten_long_name('%(prefix)s%(type_name)s__get__%(el_name)s' % dct)
+        dct['subroutine_name_set'] = shorten_long_name('%(prefix)s%(type_name)s__set__%(el_name)s' % dct)
 
         self.write("def %(el_name_get)s(%(self)s):" % dct)
         self.indent()
         self.write(format_doc_string(el))
-        self.write("return %(mod_name)s.%(subroutine_name)s(%(handle)s)" % dct)
+        self.write('return %(mod_name)s.%(subroutine_name_get)s(%(handle)s)' % dct)
         self.dedent()
         self.write()
         if (
@@ -705,13 +708,10 @@ except ValueError:
 
         if "parameter" not in el.attributes:
             if not isinstance(node, ft.Module) or not self.make_package:
-                self.write("@%(el_name_get)s.setter" % dct)
-            self.write(
-                """def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-    %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
-    """
-                % dct
-            )
+                self.write('@%(el_name_get)s.setter' % dct)
+            self.write('''def %(el_name_set)s(%(selfcomma)s%(el_name)s):
+    %(mod_name)s.%(subroutine_name_set)s(%(set_args)s)
+    ''' % dct)
             self.write()
 
     def write_repr(self, node, properties):

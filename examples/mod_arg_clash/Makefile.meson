@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := test
+WRAPFLAGS += -P
+
+test: build
+	$(PYTHON) tests.py

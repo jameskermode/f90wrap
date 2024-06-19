@@ -1,0 +1,23 @@
+include ../make.meson.inc
+
+NAME     := mytype
+NAME2    := othertype
+WRAPFLAGS += -k kind_map
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+test: build2
+	$(PYTHON) tests.py
+
+build1:
+	$(eval LIBSRC_WRAP_FILES := mytype_mod.f90)
+	@ rm -rf f90wrap_*.f90
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME) WRAPFLAGS="$(WRAPFLAGS)" LIBSRC_WRAP_FILES=$(LIBSRC_WRAP_FILES)
+
+build2: build1
+	$(eval LIBSRC_WRAP_FILES := othertype_mod.f90)
+	@ rm -rf f90wrap_*.f90
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS="$(WRAPFLAGS)" LIBSRC_WRAP_FILES=$(LIBSRC_WRAP_FILES)
+
+clean: 
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME)
+	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME2)

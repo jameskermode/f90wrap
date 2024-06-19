@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := classnames
+WRAPFLAGS += -k kind_map --class-names class_names.json
+
+test: build
+	$(PYTHON) tests.py

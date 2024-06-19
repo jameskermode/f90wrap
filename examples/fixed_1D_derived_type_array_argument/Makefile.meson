@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := test_python
+WRAPFLAGS += --default-to-inout
+
+test: build
+	$(PYTHON) tests.py

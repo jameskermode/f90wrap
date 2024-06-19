@@ -22,7 +22,9 @@ EXAMPLES = arrayderivedtypes \
 	type_bn \
 	docstring \
 	type_check \
-	derivedtypes_procedure
+	derivedtypes_procedure \
+	optional_string \
+	long_subroutine_name
 
 PYTHON = python
 
@@ -42,4 +44,20 @@ clean:
 	for example in ${EXAMPLES}; do \
 	  echo "running make test in $$example" ; \
 	  make -C $$example clean || exit ; \
+	done
+
+test_meson:
+	for example in ${EXAMPLES}; do \
+	  echo "" ; \
+	  echo "" ; \
+	  echo "" ; \
+	  echo "# ---------------------------------------------------" ; \
+	  echo "running make test in $$example" ; \
+	  make -C $$example -f Makefile.meson PYTHON=$(PYTHON) test || exit ; \
+	done
+
+clean_meson:
+	for example in ${EXAMPLES}; do \
+	  echo "running make test in $$example" ; \
+	  make -C $$example -f Makefile.meson clean || exit ; \
 	done
