@@ -159,19 +159,19 @@ def format_doc_string(node):
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(
-        self,
-        prefix,
-        mod_name,
-        types,
-        f90_mod_name=None,
-        make_package=False,
-        kind_map=None,
-        init_file=None,
-        py_mod_names=None,
-        class_names=None,
-        max_length=None,
-        type_check=False,
-    , relative=False):
+            self,
+            prefix,
+            mod_name,
+            types,
+            f90_mod_name=None,
+            make_package=False,
+            kind_map=None,
+            init_file=None,
+            py_mod_names=None,
+            class_names=None,
+            max_length=None,
+            type_check=False,
+            relative=False):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(
