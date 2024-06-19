@@ -72,7 +72,7 @@ def main():
     if(sys.platform == 'win32'):
        includes_inject = includes_inject + "#include <signal.h> // fix https://github.com/jameskermode/f90wrap/issues/73 \n#include <setjmpex.h> // fix https://github.com/jameskermode/f90wrap/issues/96\n"
     else:
-       includes_inject = includes_inject + "#include <setjmp.h>\n"
+       includes_inject = includes_inject + "#include <signal.h>\n#include <setjmp.h>\n"
 
     includes_inject = includes_inject + """
     #define ABORT_BUFFER_SIZE 1024

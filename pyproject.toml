@@ -1,13 +1,17 @@
 [build-system]
 # Minimum requirements for the build system to execute.
-requires = ["meson-python>=0.12.0", "oldest-supported-numpy"]
+requires = [
+    "meson-python>=0.12.0",
+    "oldest-supported-numpy; python_version=='3.8'",
+    "numpy>=2.0.0; python_version>='3.9'",
+]
 build-backend = 'mesonpy'
 
 [project]
 name = "f90wrap"
 description = "Fortran to Python interface generator with derived type support"
 authors = [{name = "James Kermode", email = "james.kermode@gmail.com"}]
-python-requires = ">=3.6"
+python-requires = ">=3.8"
 urls = {Homepage = "https://github.com/jameskermode/f90wrap"}
 dependencies = ["numpy>=1.13", "packaging"]
 dynamic = ["version"]
