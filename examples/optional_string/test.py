@@ -10,10 +10,10 @@ class TestTypeCheck(unittest.TestCase):
         m_string_test.string_in('yo')
 
     def test_string_in_2(self):
-        m_string_test.string_in(np.unicode_('yo'))
+        m_string_test.string_in(np.str_('yo'))
 
     def test_string_in_3(self):
-        m_string_test.string_in(np.string_('yo'))
+        m_string_test.string_in(np.bytes_('yo'))
 
     def test_string_to_string(self):
         in_string = 'yo'
