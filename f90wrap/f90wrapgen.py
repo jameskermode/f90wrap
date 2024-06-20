@@ -470,15 +470,12 @@ end type %(typename)s_rec_ptr_type"""
             "F90WrapperGenerator visiting routine %s call_name %s mod_name %r"
             % (node.name, call_name, node.mod_name)
         )
-        self.write(
-            "subroutine %(sub_name)s%(arg_names)s"
-            % {
-                "sub_name": self.prefix + node.name,
-                "arg_names": "(" + ", ".join([arg.name for arg in node.arguments]) + ")"
-                if node.arguments
-                else "",
-            }
-        )
+        sub_name = self.prefix + node.name
+        arg_names = '(' + ', '.join([arg.name for arg in node.arguments]) + ')' if node.arguments else ''
+        if node.mod_name is not None:
+            sub_name = self.prefix + node.mod_name + '__' + node.name
+        sub_name = shorten_long_name(sub_name)
+        self.write("subroutine %s%s" % (sub_name, arg_names))
         self.indent()
         self.write_uses_lines(node)
         self.write("implicit none")
