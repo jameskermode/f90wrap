@@ -497,9 +497,7 @@ end type %(typename)s_rec_ptr_type"""
         self.write_transfer_out_lines(node)
         self.write_finalise_lines(node)
         self.dedent()
-        self.write(
-            "end subroutine %(sub_name)s" % {"sub_name": self.prefix + node.name}
-        )
+        self.write("end subroutine %s" % (sub_name))
         self.write()
         return self.generic_visit(node)
 
