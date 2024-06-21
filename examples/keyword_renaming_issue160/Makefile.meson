@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME     := keywordr_rename
+
+test: build
+	$(PYTHON) tests.py
