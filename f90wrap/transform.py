@@ -1131,22 +1131,6 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
         # original resolution logic was implemented when resolution occurred in
         # the parser. Technically this is quadratic complexity, but the number
         # of interface prototypes is generally small...
-        def inject_procedure(interfaces, procedure):
-            for iface in interfaces:
-                for i, p in enumerate(iface.procedures):
-                    if procedure.name == p.name:
-                        log.debug("Procedure %s moved to interface %s", procedure.name, iface.name)
-                        iface.procedures[i] = procedure # Replace the prototype
-                        return True
-            log.debug(f"Procedure %s is not used in any interface", procedure.name)
-            return False
-
-        unused = []
-        for mp in node.procedures:
-            if not inject_procedure(node.interfaces, mp):
-                unused.append(mp)
-        node.procedures = unused
-        return node
 
         # Attempt 1:
         # Insert procedures at first reference. Elegant and equivalent to Option 0,
@@ -1163,14 +1147,14 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
         # fortran code gen b/c identically named wrappers will be generated for
         # each interface, causing a name clash. This could be fixed in code gen
         # by adding the interface name to the wrapper function name.
-        #procedure_map = { p.name:p for p in node.procedures }
-        #unused = set(procedure_map.keys())
-        #for int in node.interfaces:
-        #    iprocs = { p.name for p in int.procedures }
-        #    unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
-        #    int.procedures = [ procedure_map[p] for p in iprocs ]
-        #node.procedures = [ procedure_map[p] for p in unused ]
-        #return node
+        procedure_map = { p.name:p for p in node.procedures }
+        unused = set(procedure_map.keys())
+        for int in node.interfaces:
+            iprocs = { p.name for p in int.procedures }
+            unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
+            int.procedures = [ procedure_map[p] for p in iprocs ]
+        node.procedures = [ procedure_map[p] for p in unused ]
+        return node
 
 
 class ResolveBindingPrototypes(ft.FortranTransformer):
