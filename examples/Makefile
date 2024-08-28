@@ -30,7 +30,8 @@ EXAMPLES = arrayderivedtypes \
 	kind_map_default \
 	intent_out_size \
 	output_kind \
-	remove_pointer_arg
+	remove_pointer_arg \
+	fortran_oo
 
 PYTHON = python
 
