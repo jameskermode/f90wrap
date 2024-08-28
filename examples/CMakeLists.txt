@@ -33,6 +33,7 @@ list(APPEND tests
     type_check
     optional_string
     long_subroutine_name
+    output_kind
 )
 
 foreach(test ${tests})
