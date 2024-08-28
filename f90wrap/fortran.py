@@ -948,7 +948,14 @@ def f2py_type(type, attributes=None):
     """
     if attributes is None:
         attributes = []
-    if "real" in type:
+    # "type" and "class" are to be detected first
+    # to handle the case where a derived type or class
+    # contains a builtin type name
+    if type.startswith("type"):
+        pytype = strip_type(type).title()
+    elif type.startswith("class"):
+        pytype = strip_type(type).title()
+    elif "real" in type:
         pytype = "float"
     elif "integer" in type:
         pytype = "int"
@@ -958,8 +965,6 @@ def f2py_type(type, attributes=None):
         pytype = "bool"
     elif "complex" in type:
         pytype = 'complex'
-    elif type.startswith("type"):
-        pytype = strip_type(type).title()
     else:
         pytype = "unknown"
     dims = list(filter(lambda x: x.startswith("dimension"),
