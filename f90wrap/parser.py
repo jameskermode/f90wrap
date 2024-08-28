@@ -61,8 +61,10 @@ log = logging.getLogger(__name__)
 
 # Define some regular expressions
 
-module = re.compile('^module', re.IGNORECASE)
-module_end = re.compile('^end\s*module|end$', re.IGNORECASE)
+module = re.compile('^module|^submodule', re.IGNORECASE)
+module_end = re.compile('^end\s*module|^end\s*submodule|end$', re.IGNORECASE)
+
+submodule = re.compile('^submodule', re.IGNORECASE)
 
 program = re.compile('^program', re.IGNORECASE)
 program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
@@ -527,17 +529,38 @@ def check_program(cl, file):
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-def check_module(cl, file):
+def check_module(cl, list_modules, file):
     global doc_plugin_module
     global hold_doc
 
-    out = Module()
     cont = 0
 
     if re.match(module, cl) != None:
 
-        out.filename = file.filename
-        out.lineno = file.lineno
+        is_submodule = re.match(submodule, cl) != None
+
+        # Get (sub)module name
+        cl = module.sub('', cl)
+        name = re.search(re.compile('\w+'), cl).group()
+
+        # If module already registered, just append new informations
+        # This can happen with submodules, different files are associated to the same module
+        flag_exists = False
+        for old_module in list_modules:
+            if old_module.name == name:
+                out = old_module
+                flag_exists = True
+                break
+
+        if not flag_exists:
+            out = Module()
+            out.name = name
+
+        # In case of submodules, keep name of main module only
+        if not is_submodule:
+            out.name = name
+            out.filename = file.filename
+            out.lineno = file.lineno
 
         # jrk33 - if we're holding a doc comment from before
         # subroutine definition, spit it out now
@@ -545,10 +568,6 @@ def check_module(cl, file):
             for line in hold_doc:
                 out.doc.append(line)
             hold_doc = None
-
-        # Get module name
-        cl = module.sub('', cl)
-        out.name = re.search(re.compile('\w+'), cl).group()
 
         # Get next line, and check each possibility in turn
 
@@ -681,7 +700,10 @@ def check_module(cl, file):
 
         cl = file.next()
 
-        out.lineno = slice(out.lineno, file.lineno - 1)
+        if not flag_exists:
+            out.lineno = slice(out.lineno, file.lineno - 1)
+            list_modules.append(out)
+
         return [out, cl]
     else:
         return [None, cl]
@@ -1666,11 +1688,10 @@ def read_files(args, doc_plugin_filename=None):
                 cline = check[1]
                 continue
 
-            # modules
-            check = check_module(cline, file)
+            # modules/submodules
+            check = check_module(cline, root.modules, file)
             if check[0] != None:
                 log.debug('  module ' + check[0].name)
-                root.modules.append(check[0])
                 cline = check[1]
                 continue
 
