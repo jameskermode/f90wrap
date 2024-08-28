@@ -34,6 +34,7 @@ list(APPEND tests
     optional_string
     long_subroutine_name
     output_kind
+    remove_pointer_arg
 )
 
 foreach(test ${tests})
