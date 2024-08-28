@@ -65,7 +65,7 @@ class CodeGenerator(object):
         Write arbitrary string arguments to the instance's code, split by
         newline characters and implied newline after last arg.
         """
-        if args is ():
+        if args == ():
             args = ('\n',)
         args = ' '.join(args).rstrip() + '\n'
         lines = args.splitlines(True)
