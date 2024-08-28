@@ -32,6 +32,7 @@ list(APPEND tests
     string_array_input_f2py
     type_check
     optional_string
+    long_subroutine_name
 )
 
 foreach(test ${tests})

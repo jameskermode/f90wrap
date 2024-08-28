@@ -11,7 +11,7 @@ PY_MOD      = pywrapper
 F90_SRC     = main.f90
 OBJ         = $(F90_SRC:.f90=.o)
 F90WRAP_SRC = $(addprefix f90wrap_,${F90_SRC})
-WRAPFLAGS   = -v --type-check
+WRAPFLAGS   = -v
 F2PYFLAGS   = --build-dir build
 F90WRAP     = f90wrap
 F2PY        = f2py-f90wrap
