@@ -36,6 +36,7 @@ list(APPEND tests
     output_kind
     remove_pointer_arg
     fortran_oo
+    auto_raise_error
 )
 
 foreach(test ${tests})
