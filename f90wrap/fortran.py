@@ -861,23 +861,22 @@ def f2c_type(typename, kind_map):
     type, kind = split_type_kind(typename)
     kind = kind.replace('(', '').replace(')', '')
 
-
-    if type in kind_map:
-        if kind in kind_map[type]:
-            c_type = kind_map[type][kind]
-        else:
-            raise RuntimeError('Unknown combination of type "%s" and kind "%s"' % (type, kind) +
-                               ' - add to kind map and try again')
-    else:
-        if type in default_f2c_type:
+    try:
+        c_type = kind_map[type][kind]
+    except KeyError:
+        try:
             c_type = default_f2c_type[type]
-        elif type.startswith('type'):
-            return 'type'
-        elif type.startswith('class'):
-            return 'type'
-        else:
-            raise RuntimeError('Unknown type "%s" - ' % type +
-                               'add to kind map and try again')
+        except KeyError:
+            if type.startswith('type') or type.startswith('class'):
+                c_type = 'type'
+            else:
+                if type in kind_map:
+                    raise RuntimeError('Unknown combination of type "%s" and kind "%s"' % (type, kind) +
+                                       ' - add to kind map and try again')
+                else:
+                    raise RuntimeError('Unknown type "%s" - ' % type +
+                                       'add to kind map and try again')
+
     return c_type
 
 
