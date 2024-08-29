@@ -500,7 +500,7 @@ except ValueError:
                             log.info("Adding dimension argument to '%s'" % node.name)
                             dct["f90_arg_names"] = "%s, %s" % (
                                 dct["f90_arg_names"],
-                                "n%d=%s" % (offset, out_dim),
+                                "f90wrap_n%d=%s" % (offset, out_dim),
                             )
                         offset += 1
 

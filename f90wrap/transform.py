@@ -580,6 +580,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
     def visit_Procedure(self, node):
 
         n_dummy = 0
+        all_new_dummy_args = []
         for arg in node.arguments:
             dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
             if dims == []:
@@ -601,7 +602,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                                           d.replace('len', 'slen'), arg.name))
                     new_ds.append(d)
                     continue
-                dummy_arg = ft.Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
+                dummy_arg = ft.Argument(name='f90wrap_n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
 
                 if 'intent(out)' not in arg.attributes:
                     dummy_arg.f2py_line = ('!f2py intent(hide), depend(%s) :: %s = shape(%s,%d)' %
@@ -614,7 +615,12 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                 log.debug('adding dummy arguments %r to %s' % (new_dummy_args, node.name))
                 arg.attributes = ([attr for attr in arg.attributes if not attr.startswith('dimension')] +
                                   ['dimension(%s)' % ','.join(new_ds)])
-                node.arguments.extend(new_dummy_args)
+                all_new_dummy_args.extend(new_dummy_args)
+
+        # New dummy args are prepended so that they are defined before being used as array dimensions
+        # This avoids implicit declaration
+        if all_new_dummy_args != []:
+            node.arguments = all_new_dummy_args + node.arguments
 
 
 class MethodFinder(ft.FortranTransformer):
