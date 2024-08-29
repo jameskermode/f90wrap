@@ -857,8 +857,14 @@ def split_type_kind(typename):
     type*kind -> (type, kind)
     type(kind) -> (type, kind)
     type(kind=kind) -> (type, kind)
+    character(len=*) -> (character, *)
     """
-    if '*' in typename:
+
+    if typename.startswith('character'):
+        type = 'character'
+        kind = typename[len('character'):]
+        kind = kind.replace('len=', '')
+    elif '*' in typename:
         type = typename[:typename.index('*')]
         kind = typename[typename.index('*') + 1:]
     elif '(' in typename:
