@@ -865,13 +865,14 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
 
         # insert ret_val after last non-optional argument
         arguments = node.arguments[:]
-        i = 0
+        j = len(arguments)
         for i, arg in enumerate(arguments):
             if 'optional' in arg.attributes:
+                j = i
                 break
-        arguments.insert(i, node.ret_val)
-        arguments[i].name = 'ret_' + arguments[i].name
-        arguments[i].attributes.append('intent(out)')
+        arguments.insert(j, node.ret_val)
+        arguments[j].name = 'ret_' + arguments[j].name
+        arguments[j].attributes.append('intent(out)')
 
         new_node = ft.Subroutine(node.name,
                                  node.filename,
@@ -904,13 +905,27 @@ class IntentOutToReturnValues(ft.FortranTransformer):
 
         ret_val = []
         ret_val_doc = None
+        arguments = []
+
+        # Push first non-optional arguments
+        for arg in node.arguments:
+            if 'optional' in arg.attributes:
+                break
+            if 'intent(out)' in arg.attributes:
+                ret_val.append(arg)
+            else:
+                arguments.append(arg)
+
+        # Push Function return value
         if isinstance(node, ft.Function) and node.ret_val is not None:
             ret_val.append(node.ret_val)
             if node.ret_val_doc is not None:
                 ret_val_doc = node.ret_val_doc
 
-        arguments = []
+        # Push remaining optional arguments
         for arg in node.arguments:
+            if not 'optional' in arg.attributes:
+                continue
             if 'intent(out)' in arg.attributes:
                 ret_val.append(arg)
             else:
@@ -970,7 +985,8 @@ class RenameReservedWords(ft.FortranVisitor):
                 new_attribs = []
                 for attrib in node.attributes:
                     if attrib.startswith('dimension('):
-                        new_attribs.append(attrib.replace(old_name, new_name))
+                        # Only replace if matchs a word
+                        new_attribs.append(re.sub(r'(\b)%s(\b)'%old_name, r'\1%s\2'%new_name, attrib))
                     else:
                         new_attribs.append(attrib)
                 node.attributes = new_attribs

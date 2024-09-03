@@ -27,6 +27,7 @@ list(APPEND tests
     type_bn
     kind_map_default
     docstring
+    return_array
 )
 
 foreach(test ${tests})
