@@ -1031,11 +1031,10 @@ class RenameArgumentsPython(ft.FortranVisitor):
 class RenameInterfacesPython(ft.FortranVisitor):
     def visit_Interface(self, node):
         for proc in node.procedures:
-            if hasattr(proc, 'method_name'):
-                proc.method_name = '_' + proc.method_name
-            else:
-                proc.method_name = '_' + proc.name
-        node.method_name = node.name
+            if not hasattr(proc, 'method_name'):
+                proc.method_name = proc.name
+        if not hasattr(node,'method_name'):
+            node.method_name = node.name
         if node.name == 'assignment(=)':
             node.method_name = 'assignment'
         elif node.name == 'operator(+)':

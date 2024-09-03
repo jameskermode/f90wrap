@@ -11,7 +11,7 @@ PY_MOD      = pywrapper
 F90_SRC     = main.f90
 OBJ         = $(F90_SRC:.f90=.o)
 F90WRAP_SRC = $(addprefix f90wrap_,${F90_SRC})
-WRAPFLAGS   = -v --type-check
+WRAPFLAGS   = -v --type-check --kind-map kind.map
 F2PYFLAGS   = --build-dir build
 F90WRAP     = f90wrap
 F2PY        = f2py-f90wrap
@@ -31,12 +31,8 @@ main.o: ${F90_SRC}
 ${F90WRAP_SRC}: ${OBJ}
 	${F90WRAP} -m ${PY_MOD} ${WRAPFLAGS} ${F90_SRC}
 
-f90wrap: ${F90WRAP_SRC}
-
 f2py: ${F90WRAP_SRC}
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} f90wrap_*.f90 *.o
 
-wrapper: f2py
-
-test: wrapper
-	python type_check_test.py
+test: f2py
+	${PYTHON} type_check_test.py
