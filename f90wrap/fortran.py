@@ -922,7 +922,7 @@ def normalise_type(typename, kind_map):
     c_type = f2c_type(typename, kind_map)
     c_type_to_fortran_kind = {
         'char' : '',
-        'signed_char' : '',
+        'signed_char' : '(1)',
         'short' : '(2)',
         'int' : '(4)',
         'long_long' : '(8)',
