@@ -282,7 +282,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                     # return none
                     if len(dims) > 1:
                         raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
-                    dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+                    dimensions_list = arg.split_dimensions(dims[0])
                     if len(dimensions_list) > 1 or ':' in dimensions_list:
                         log.warning('removing routine %s due to derived type array argument : %s -- currently, only '
                                      'fixed-lengh one-dimensional arrays of derived type are supported'
@@ -328,7 +328,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
         if typename and len(dims) != 0:
             if len(dims) > 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % node.name)
-            dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+            dimensions_list = ft.Argument.split_dimensions(dims[0])
             if len(dimensions_list) > 1 or ':' in dimensions_list:
                 log.warning(
                     'test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
@@ -577,26 +577,6 @@ class ArrayDimensionConverter(ft.FortranVisitor):
 
     valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/,]*\))|(len\(.*\)))$')
 
-    @staticmethod
-    def split_dimensions(dim):
-        """Given a string like "dimension(a,b,c)" return the list of dimensions ['a','b','c']."""
-        dim = dim[10:-1]  # remove "dimension(" and ")"
-        br = 0
-        d = 1
-        ds = ['']
-        for c in dim:
-            if c != ',': ds[-1] += c
-            if c == '(':
-                br += 1
-            elif c == ')':
-                br -= 1
-            elif c == ',':
-                if br == 0:
-                    ds.append('')
-                else:
-                    ds[-1] += ','
-        return ds
-
     def visit_Procedure(self, node):
 
         n_dummy = 0
@@ -607,7 +587,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
             if len(dims) != 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
 
-            ds = ArrayDimensionConverter.split_dimensions(dims[0])
+            ds = arg.split_dimensions(dims[0])
 
             new_dummy_args = []
             new_ds = []
@@ -1415,7 +1395,7 @@ def create_super_types(tree, types):
     for ty in types.values():
         for dimensions_attribute in ty.super_types_dimensions:
             # each type might have many "dimension" attributes since "append_type_dimension"
-            dimensions = ArrayDimensionConverter.split_dimensions(dimensions_attribute)
+            dimensions = ft.Argument.split_dimensions(dimensions_attribute)
             if len(dimensions) == 1:  # at this point, only 1D arrays are supported
                 d = dimensions[0]
                 if str(d) == ':':
@@ -1464,7 +1444,7 @@ def fix_subroutine_type_arrays(tree, types):
             if ft.is_derived_type(arg.type) and len(dimensions_attribute) == 1:
                 # an argument should only have 0 or 1 "dimension" attributes
                 # If the argument is an 1D-array of types, convert it to super-type:
-                d = ArrayDimensionConverter.split_dimensions(dimensions_attribute[0])[0]
+                d = ft.Argument.split_dimensions(dimensions_attribute[0])[0]
                 if str(d) == ':':
                     continue
                 # change the type to super-type

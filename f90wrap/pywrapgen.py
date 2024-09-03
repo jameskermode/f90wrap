@@ -25,7 +25,6 @@ import os
 import logging
 import re
 
-from f90wrap.transform import ArrayDimensionConverter
 from f90wrap.transform import shorten_long_name
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
@@ -815,10 +814,7 @@ return %(el_name)s"""
         self.write()
 
     def write_dt_array_wrapper(self, node, el, dims):
-        if (
-            el.type.startswith("type")
-            and len(ArrayDimensionConverter.split_dimensions(dims)) != 1
-        ):
+        if el.type.startswith("type") and len(ft.Argument.split_dimensions(dims)) != 1:
             return
 
         func_name = "init_array_%s" % el.name
