@@ -45,6 +45,7 @@ import string
 import sys
 import os
 import re
+import json
 
 from f90wrap.fortran import (Fortran, Root, Program, Module,
                              Procedure, Subroutine, Function, Interface,
@@ -1727,4 +1728,50 @@ def read_files(args, doc_plugin_filename=None):
     root = fix_argument_attributes(root)
     root = LowerCaseConverter().visit(root)
     root = RepeatedInterfaceCollapser().visit(root)
+    return root
+
+
+def dump_package(root, pkg_name, class_names, json_file):
+    package = []
+    for module in root.modules:
+        mod = {}
+        mod["name"] = module.name
+        mod["package"] = pkg_name
+        mod["types"] = []
+        for typ in module.types:
+            t = {"name" : typ.orig_name}
+            if typ.orig_name in class_names:
+                t["class_name"] = class_names[typ.orig_name]
+            mod["types"].append(t)
+
+        package.append(mod)
+
+    with open(json_file, 'w') as f:
+        json.dump(package, f)
+
+
+def add_external_packages(root, class_names, external_packages):
+    for package in external_packages:
+        with open(package, 'r') as f:
+            modules = json.load(f)
+
+        for mod in modules:
+            module = Module()
+            module.name = mod["name"]
+            module.filename = ""
+            module.is_external = True
+            for typ in mod["types"]:
+                new_type = Type(name=typ["name"])
+                new_type.attributes = []
+                new_type.py_mod_name = mod["package"]
+                module.types.append(new_type)
+                if "class_name" in typ:
+                    class_names[typ["name"]] = typ["class_name"]
+            root.modules.append(module)
+
+    # apply some rules to the parsed tree
+    root = fix_argument_attributes(root)
+    root = LowerCaseConverter().visit(root)
+    root = RepeatedInterfaceCollapser().visit(root)
+
     return root

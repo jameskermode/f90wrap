@@ -164,6 +164,10 @@ USAGE
                             help="Check for type/shape matching of Python argument with the wrapped Fortran subroutine")
         parser.add_argument('--relative', action='store_true', default=False,
                             help="Using relative import instead of package name in the package")
+        parser.add_argument('--external-packages', nargs='+', default=[],
+                            help="List of json files listing modules/types coming from external f90wrap")
+        parser.add_argument('--dump-package', default="",
+                            help="Output json file where to dump package description, can be reused in another package later via --external-packages option")
 
         args = parser.parse_args()
 
@@ -308,6 +312,17 @@ USAGE
         parse_tree = fparse.read_files(args.files, doc_plugin_filename=doc_plugin_fname)
         print('done parsing source.')
         print()
+
+        if args.dump_package:
+            print('Dump json file %s ...' % args.dump_package)
+            fparse.dump_package(parse_tree, args.mod_name, class_names, dump_package)
+
+        # add modules/types coming from other f90wrap packages
+        if args.external_packages:
+            print('Adding external f90wrap packages...' % args.files)
+            parse_tree = fparse.add_external_packages(parse_tree, class_names, args.external_packages)
+            print()
+
         tree = copy.deepcopy(parse_tree)
 
         types = fortran.find_types(tree, skip_types)

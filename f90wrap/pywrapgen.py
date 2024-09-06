@@ -199,7 +199,12 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         py_wrapper_file.close()
 
     def visit_Module(self, node):
-        log.info("PythonWrapperGenerator visiting module %s" % node.name)
+        log.info("PythonWrapperGenerator visiting module %s %s" % (node.name, type(node)))
+        if hasattr(node, "is_external"):
+            if node.is_external:
+                log.info("PythonWrapperGenerator skip external module %s" % node.name)
+                self.current_module = None
+                return
         cls_name = normalise_class_name(node.name, self.class_names)
         node.array_initialisers = []
         node.dt_array_initialisers = []
@@ -733,7 +738,10 @@ except ValueError:
             if node.parent.mod_name != node.mod_name:
                 cls_parent = "%s.%s" % (node.parent.mod_name, cls_parent)
                 if self.make_package:
-                    self.imports.add((self.py_mod_name, node.parent.mod_name))
+                    py_mod_name = self.py_mod_name
+                    if hasattr(node, "py_mod_name"):
+                        py_mod_name = node.py_mod_name
+                    self.imports.add((py_mod_name, node.parent.mod_name))
         self.write(
             '@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name)
         )
@@ -877,7 +885,10 @@ except ValueError:
         if self.make_package:
             dct["cls_mod_name"] = ""
             if cls_mod_name != self.current_module:
-                self.imports.add((self.py_mod_name + "." + cls_mod_name, cls_name))
+                py_mod_name = self.py_mod_name
+                if hasattr(self.types[ft.strip_type(el.type)], "py_mod_name"):
+                    py_mod_name = self.types[ft.strip_type(el.type)].py_mod_name
+                self.imports.add((py_mod_name + "." + cls_mod_name, cls_name))
 
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write("@property")
@@ -1032,7 +1043,10 @@ return %(el_name)s"""
         if self.make_package:
             dct["cls_mod_name"] = ""
             if cls_mod_name != self.current_module:
-                self.imports.add((self.py_mod_name + "." + cls_mod_name, cls_name))
+                py_mod_name = self.py_mod_name
+                if hasattr(self.types[ft.strip_type(el.type)], "py_mod_name"):
+                    py_mod_name = self.types[ft.strip_type(el.type)].py_mod_name
+                self.imports.add((py_mod_name + "." + cls_mod_name, cls_name))
 
         self.write("def %(func_name)s(%(self)s):" % dct)
         self.indent()
@@ -1086,7 +1100,9 @@ return %(el_name)s"""
             if arg.type.startswith("type") or arg.type.startswith("class"):
                 cls_mod_name = self.types[ft.strip_type(arg.type)].mod_name
                 cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
-
+                py_mod_name = self.py_mod_name
+                if hasattr(self.types[ft.strip_type(arg.type)], "py_mod_name"):
+                    py_mod_name = self.types[ft.strip_type(arg.type)].py_mod_name
                 cls_name = normalise_class_name(
                     ft.strip_type(arg.type), self.class_names
                 )
@@ -1100,8 +1116,8 @@ return %(el_name)s"""
                 self.write(f"raise TypeError(msg)")
                 self.dedent()
 
-                if self.make_package:
-                    self.imports.add((self.py_mod_name, cls_mod_name))
+                if self.make_package or py_mod_name != self.py_mod_name:
+                    self.imports.add((py_mod_name, cls_mod_name))
             else:
                 # Checks for Numpy array dimension and types
                 # It will fail for types that are not in the kind map
