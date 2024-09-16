@@ -742,8 +742,8 @@ except ValueError:
                 cls_parent = "%s.%s" % (node.parent.mod_name, cls_parent)
                 if self.make_package:
                     py_mod_name = self.py_mod_name
-                    if hasattr(node, "py_mod_name"):
-                        py_mod_name = node.py_mod_name
+                    if hasattr(node.parent, "py_mod_name"):
+                        py_mod_name = node.parent.py_mod_name
                     self.imports.add((py_mod_name, node.parent.mod_name))
         self.write(
             '@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name)
