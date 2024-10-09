@@ -607,7 +607,10 @@ except ValueError:
                         cls_name = normalise_class_name(
                             ft.strip_type(ret_val.type), self.class_names
                         )
-                        cls_name = self.py_mod_name + "." + cls_name
+                        py_mod_name = self.py_mod_name
+                        if hasattr(self.types[ft.strip_type(ret_val.type)], "py_mod_name"):
+                            py_mod_name = self.types[ft.strip_type(ret_val.type)].py_mod_name
+                        cls_name = py_mod_name + "." + cls_name
                         cls_name = 'f90wrap.runtime.lookup_class("%s")' % cls_name
                         cls_mod_name = self.types[ft.strip_type(ret_val.type)].mod_name
                         cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
