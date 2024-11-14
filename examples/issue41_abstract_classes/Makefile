@@ -5,9 +5,10 @@ PYTHON = python
 %.o : %.f90
 	${FC} ${FCFLAGS} -c $< -o $@
 
-all: myclass_base.o
-	f90wrap -m itest -P myclass_base.f90 -v
-	f2py-f90wrap --fcompiler=$(FC) --build-dir . -c -m _itest myclass_base.o
+all: myclass_base.o myclass_impl.o
+	f90wrap -m itest -P myclass_base.f90 myclass_impl.f90 -v
+	f2py-f90wrap --build-dir . -c -m _itest \
+		f90wrap_myclass_impl.f90 myclass_base.o myclass_impl.o
 
 test: all
 	$(PYTHON) run.py
