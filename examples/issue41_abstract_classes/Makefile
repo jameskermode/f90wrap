@@ -5,10 +5,10 @@ PYTHON = python
 %.o : %.f90
 	${FC} ${FCFLAGS} -c $< -o $@
 
-all: myclass_base.o myclass_impl.o
+all: myclass_base.o myclass_impl.o myclass_factory.o
 	f90wrap -m itest -P myclass_base.f90 myclass_impl.f90 myclass_factory.f90 -v
 	f2py-f90wrap --build-dir . -c -m _itest \
-		f90wrap_myclass_base.f90 f90wrap_myclass_impl.f90 myclass_factory.f90 \
+		f90wrap_myclass_base.f90 f90wrap_myclass_impl.f90 f90wrap_myclass_factory.f90 \
 		myclass_base.o myclass_impl.o myclass_factory.o
 
 test: all
