@@ -293,37 +293,6 @@ end type %(typename)s%(suffix)s"""
             self.write_type_lines(tname, recursive)
 
 
-    def write_class_lines(self, cname, recursive=False):
-        """
-        Write a pointer type for a given class name
-
-        Parameters
-        ----------
-        tname : `str`
-            Should be the name of a class in the wrapped code.
-        """
-        cname = ft.strip_type(cname)
-        self.write(
-            "type %(classname)s_wrapper_type\n"
-            "    class(%(classname)s), allocatable :: obj\n"
-            "end type %(classname)s_wrapper_type" % {"classname": cname}
-        )
-        self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
-
-    def is_class(self, tname):
-        if not tname in self.types:
-            return False
-        if "used_as_class" in self.types[tname].attributes:
-            return True
-        return False
-
-    def write_type_or_class_lines(self, tname, recursive=False):
-        if self.is_class(tname):
-            self.write_class_lines(tname, recursive)
-        else:
-            self.write_type_lines(tname, recursive)
-
-
     def write_arg_decl_lines(self, node):
         """
         Write argument declaration lines to the code
@@ -545,7 +514,7 @@ end type %(typename)s%(suffix)s"""
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
-        if "abstract" in node.attributes:
+        if "abstract" in node.attributes and not "method" in node.attributes:
             return self.generic_visit(node)
 
         call_name = node.orig_name

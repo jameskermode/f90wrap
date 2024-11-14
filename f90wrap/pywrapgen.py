@@ -295,64 +295,65 @@ except ValueError:
             self.write('raise(NotImplementedError("This is an abstract class"))')
             self.dedent()
             self.write()
-        else:
-            handle_arg = ft.Argument(
-                name="handle",
-                filename=node.filename,
-                doc=["Opaque reference to existing derived type instance"],
-                lineno=node.lineno,
-                attributes=["intent(in)", "optional"],
-                type="integer",
-            )
-            handle_arg.py_name = "handle"
+            return
 
-            # special case for constructors: return value is 'self' argument,
-            # plus we add an extra optional argument
-            args = node.arguments + [handle_arg]
+        handle_arg = ft.Argument(
+            name="handle",
+            filename=node.filename,
+            doc=["Opaque reference to existing derived type instance"],
+            lineno=node.lineno,
+            attributes=["intent(in)", "optional"],
+            type="integer",
+        )
+        handle_arg.py_name = "handle"
 
-            dct = dict(
-                func_name=node.name,
-                prefix=self.prefix,
-                mod_name=self.f90_mod_name,
-                py_arg_names=", ".join(
-                    [
-                        "%s%s"
-                        % (arg.py_name, "optional" in arg.attributes and "=None" or "")
-                        for arg in args
-                    ]
-                ),
-                f90_arg_names=", ".join(
-                    ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
-                ),
-            )
+        # special case for constructors: return value is 'self' argument,
+        # plus we add an extra optional argument
+        args = node.arguments + [handle_arg]
 
-            if node.mod_name is not None:
-                dct["func_name"] = node.mod_name + "__" + node.name
-            dct["subroutine_name"] = shorten_long_name("%(prefix)s%(func_name)s" % dct)
+        dct = dict(
+            func_name=node.name,
+            prefix=self.prefix,
+            mod_name=self.f90_mod_name,
+            py_arg_names=", ".join(
+                [
+                    "%s%s"
+                    % (arg.py_name, "optional" in arg.attributes and "=None" or "")
+                    for arg in args
+                ]
+            ),
+            f90_arg_names=", ".join(
+                ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
+            ),
+        )
 
-            self.write("def __init__(self, %(py_arg_names)s):" % dct)
-            self.indent()
-            self.write(self._format_doc_string(node))
-            for arg in node.arguments:
-                if "optional" in arg.attributes and "._handle" in arg.py_value:
-                    dct["f90_arg_names"] = dct["f90_arg_names"].replace(
-                        arg.py_value,
-                        (
-                            "(None if %(arg_py_name)s is None else %("
-                            "arg_py_name)s._handle)"
-                        )
-                        % {"arg_py_name": arg.py_name},
+        if node.mod_name is not None:
+            dct["func_name"] = node.mod_name + "__" + node.name
+        dct["subroutine_name"] = shorten_long_name("%(prefix)s%(func_name)s" % dct)
+
+        self.write("def __init__(self, %(py_arg_names)s):" % dct)
+        self.indent()
+        self.write(self._format_doc_string(node))
+        for arg in node.arguments:
+            if "optional" in arg.attributes and "._handle" in arg.py_value:
+                dct["f90_arg_names"] = dct["f90_arg_names"].replace(
+                    arg.py_value,
+                    (
+                        "(None if %(arg_py_name)s is None else %("
+                        "arg_py_name)s._handle)"
                     )
-            self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
+                    % {"arg_py_name": arg.py_name},
+                )
+        self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
 
-            self.write(
-                "result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
-            )
-            self.write(
-                "self._handle = result[0] if isinstance(result, tuple) else result"
-            )
-            self.dedent()
-            self.write()
+        self.write(
+            "result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
+        )
+        self.write(
+            "self._handle = result[0] if isinstance(result, tuple) else result"
+        )
+        self.dedent()
+        self.write()
 
     def write_classmethod(self, node):
         dct = dict(
@@ -415,51 +416,48 @@ except ValueError:
 
     def write_destructor(self, node):
         if "abstract" in node.attributes:
-            self.write("def __del__(self):")
-            self.indent()
-            self.write('raise(NotImplementedError("This is an abstract class"))')
-            self.dedent()
-            self.write()
-        else:
-            dct = dict(
-                func_name=node.name,
-                prefix=self.prefix,
-                mod_name=self.f90_mod_name,
-                py_arg_names=", ".join(
-                    [
-                        "%s%s"
-                        % (arg.py_name, "optional" in arg.attributes and "=None" or "")
-                        for arg in node.arguments
-                    ]
-                ),
-                f90_arg_names=", ".join(
-                    ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
-                ),
-            )
-            if node.mod_name is not None:
-                dct["func_name"] = node.mod_name + "__" + node.name
-            dct["subroutine_name"] = shorten_long_name("%(prefix)s%(func_name)s" % dct)
+            return
 
-            self.write("def __del__(%(py_arg_names)s):" % dct)
-            self.indent()
-            self.write(self._format_doc_string(node))
-            self.write("if self._alloc:")
-            self.indent()
-            self.write("%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct)
-            self.dedent()
-            self.dedent()
-            self.write()
+        dct = dict(
+            func_name=node.name,
+            prefix=self.prefix,
+            mod_name=self.f90_mod_name,
+            py_arg_names=", ".join(
+                [
+                    "%s%s"
+                    % (arg.py_name, "optional" in arg.attributes and "=None" or "")
+                    for arg in node.arguments
+                ]
+            ),
+            f90_arg_names=", ".join(
+                ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
+            ),
+        )
+        if node.mod_name is not None:
+            dct["func_name"] = node.mod_name + "__" + node.name
+        dct["subroutine_name"] = shorten_long_name("%(prefix)s%(func_name)s" % dct)
+
+        self.write("def __del__(%(py_arg_names)s):" % dct)
+        self.indent()
+        self.write(self._format_doc_string(node))
+        self.write("if self._alloc:")
+        self.indent()
+        self.write("%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct)
+        self.dedent()
+        self.dedent()
+        self.write()
 
     def visit_Procedure(self, node):
         log.info("PythonWrapperGenerator visiting routine %s" % node.name)
-        if "classmethod" in node.attributes:
-            self.write_classmethod(node)
-        elif "constructor" in node.attributes:
+        if "constructor" in node.attributes:
             self.write_constructor(node)
         elif "destructor" in node.attributes:
             self.write_destructor(node)
-        elif "abstract" in node.attributes:
+        elif "classmethod" in node.attributes:
+            self.write_classmethod(node)
+        elif "abstract" in node.attributes and not "method" in node.attributes:
             return self.generic_visit(node)
+
         else:
             dct = dict(
                 func_name=node.name,
@@ -509,6 +507,7 @@ except ValueError:
             ):
                 # procedures outside of derived types become static methods
                 self.write("@staticmethod")
+
             self.write("def %(method_name)s(%(py_arg_names)s):" % dct)
             self.indent()
             self.write(self._format_doc_string(node))
