@@ -251,9 +251,13 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 # generic_visit is done later on anyways
                 continue
             else:
-                # no allocatables or pointers
-                if 'allocatable' in arg.attributes or 'pointer' in arg.attributes:
-                    log.warning('removing routine %s due to allocatable/pointer arguments' % node.name)
+                # allocatable arguments only allowed for derived types
+                if 'allocatable' in arg.attributes and not arg.type.startswith('type'):
+                    log.warning('removing routine %s due to allocatable intrinsic type arguments' % node.name)
+                    return None
+                # no pointer arguments
+                if 'pointer' in arg.attributes:
+                    log.warning('removing routine %s due to pointer arguments' % node.name)
                     return None
 
                 dims = [attrib for attrib in arg.attributes if attrib.startswith('dimension')]
