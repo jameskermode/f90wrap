@@ -24,7 +24,8 @@ EXAMPLES = arrayderivedtypes \
 	type_check \
 	derivedtypes_procedure \
 	optional_string \
-	long_subroutine_name
+	long_subroutine_name \
+	kind_map_default
 
 PYTHON = python
 

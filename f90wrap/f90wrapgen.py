@@ -909,7 +909,7 @@ end type %(typename)s_rec_ptr_type"""
             this = ""
         else:
             raise ValueError(
-                "Don't know how to write scalar wrappers for %s type %s"(t, type(t))
+                "Don't know how to write scalar wrappers for %s type %s" % (t, type(t))
             )
 
         # Get appropriate use statements

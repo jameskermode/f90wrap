@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := pywrapper
+WRAPFLAGS += --kind-map kind.map
+
+test: build
+	$(PYTHON) tests.py
