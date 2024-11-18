@@ -912,9 +912,9 @@ def normalise_type(typename, kind_map):
     return type + kind
 
 
-def fortran_array_type(typename, kind_map):
+def f2numpy_type(typename, kind_map):
     """
-    Convert string repr of Fortran type to equivalent numpy array typenum
+    Convert string repr of Fortran type to equivalent numpy array type
     """
     c_type = f2c_type(typename, kind_map)
 
@@ -936,10 +936,16 @@ def fortran_array_type(typename, kind_map):
 
     if c_type not in c_type_to_numpy_type:
         raise RuntimeError('Unknown C type %s' % c_type)
-
-    # find numpy numerical type code
-    numpy_type = np.dtype(c_type_to_numpy_type[c_type]).num
+    numpy_type = np.dtype(c_type_to_numpy_type[c_type])
     return numpy_type
+
+def fortran_array_type(typename, kind_map):
+    """
+    Convert string repr of Fortran type to equivalent numpy array typenum
+    """
+    # find numpy numerical type code
+    numpy_type_num = f2numpy_type(typename, kind_map).num
+    return numpy_type_num
 
 def f2py_type(type, attributes=None):
     """

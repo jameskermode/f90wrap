@@ -31,12 +31,8 @@ main.o: ${F90_SRC}
 ${F90WRAP_SRC}: ${OBJ}
 	${F90WRAP} -m ${PY_MOD} ${WRAPFLAGS} ${F90_SRC}
 
-f90wrap: ${F90WRAP_SRC}
-
 f2py: ${F90WRAP_SRC}
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} f90wrap_*.f90 *.o
 
-wrapper: f2py
-
-test: wrapper
+test: f2py
 	python docstring_test.py
