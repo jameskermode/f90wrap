@@ -308,7 +308,37 @@ class Element(Declaration):
 
 class Argument(Declaration):
     __doc__ = _rep_des(Declaration.__doc__, "Represents a Procedure Argument.")
-    pass
+
+    @staticmethod
+    def split_dimensions(dim):
+        """Given a string like "dimension(a,b,c)" return the list of dimensions ['a','b','c']."""
+        dim = dim[10:-1]  # remove "dimension(" and ")"
+        br = 0
+        d = 1
+        ds = ['']
+        for c in dim:
+            if c != ',': ds[-1] += c
+            if c == '(':
+                br += 1
+            elif c == ')':
+                br -= 1
+            elif c == ',':
+                if br == 0:
+                    ds.append('')
+                else:
+                    ds[-1] += ','
+        return ds
+
+    def dims_list(self):
+        dims = list(filter(lambda x: x.startswith("dimension"), self.attributes))
+        if len(dims) > 1:
+            raise ValueError('more than one dimension attribute found for arg %s:\\\n%s' % (self.name, ','.join(dims)))
+        try:
+            ft_array_dims_list = self.split_dimensions(dims[0])
+        except IndexError:
+            ft_array_dims_list = []
+        ft_array_dims_list = [elem.strip(' ') for elem in ft_array_dims_list]
+        return ft_array_dims_list
 
 class Type(Fortran):
     """
@@ -827,8 +857,14 @@ def split_type_kind(typename):
     type*kind -> (type, kind)
     type(kind) -> (type, kind)
     type(kind=kind) -> (type, kind)
+    character(len=*) -> (character, *)
     """
-    if '*' in typename:
+
+    if typename.startswith('character'):
+        type = 'character'
+        kind = typename[len('character'):]
+        kind = kind.replace('len=', '')
+    elif '*' in typename:
         type = typename[:typename.index('*')]
         kind = typename[typename.index('*') + 1:]
     elif '(' in typename:
@@ -892,7 +928,7 @@ def normalise_type(typename, kind_map):
     c_type = f2c_type(typename, kind_map)
     c_type_to_fortran_kind = {
         'char' : '',
-        'signed_char' : '',
+        'signed_char' : '(1)',
         'short' : '(2)',
         'int' : '(4)',
         'long_long' : '(8)',
@@ -912,9 +948,9 @@ def normalise_type(typename, kind_map):
     return type + kind
 
 
-def fortran_array_type(typename, kind_map):
+def f2numpy_type(typename, kind_map):
     """
-    Convert string repr of Fortran type to equivalent numpy array typenum
+    Convert string repr of Fortran type to equivalent numpy array type
     """
     c_type = f2c_type(typename, kind_map)
 
@@ -936,10 +972,16 @@ def fortran_array_type(typename, kind_map):
 
     if c_type not in c_type_to_numpy_type:
         raise RuntimeError('Unknown C type %s' % c_type)
-
-    # find numpy numerical type code
-    numpy_type = np.dtype(c_type_to_numpy_type[c_type]).num
+    numpy_type = np.dtype(c_type_to_numpy_type[c_type])
     return numpy_type
+
+def fortran_array_type(typename, kind_map):
+    """
+    Convert string repr of Fortran type to equivalent numpy array typenum
+    """
+    # find numpy numerical type code
+    numpy_type_num = f2numpy_type(typename, kind_map).num
+    return numpy_type_num
 
 def f2py_type(type, attributes=None):
     """
