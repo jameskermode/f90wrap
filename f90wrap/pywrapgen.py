@@ -24,8 +24,8 @@
 import os
 import logging
 import re
+import numpy as np
 
-from f90wrap.transform import ArrayDimensionConverter
 from f90wrap.transform import shorten_long_name
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
@@ -91,71 +91,6 @@ def format_call_signature(node):
         return "%s(*args, **kwargs)" % name
     else:
         return str(node)
-
-
-def format_doc_string(node):
-    """
-    Generate Python docstring from Fortran docstring and call signature
-    """
-
-    def _format_line_no(lineno):
-        """
-        Format Fortran source code line numbers
-
-        FIXME could link to source repository (e.g. github)
-        """
-        if isinstance(lineno, slice):
-            return "lines %d-%d" % (lineno.start, lineno.stop - 1)
-        else:
-            return "line %d" % lineno
-
-    doc = [format_call_signature(node), ""]
-    doc.append("")
-    doc.append("Defined at %s %s" % (node.filename, _format_line_no(node.lineno)))
-
-    if isinstance(node, ft.Procedure):
-        # For procedures, write parameters and return values in numpydoc format
-        doc.append("")
-        # Input parameters
-        for i, arg in enumerate(node.arguments):
-            pytype = ft.f2py_type(arg.type, arg.attributes)
-            if i == 0:
-                doc.append("Parameters")
-                doc.append("----------")
-            arg_doc = "%s : %s, %s" % (arg.name, pytype, arg.doxygen)
-            doc.append(arg_doc.strip(", "))
-            if arg.doc:
-                for d in arg.doc:
-                    doc.append("\t%s" % d)
-                doc.append("")
-
-        if isinstance(node, ft.Function):
-            for i, arg in enumerate(node.ret_val):
-                pytype = ft.f2py_type(arg.type, arg.attributes)
-                if i == 0:
-                    doc.append("")
-                    doc.append("Returns")
-                    doc.append("-------")
-                arg_doc = "%s : %s, %s" % (arg.name, pytype, arg.doxygen)
-                doc.append(arg_doc.strip(", "))
-                if arg.doc:
-                    for d in arg.doc:
-                        doc.append("\t%s" % d)
-                    doc.append("")
-    elif isinstance(node, ft.Interface):
-        # for interfaces, list the components
-        doc.append("")
-        doc.append("Overloaded interface containing the following procedures:")
-        for proc in node.procedures:
-            doc.append(
-                "  %s"
-                % (hasattr(proc, "method_name") and proc.method_name or proc.name)
-            )
-
-    doc += [""] + node.doc[:]  # incoming docstring from Fortran source
-
-    return "\n".join(['"""'] + doc + ['"""'])
-
 
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(
@@ -258,11 +193,11 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         if self.make_package:
             self.code = []
-            self.write(format_doc_string(node))
+            self.write(self._format_doc_string(node))
         else:
             self.write("class %s(f90wrap.runtime.FortranModule):" % cls_name)
             self.indent()
-            self.write(format_doc_string(node))
+            self.write(self._format_doc_string(node))
 
             if (
                 len(node.elements) == 0
@@ -376,7 +311,7 @@ except ValueError:
 
         self.write("def __init__(self, %(py_arg_names)s):" % dct)
         self.indent()
-        self.write(format_doc_string(node))
+        self.write(self._format_doc_string(node))
         for arg in node.arguments:
             if "optional" in arg.attributes and "._handle" in arg.py_value:
                 dct["f90_arg_names"] = dct["f90_arg_names"].replace(
@@ -424,7 +359,7 @@ except ValueError:
         self.write("@classmethod")
         self.write("def %(method_name)s(cls, %(py_arg_names)s):" % dct)
         self.indent()
-        self.write(format_doc_string(node))
+        self.write(self._format_doc_string(node))
         self.write("bare_class = cls.__new__(cls)")
         self.write("f90wrap.runtime.FortranDerivedType.__init__(bare_class)")
 
@@ -452,7 +387,7 @@ except ValueError:
 
         self.write("def __del__(%(py_arg_names)s):" % dct)
         self.indent()
-        self.write(format_doc_string(node))
+        self.write(self._format_doc_string(node))
         self.write("if self._alloc:")
         self.indent()
         self.write('%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct)
@@ -501,7 +436,7 @@ except ValueError:
                 self.write("@staticmethod")
             self.write("def %(method_name)s(%(py_arg_names)s):" % dct)
             self.indent()
-            self.write(format_doc_string(node))
+            self.write(self._format_doc_string(node))
 
             if self.type_check:
                 self.write_type_checks(node)
@@ -513,6 +448,62 @@ except ValueError:
                         ("None if %(arg_py_name)s is None else %(arg_py_name)s._handle")
                         % {"arg_py_name": arg.py_name},
                     )
+            # Add dimension argument for fortran functions that returns an array
+            if isinstance(node, ft.Function):
+
+                def f902py_name(node, f90_name):
+                    for arg in node.arguments:
+                        if arg.name == f90_name:
+                            return arg.py_name
+                    return ""
+
+                args_py_names = [arg.py_name for arg in node.arguments]
+                offset = 0
+                # Regular arguments are first, compute the index offset
+                for arg in node.arguments:
+                    offset += len(arg.dims_list())
+                for retval in node.ret_val:
+                    the_dim = ""
+                    try:
+                        the_dim = retval.dims_list()[0]
+                    except IndexError:
+                        pass
+                    for dim_str in retval.dims_list():
+                        # "size" is replaced by "size_bn" ("badname") by numpy.f2py
+                        keyword = "size"
+                        try:
+                            keyword = np.f2py.crackfortran.badnames[keyword]
+                        except KeyError:
+                            pass
+                        match = re.search("%s\((.*)\)" % keyword, dim_str)
+
+                        if match:
+                            # Case where return size is size of input
+                            size_arg = match.group(1).split(",")
+                            py_name = f902py_name(node, size_arg[0])
+                            try:
+                                dim_num = int(size_arg[1]) - 1
+                            except IndexError:
+                                dim_num = 0
+                            out_dim = "%s.shape[%d]" % (py_name, dim_num)
+                        else:
+                            # Case where return size is input
+                            py_name = f902py_name(node, dim_str.split("%")[0])
+                            # It could be a member of an object
+                            members_arg = dim_str.split("%")[1:]
+                            if members_arg:
+                                out_dim = "%s.%s" % (py_name, ".".join(members_arg))
+                            else:
+                                out_dim = "%s" % (py_name)
+
+                        if py_name in args_py_names:
+                            log.info("Adding dimension argument to '%s'" % node.name)
+                            dct["f90_arg_names"] = "%s, %s" % (
+                                dct["f90_arg_names"],
+                                "f90wrap_n%d=%s" % (offset, out_dim),
+                            )
+                        offset += 1
+
             call_line = (
                 "%(call)s%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
             )
@@ -574,7 +565,7 @@ except ValueError:
             self.write("@staticmethod")
         self.write("def %(intf_name)s(*args, **kwargs):" % dct)
         self.indent()
-        self.write(format_doc_string(node))
+        self.write(self._format_doc_string(node))
         # try to call each in turn until no TypeError raised
         self.write("for proc in %(proc_names)s:" % dct)
         self.indent()
@@ -623,7 +614,7 @@ except ValueError:
         )
         self.write("class %s(f90wrap.runtime.FortranDerivedType):" % cls_name)
         self.indent()
-        self.write(format_doc_string(node))
+        self.write(self._format_doc_string(node))
         self.generic_visit(node)
 
         properties = []
@@ -694,7 +685,7 @@ except ValueError:
 
         self.write("def %(el_name_get)s(%(self)s):" % dct)
         self.indent()
-        self.write(format_doc_string(el))
+        self.write(self._format_doc_string(el))
         self.write('return %(mod_name)s.%(subroutine_name_get)s(%(handle)s)' % dct)
         self.dedent()
         self.write()
@@ -779,7 +770,7 @@ except ValueError:
 
         self.write("def %(el_name_get)s(%(self)s):" % dct)
         self.indent()
-        self.write(format_doc_string(el))
+        self.write(self._format_doc_string(el))
         if isinstance(node, ft.Module) and self.make_package:
             self.write("global %(el_name)s" % dct)
         self.write(
@@ -819,7 +810,7 @@ return %(el_name)s"""
             self="self",
             selfdot="self.",
             selfcomma="self, ",
-            doc=format_doc_string(el),
+            doc=self._format_doc_string(el),
             handle=isinstance(node, ft.Type)
             and "self._handle"
             or "f90wrap.runtime.empty_handle",
@@ -837,7 +828,7 @@ return %(el_name)s"""
 
         self.write("def %(el_name_get)s(%(self)s):" % dct)
         self.indent()
-        self.write(format_doc_string(el))
+        self.write(self._format_doc_string(el))
         if isinstance(node, ft.Module) and self.make_package:
             self.write("global %(el_name)s" % dct)
             node.array_initialisers.append(dct["el_name_get"])
@@ -880,10 +871,7 @@ return %(el_name)s"""
         self.write()
 
     def write_dt_array_wrapper(self, node, el, dims):
-        if (
-            el.type.startswith("type")
-            and len(ArrayDimensionConverter.split_dimensions(dims)) != 1
-        ):
+        if el.type.startswith("type") and len(ft.Argument.split_dimensions(dims)) != 1:
             return
 
         func_name = "init_array_%s" % el.name
@@ -902,7 +890,7 @@ return %(el_name)s"""
             self="self",
             selfdot="self.",
             parent="self",
-            doc=format_doc_string(el),
+            doc=self._format_doc_string(el),
             cls_name=cls_name,
             cls_mod_name=normalise_class_name(cls_mod_name, self.class_names) + ".",
         )
@@ -1032,3 +1020,86 @@ return %(el_name)s"""
                             self.indent()
                             self.write("raise TypeError")
                             self.dedent()
+
+    def _format_doc_string(self, node):
+        """
+        Generate Python docstring from Fortran docstring and call signature
+        """
+
+        def _format_line_no(lineno):
+            """
+            Format Fortran source code line numbers
+
+            FIXME could link to source repository (e.g. github)
+            """
+            if isinstance(lineno, slice):
+                return "lines %d-%d" % (lineno.start, lineno.stop - 1)
+            else:
+                return "line %d" % lineno
+
+        def _format_pytype(self, arg):
+            pytype = ft.f2py_type(arg.type, arg.attributes)
+            if pytype in ["float", "int", "complex"]:
+                # This allows to specify size, ex: 32 bit, 64 bit
+                pytype = ft.f2numpy_type(arg.type, self.kind_map)
+            return pytype
+
+        doc = node.doc[:]  # incoming docstring from Fortran source
+        if (
+            doc and doc[-1][-1] != "\n"
+        ):  # Short sumary and extended sumary have a trailing newline
+            doc.append("")
+        doc.append(format_call_signature(node))
+        doc.append("Defined at %s %s" % (node.filename, _format_line_no(node.lineno)))
+
+        if isinstance(node, ft.Procedure):
+            # For procedures, write parameters and return values in numpydoc format
+            doc.append("")
+            # Input parameters
+            for i, arg in enumerate(node.arguments):
+                pytype = _format_pytype(self, arg)
+                if i == 0:
+                    doc.append("Parameters")
+                    doc.append("----------")
+                arg_doc = "%s : %s\n%s%s" % (
+                    arg.name,
+                    pytype,
+                    self._indent,
+                    arg.doxygen,
+                )
+                doc.append(arg_doc.strip(", \n%s" % self._indent))
+                if arg.doc:
+                    for d in arg.doc:
+                        doc.append("%s%s" % (self._indent, d))
+                    doc.append("")
+
+            if isinstance(node, ft.Function):
+                for i, arg in enumerate(node.ret_val):
+                    pytype = _format_pytype(self, arg)
+                    if i == 0:
+                        if doc[-1] != "":
+                            doc.append("")
+                        doc.append("Returns")
+                        doc.append("-------")
+                    arg_doc = "%s : %s\n%s%s" % (
+                        arg.name,
+                        pytype,
+                        self._indent,
+                        arg.doxygen,
+                    )
+                    doc.append(arg_doc.strip(", \n%s" % self._indent))
+                    if arg.doc:
+                        for d in arg.doc:
+                            doc.append("%s%s" % (self._indent, d))
+                        doc.append("")
+        elif isinstance(node, ft.Interface):
+            # for interfaces, list the components
+            doc.append("")
+            doc.append("Overloaded interface containing the following procedures:")
+            for proc in node.procedures:
+                doc.append(
+                    "  %s"
+                    % (hasattr(proc, "method_name") and proc.method_name or proc.name)
+                )
+
+        return "\n".join(['"""'] + doc + ['"""'])

@@ -30,7 +30,6 @@ import numpy as np
 from f90wrap import codegen as cg
 from f90wrap import fortran as ft
 from f90wrap.six import string_types  # Python 2/3 compatibility library
-from f90wrap.transform import ArrayDimensionConverter
 from f90wrap.transform import shorten_long_name
 
 log = logging.getLogger(__name__)
@@ -567,7 +566,7 @@ end type %(typename)s_rec_ptr_type"""
         self.write("integer(c_int), intent(out) :: nd")
         self.write("integer(c_int), intent(out) :: dtype")
         try:
-            rank = len(ArrayDimensionConverter.split_dimensions(dims))
+            rank = len(ft.Argument.split_dimensions(dims))
             if el.type.startswith("character"):
                 rank += 1
         except ValueError:
@@ -627,7 +626,7 @@ end type %(typename)s_rec_ptr_type"""
         """
         if (
             element.type.startswith("type")
-            and len(ArrayDimensionConverter.split_dimensions(dims)) != 1
+            and len(ft.Argument.split_dimensions(dims)) != 1
         ):
             return
 
