@@ -1,5 +1,43 @@
 ! Module myclass_impl defined in file myclass_impl.f90
 
+subroutine f90wrap_myclass_impl__reference_store(self, mode)
+    use myclass_impl, only: myclass_impl_t
+    implicit none
+    type myclass_impl_wrapper_t
+        class(myclass_impl_t), allocatable :: obj
+    end type myclass_impl_wrapper_t
+    type myclass_impl_t_ptr_type
+        type(myclass_impl_wrapper_t), pointer :: p => NULL()
+    end type myclass_impl_t_ptr_type
+    type(myclass_impl_t_ptr_type) :: self_ptr
+    integer, intent(in), dimension(2) :: self
+    integer, intent(in) :: mode
+
+    class(myclass_impl_t), allocatable, save :: reference_storage(:)
+
+    self_ptr = transfer(self, self_ptr)
+
+    select case (mode)
+        case (-1)
+            call pop_reference
+        case (1)
+            call push_reference
+        case default
+            ! Do nothing
+    end select
+
+    contains
+
+    subroutine push_reference
+        print *, "push_reference"
+    end subroutine push_reference
+
+    subroutine pop_reference
+        print *, "pop_reference"
+    end subroutine pop_reference
+
+end subroutine f90wrap_myclass_impl__reference_store
+
 subroutine f90wrap_myclass_impl__myclass_impl_finalise__binding__mycla4a60(self)
     use myclass_impl, only: myclass_impl_t, myclass_impl_finalise
     implicit none
