@@ -21,7 +21,7 @@ end subroutine get_value_impl
 subroutine myclass_impl_finalise(self)
     type(myclass_impl_t), intent(inout) :: self
 
-    print *, "Finalizing myclass_impl_t"
+    print *, "Finalising myclass_impl_t"
 end subroutine myclass_impl_finalise
 
 end module myclass_impl
