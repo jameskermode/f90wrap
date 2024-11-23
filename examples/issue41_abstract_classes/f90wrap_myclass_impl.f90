@@ -1,42 +1,30 @@
-! Module myclass_impl defined in file myclass_impl.f90
-
-subroutine f90wrap_myclass_impl__reference_store(self, mode)
+module myclass_impl_reference_storage
     use myclass_impl, only: myclass_impl_t
     implicit none
     type myclass_impl_wrapper_t
         class(myclass_impl_t), allocatable :: obj
     end type myclass_impl_wrapper_t
+
     type myclass_impl_t_ptr_type
         type(myclass_impl_wrapper_t), pointer :: p => NULL()
     end type myclass_impl_t_ptr_type
-    type(myclass_impl_t_ptr_type) :: self_ptr
-    integer, intent(in), dimension(2) :: self
-    integer, intent(in) :: mode
+    type(myclass_impl_wrapper_t), allocatable, target :: reference_storage(:)
+contains
 
-    class(myclass_impl_t), allocatable, save :: reference_storage(:)
-
-    self_ptr = transfer(self, self_ptr)
-
-    select case (mode)
-        case (-1)
-            call pop_reference
-        case (1)
-            call push_reference
-        case default
-            ! Do nothing
-    end select
-
-    contains
-
-    subroutine push_reference
+    subroutine push_reference()
+        type(myclass_impl_wrapper_t), allocatable, target :: tmp(:)
         print *, "push_reference"
+        if (.not. allocated(reference_storage)) then
+            allocate(reference_storage(1))
+            return
+        else
+            allocate(tmp(size(reference_storage)+1))
+            tmp(1:size(reference_storage)) = reference_storage(:)
+            call move_alloc(tmp, reference_storage)
+        end if
     end subroutine push_reference
+end module myclass_impl_reference_storage
 
-    subroutine pop_reference
-        print *, "pop_reference"
-    end subroutine pop_reference
-
-end subroutine f90wrap_myclass_impl__reference_store
 
 subroutine f90wrap_myclass_impl__myclass_impl_finalise__binding__mycla4a60(self)
     use myclass_impl, only: myclass_impl_t, myclass_impl_finalise
