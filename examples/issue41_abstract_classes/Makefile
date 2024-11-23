@@ -14,7 +14,8 @@ wrapper: myclass_base.o myclass_impl.o myclass_factory.o
 	f90wrap -m itest -P myclass_impl.f90 myclass_factory.f90 -v
 	f2py-f90wrap --build-dir . -c -m _itest --opt="-O0 -g" \
 		f90wrap_myclass_impl.f90 f90wrap_myclass_factory.f90 \
-		myclass_base.o myclass_impl.o myclass_factory.o
+		myclass_base.o myclass_impl.o myclass_factory.o \
+		skip: myclass_impl_reference_storage myclass_impl_wrapper_t
 
 %.o : %.f90
 	$(FC) $(FCFLAGS) -c -g -O0 $< -o $@
