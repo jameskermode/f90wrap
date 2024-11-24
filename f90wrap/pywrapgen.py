@@ -521,7 +521,7 @@ except ValueError:
             if isinstance(node, ft.Function):
                 # convert any derived type return values to Python objects
                 for ret_val in node.ret_val:
-                    if ret_val.type.startswith("type"):
+                    if ret_val.type.startswith("type") or ret_val.type.startswith("class"):
                         cls_name = normalise_class_name(
                             ft.strip_type(ret_val.type), self.class_names
                         )
