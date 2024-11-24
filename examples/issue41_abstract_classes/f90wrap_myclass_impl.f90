@@ -1,31 +1,3 @@
-module myclass_impl_reference_storage
-    use myclass_impl, only: myclass_impl_t
-    implicit none
-    type myclass_impl_wrapper_t
-        class(myclass_impl_t), allocatable :: obj
-    end type myclass_impl_wrapper_t
-
-    type myclass_impl_t_ptr_type
-        type(myclass_impl_wrapper_t), pointer :: p => NULL()
-    end type myclass_impl_t_ptr_type
-    type(myclass_impl_wrapper_t), allocatable, target :: reference_storage(:)
-contains
-
-    subroutine push_reference()
-        type(myclass_impl_wrapper_t), allocatable, target :: tmp(:)
-        print *, "push_reference"
-        if (.not. allocated(reference_storage)) then
-            allocate(reference_storage(1))
-            return
-        else
-            allocate(tmp(size(reference_storage)+1))
-            tmp(1:size(reference_storage)) = reference_storage(:)
-            call move_alloc(tmp, reference_storage)
-        end if
-    end subroutine push_reference
-end module myclass_impl_reference_storage
-
-
 subroutine f90wrap_myclass_impl__myclass_impl_finalise__binding__mycla4a60(self)
     use myclass_impl, only: myclass_impl_t, myclass_impl_finalise
     implicit none
@@ -57,7 +29,7 @@ subroutine f90wrap_myclass_impl__myclass_impl_finalise(self)
     integer, intent(in), dimension(2) :: self
     self_ptr = transfer(self, self_ptr)
     print *, self
-    !deallocate(self_ptr%p%obj)
+    deallocate(self_ptr%p%obj)
 end subroutine f90wrap_myclass_impl__myclass_impl_finalise
 
 subroutine f90wrap_myclass_impl__myclass_impl_t_initialise(this)
