@@ -226,7 +226,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("end type " + ty.name)
         self.write()
 
-    def write_type_lines(self, tname, recursive=False):
+    def write_type_lines(self, tname, recursive=False, tname_inner=None):
         """
         Write a pointer type for a given type name
 
@@ -239,6 +239,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             Adjusts array pointer for recursive derived type array
         """
         tname = ft.strip_type(tname)
+        if tname_inner is None:
+            tname_inner = tname
 
         if "abstract" in self.types[tname].attributes:
             class_type = "class"
@@ -252,10 +254,41 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         self.write(
             """type %(typename)s%(suffix)s
-    %(class_type)s(%(typename)s), pointer :: p => NULL()
+    %(class_type)s(%(typename_inner)s), pointer :: p => NULL()
 end type %(typename)s%(suffix)s"""
-            % {"suffix": suffix, "class_type": class_type, "typename": tname}
+            % {"suffix": suffix, "class_type": class_type, "typename": tname, "typename_inner": tname_inner}
         )
+
+    def write_class_lines(self, cname, recursive=False):
+        """
+        Write a pointer type for a given class name
+
+        Parameters
+        ----------
+        tname : `str`
+            Should be the name of a class in the wrapped code.
+        """
+        cname = ft.strip_type(cname)
+        self.write(
+            "type %(classname)s_wrapper_type\n"
+            "    class(%(classname)s), allocatable :: obj\n"
+            "end type %(classname)s_wrapper_type" % {"classname": cname}
+        )
+        self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
+
+    def is_class(self, tname):
+        if not tname in self.types:
+            return False
+        if "used_as_class" in self.types[tname].attributes:
+            return True
+        return False
+
+    def write_type_or_class_lines(self, tname, recursive=False):
+        if self.is_class(tname):
+            self.write_class_lines(tname, recursive)
+        else:
+            self.write_type_lines(tname, recursive)
+
 
     def write_arg_decl_lines(self, node):
         """
@@ -342,6 +375,9 @@ end type %(typename)s%(suffix)s"""
         """
         for alloc in node.allocate:
             self.write("allocate(%s_ptr%%p)" % alloc)  # (self.prefix, alloc))
+        if (self.is_class(node.type_name) and "constructor" in node.attributes
+            and "skip_call" in node.attributes):
+            self.write("allocate(this_ptr%p%obj)")
         for arg in node.arguments:
             if not hasattr(arg, "init_lines"):
                 continue
@@ -372,12 +408,23 @@ end type %(typename)s%(suffix)s"""
         def dummy_arg_name(arg):
             return arg.orig_name
 
+        def is_type_a_class(arg_type):
+            if arg_type.startswith("class") and arg_type[6:-1]:
+                return True
+            if arg_type.startswith("type") and arg_type[5:-1]:
+                tname = arg_type[5:-1]
+                if self.is_class(tname):
+                    return True
+            return False
+
         def actual_arg_name(arg):
             name = arg.name
             if (hasattr(node, "transfer_in") and arg.name in node.transfer_in) or (
                 hasattr(node, "transfer_out") and arg.name in node.transfer_out
             ):
                 name += "_ptr%p"
+            if is_type_a_class(arg.type):
+                name += "%obj"
             if "super-type" in arg.doc:
                 name += "%items"
             return name
@@ -495,7 +542,7 @@ end type %(typename)s%(suffix)s"""
         for tname in node.types:
             if tname in self.types and "super-type" in self.types[tname].doc:
                 self.write_super_type_lines(self.types[tname])
-            self.write_type_lines(tname)
+            self.write_type_or_class_lines(tname)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
@@ -523,6 +570,11 @@ end type %(typename)s%(suffix)s"""
                 self._write_sc_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
 
         return self.generic_visit(node)
+
+    def _get_type_member_array_name(self, t, element_name):
+        if (self.is_class(t.orig_name)):
+            return "this_ptr%%p%%obj%%%s" % element_name
+        return "this_ptr%%p%%%s" % element_name
 
     def _write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
         """
@@ -564,7 +616,7 @@ end type %(typename)s%(suffix)s"""
         self.write("use, intrinsic :: iso_c_binding, only : c_int")
         self.write("implicit none")
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.orig_name)
+            self.write_type_or_class_lines(t.orig_name)
             self.write("integer(c_int), intent(in) :: this(%d)" % sizeof_fortran_t)
             self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
         else:
@@ -585,7 +637,7 @@ end type %(typename)s%(suffix)s"""
         self.write("dtype = %s" % ft.fortran_array_type(el.type, self.kind_map))
         if isinstance(t, ft.Type):
             self.write("this_ptr = transfer(this, this_ptr)")
-            array_name = "this_ptr%%p%%%s" % el.orig_name
+            array_name = self._get_type_member_array_name(t, el.orig_name)
         else:
             array_name = "%s_%s" % (t.name, el.name)
 
@@ -733,13 +785,13 @@ end type %(typename)s%(suffix)s"""
         same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
 
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
-        self.write_type_lines(el.type, same_type)
+            self.write_type_or_class_lines(t.name)
+        self.write_type_or_class_lines(el.type, same_type)
 
         self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
-            array_name = "this_ptr%%p%%%s" % el.name
+            array_name = self._get_type_member_array_name(t, el.name)
         else:
             array_name = "%s_%s" % (t.name, el.name)
         self.write("integer, intent(in) :: %s" % (safe_i))
@@ -853,15 +905,15 @@ end type %(typename)s%(suffix)s"""
         # Check if the type has recursive definition:
         same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
-        self.write_type_lines(el.type, same_type)
+            self.write_type_or_class_lines(t.name)
+        self.write_type_or_class_lines(el.type, same_type)
         self.write("integer, intent(out) :: %s" % (safe_n))
         self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             self.write()
             self.write("this_ptr = transfer(%s, this_ptr)" % (this))
-            array_name = "this_ptr%%p%%%s" % el.name
+            array_name = self._get_type_member_array_name(t, el.name)
         else:
             array_name = "%s_%s" % (t.name, el.name)
 
@@ -952,10 +1004,10 @@ end type %(typename)s%(suffix)s"""
 
         self.write("implicit none")
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.orig_name)
+            self.write_type_or_class_lines(t.orig_name)
 
         if el.type.startswith("type") and not (el.type == "type(" + t.orig_name + ")"):
-            self.write_type_lines(el.type)
+            self.write_type_or_class_lines(el.type)
 
         if isinstance(t, ft.Type):
             self.write("integer, intent(in)   :: this(%d)" % sizeof_fortran_t)
@@ -982,9 +1034,14 @@ end type %(typename)s%(suffix)s"""
                 self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write(
-                        "%s_ptr%%p => this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
-                    )
+                    if (self.is_class(t.orig_name)):
+                        self.write(
+                            "%s_ptr%%p%%obj = this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
+                        )
+                    else:
+                        self.write(
+                            "%s_ptr%%p => this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
+                        )
                 else:
                     self.write(
                         "%s_ptr%%p => %s_%s" % (el.orig_name, t.name, el.orig_name)
@@ -998,9 +1055,14 @@ end type %(typename)s%(suffix)s"""
                     % (el.orig_name, localvar, el.orig_name)
                 )
                 if isinstance(t, ft.Type):
-                    self.write(
-                        "this_ptr%%p%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
-                    )
+                    if (self.is_class(t.orig_name)):
+                        self.write(
+                            "this_ptr%%p%%obj%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
+                        )
+                    else:
+                        self.write(
+                            "this_ptr%%p%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
+                        )
                 else:
                     self.write(
                         "%s_%s = %s_ptr%%p" % (t.name, el.orig_name, el.orig_name)
@@ -1018,12 +1080,18 @@ end type %(typename)s%(suffix)s"""
                 self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write("%s = this_ptr%%p%%%s" % (localvar, el.orig_name))
+                    if (self.is_class(t.orig_name)):
+                        self.write("%s = this_ptr%%p%%obj%%%s" % (localvar, el.orig_name))
+                    else:
+                        self.write("%s = this_ptr%%p%%%s" % (localvar, el.orig_name))
                 else:
                     self.write("%s = %s_%s" % (localvar, t.name, el.orig_name))
             else:
                 if isinstance(t, ft.Type):
-                    self.write("this_ptr%%p%%%s = %s" % (el.orig_name, localvar))
+                    if (self.is_class(t.orig_name)):
+                        self.write("this_ptr%%p%%obj%%%s = %s" % (el.orig_name, localvar))
+                    else:
+                        self.write("this_ptr%%p%%%s = %s" % (el.orig_name, localvar))
                 else:
                     self.write("%s_%s = %s" % (t.name, el.orig_name, localvar))
         self.dedent()

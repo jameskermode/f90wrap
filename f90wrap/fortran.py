@@ -657,6 +657,17 @@ def find_types(tree, skipped_types=None):
                 else:
                     log.info('Skipping type %s defined in module %s' % (node.name, mod.name))
 
+    for mod in walk_modules(tree):
+        for node in walk(mod):
+            if not 'type' in node.__dict__:
+                continue
+            if node.type.startswith('class('):
+                class_name = derived_typename(node.type)
+                if not class_name in types or class_name in skipped_types:
+                    continue
+                if 'used_as_class' not in types[class_name].attributes:
+                    types[class_name].attributes.append('used_as_class')
+
     return types
 
 def fix_argument_attributes(node):

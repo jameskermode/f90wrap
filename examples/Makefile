@@ -31,7 +31,10 @@ EXAMPLES = arrayderivedtypes \
 	intent_out_size \
 	output_kind \
 	remove_pointer_arg \
-	fortran_oo
+	fortran_oo \
+	issue206_subroutine_oldstyle \
+	issue227_allocatable \
+	issue235_allocatable_classes
 
 PYTHON = python
 
