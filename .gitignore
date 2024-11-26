@@ -20,3 +20,4 @@ src.*
 .ipynb_checkpoints
 .idea/
 *.swp
+itest/
