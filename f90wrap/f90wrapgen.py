@@ -364,6 +364,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         """
         for alloc in node.allocate:
             self.write("allocate(%s_ptr%%p)" % alloc)  # (self.prefix, alloc))
+        if self.is_class(node.type_name) and node.name.endswith("_initialise"):
+            self.write("allocate(this_ptr%p%obj)")
         for arg in node.arguments:
             if not hasattr(arg, "init_lines"):
                 continue
