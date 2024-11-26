@@ -6,7 +6,7 @@ implicit none
 contains
 
 function create_myclass(impl_type) result(myobject)
-    type(myclass_impl_t), allocatable :: myobject
+    class(myclass_impl_t), allocatable :: myobject
 
     character(*), intent(in) :: impl_type
 

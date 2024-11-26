@@ -1,8 +1,8 @@
 ! Module myclass_factory defined in file myclass_factory.f90
 
 subroutine f90wrap_myclass_factory__create_myclass(ret_myobject, impl_type)
-    use myclass_factory, only: create_myclass
     use myclass_impl, only: myclass_impl_t
+    use myclass_factory, only: create_myclass
     implicit none
 
     type myclass_impl_t_ptr_type
