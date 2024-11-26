@@ -1,35 +1,26 @@
 #!/usr/bin/env python
-import itest
-import itest.myclass
+import pytest
+from itest.myclass import get_create_count, get_destroy_count
+from itest.myclass_factory import myclass_create
 
 REF = 3.1415
 TOL = 1.0e-6
 
+def test_create_destroy_object():
+    assert get_create_count() == 0
+    assert get_destroy_count() == 0
 
-create_count = itest.myclass.get_create_count()
-destroy_count = itest.myclass.get_destroy_count()
-assert(create_count == 0)
-assert(destroy_count == 0)
-print(f"OK: create_count == 0, destroy_count == 0 before creation")
+    obj = myclass_create(REF)
 
-obj = itest.myclass_factory.myclass_create(REF)
+    assert get_create_count() == 1
+    assert get_destroy_count() == 0
 
-create_count = itest.myclass.get_create_count()
-destroy_count = itest.myclass.get_destroy_count()
-assert(create_count == 1)
-assert(destroy_count == 0)
-print(f"OK: create_count == 1, destroy_count == 0 after creation")
+    assert abs(obj.get_val() - REF) < TOL
 
+    del obj
 
-output = obj.get_val()
-assert(abs(output-REF)<TOL)
-print(f"OK: {output} == {REF}")
+    assert get_create_count() == 1
+    assert get_destroy_count() == 1
 
-
-del obj
-
-create_count = itest.myclass.get_create_count()
-destroy_count = itest.myclass.get_destroy_count()
-assert(create_count == 1)
-assert(destroy_count == 1)
-print(f"OK: create_count == 1, destroy_count == 1 after destruction")
+if __name__ == '__main__':
+    pytest.main([__file__])
