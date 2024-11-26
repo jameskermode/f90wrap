@@ -16,10 +16,10 @@ subroutine f90wrap_myclass_factory__create_myclass(ret_myobject, impl_type)
     print *, "create_myclass: ", impl_type
 
     ret_myobject = transfer(ret_myobject_ptr, ret_myobject)
-    reference_storage = add_reference(ret_myobject)
-    reference_storage%value%obj = create_myclass(impl_type)
+    !reference_storage = add_reference(ret_myobject)
+    !reference_storage%value%obj = create_myclass(impl_type)
 
-    ret_myobject_ptr%p => reference_storage(reference_storage_size)
+    !ret_myobject_ptr%p => reference_storage(reference_storage_size)
 
 end subroutine f90wrap_myclass_factory__create_myclass
 
