@@ -235,20 +235,26 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             tname_inner = tname
         if not recursive:
             self.write(
-                f"""type {tname}_ptr_type
-    type({tname_inner}), pointer :: p => NULL()
-end type {tname}_ptr_type"""
+            "type %(typename)s_ptr_type\n"
+            "    type(%(typename_inner)s), pointer :: p => NULL()\n"
+            "end type %(typename)s_ptr_type" % {
+                "typename": tname,
+                "typename_inner": tname_inner
+                }
             )
         else:
             self.write(
-                f"""type {tname}_rec_ptr_type
-    type({tname_inner}), pointer :: p => NULL()
-end type {tname}_rec_ptr_type"""
+            "type %(typename)s_rec_ptr_type\n"
+            "    type(%(typename_inner)s), pointer :: p => NULL()\n"
+            "end type %(typename)s_rec_ptr_type" % {
+                "typename": tname,
+                "typename_inner": tname_inner
+                }
             )
 
     def write_class_lines(self, cname, recursive=False):
         """
-        Write a pointer type for a given type name
+        Write a pointer type for a given class name
 
         Parameters
         ----------
@@ -257,11 +263,23 @@ end type {tname}_rec_ptr_type"""
         """
         cname = ft.strip_type(cname)
         self.write(
-            f"""type {cname}_wrapper_type
-    class({cname}), allocatable :: obj
-end type {cname}_wrapper_type"""
+            "type %(classname)s_wrapper_type\n"
+            "    class(%(classname)s), allocatable :: obj\n"
+            "end type %(classname)s_wrapper_type" % {"classname": cname}
         )
         self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
+
+    def write_type_class_lines(self, node):
+        """
+        Write derived type and class lines to procedure code
+        """
+        for tname in node.types:
+            if tname in self.types and "super-type" in self.types[tname].doc:
+                self.write_super_type_lines(self.types[tname])
+            if "class(%(classname)s)" % {"classname": tname} in self.types:
+                self.write_class_lines(tname)
+            else:
+                self.write_type_lines(tname)
 
 
     def write_arg_decl_lines(self, node):
@@ -385,6 +403,8 @@ end type {cname}_wrapper_type"""
                 hasattr(node, "transfer_out") and arg.name in node.transfer_out
             ):
                 name += "_ptr%p"
+            if arg.type.startswith("class("):
+                name += "%obj"
             if "super-type" in arg.doc:
                 name += "%items"
             return name
@@ -504,13 +524,7 @@ end type {cname}_wrapper_type"""
                 self.write("%s %s" % (node.orig_node.ret_val.type, node.orig_name))
 
         self.write()
-        for tname in node.types:
-            if tname in self.types and "super-type" in self.types[tname].doc:
-                self.write_super_type_lines(self.types[tname])
-            if f"class({tname})" in self.types:
-                self.write_class_lines(tname)
-            else:
-                self.write_type_lines(tname)
+        self.write_type_class_lines(node)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)

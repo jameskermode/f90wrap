@@ -1,8 +1,8 @@
 ! Module myclass_factory defined in file myclass_factory.f90
 
 subroutine f90wrap_myclass_factory__myclass_create(ret_myobject, val)
-    use myclass, only: myclass_t
     use myclass_factory, only: myclass_create
+    use myclass, only: myclass_t
     implicit none
 
     type myclass_t_wrapper_type
