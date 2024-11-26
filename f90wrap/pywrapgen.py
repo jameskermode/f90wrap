@@ -587,7 +587,7 @@ except ValueError:
             if isinstance(node, ft.Function):
                 # convert any derived type return values to Python objects
                 for ret_val in node.ret_val:
-                    if ret_val.type.startswith("type"):
+                    if ret_val.type.startswith("type") or ret_val.type.startswith("class"):
                         cls_name = normalise_class_name(
                             ft.strip_type(ret_val.type), self.class_names
                         )
@@ -731,6 +731,13 @@ except ValueError:
         self.write(self._format_doc_string(node))
         self.generic_visit(node)
 
+        self.write_member_variables(node)
+
+        self.write()
+        self.dedent()
+        self.write()
+
+    def write_member_variables(self, node):
         properties = []
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
@@ -748,9 +755,6 @@ except ValueError:
         self.write(
             "_dt_array_initialisers = [%s]" % (", ".join(node.dt_array_initialisers))
         )
-        self.write()
-        self.dedent()
-        self.write()
 
     def write_scalar_wrappers(self, node, el, properties):
         dct = dict(
