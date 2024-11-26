@@ -626,8 +626,7 @@ except ValueError:
         self.write(format_doc_string(node))
         self.generic_visit(node)
 
-        if(not "class(%(classname)s)" % {"classname": node.name} in self.types):
-            self.write_member_variables(node)
+        self.write_member_variables(node)
 
         self.write()
         self.dedent()

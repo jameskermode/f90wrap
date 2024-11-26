@@ -269,17 +269,14 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         )
         self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
 
-    def write_type_class_lines(self, node):
-        """
-        Write derived type and class lines to procedure code
-        """
-        for tname in node.types:
-            if tname in self.types and "super-type" in self.types[tname].doc:
-                self.write_super_type_lines(self.types[tname])
-            if "class(%(classname)s)" % {"classname": tname} in self.types:
-                self.write_class_lines(tname)
-            else:
-                self.write_type_lines(tname)
+    def is_class(self, tname):
+        return "class(%(classname)s)" % {"classname": tname} in self.types
+
+    def write_type_or_class_lines(self, tname, recursive=False):
+        if self.is_class(tname):
+            self.write_class_lines(tname, recursive)
+        else:
+            self.write_type_lines(tname, recursive)
 
 
     def write_arg_decl_lines(self, node):
@@ -536,7 +533,10 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             node.attributes.append("skip_call")
 
         self.write()
-        self.write_type_class_lines(node)
+        for tname in node.types:
+            if tname in self.types and "super-type" in self.types[tname].doc:
+                self.write_super_type_lines(self.types[tname])
+            self.write_type_or_class_lines(tname)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
@@ -553,10 +553,6 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         Properly wraps derived types, including derived-type arrays.
         """
         log.info("F90WrapperGenerator visiting type %s" % node.name)
-
-        if("class(%(classname)s)" % {"classname": node.name} in self.types):
-            log.info("Wrapping methods and no member variables for class %s" % node.name)
-            return self.generic_visit(node)
 
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
@@ -609,7 +605,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("use, intrinsic :: iso_c_binding, only : c_int")
         self.write("implicit none")
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.orig_name)
+            self.write_type_or_class_lines(t.orig_name)
             self.write("integer(c_int), intent(in) :: this(%d)" % sizeof_fortran_t)
             self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
         else:
@@ -630,7 +626,10 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("dtype = %s" % ft.fortran_array_type(el.type, self.kind_map))
         if isinstance(t, ft.Type):
             self.write("this_ptr = transfer(this, this_ptr)")
-            array_name = "this_ptr%%p%%%s" % el.orig_name
+            if (self.is_class(t.orig_name)):
+                array_name = "this_ptr%%p%%obj%%%s" % el.orig_name
+            else:
+                array_name = "this_ptr%%p%%%s" % el.orig_name
         else:
             array_name = "%s_%s" % (t.name, el.name)
 
@@ -778,13 +777,16 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
 
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
-        self.write_type_lines(el.type, same_type)
+            self.write_type_or_class_lines(t.name)
+        self.write_type_or_class_lines(el.type, same_type)
 
         self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
-            array_name = "this_ptr%%p%%%s" % el.name
+            if (self.is_class(t.orig_name)):
+                array_name = "this_ptr%%p%%obj%%%s" % el.name
+            else:
+                array_name = "this_ptr%%p%%%s" % el.name
         else:
             array_name = "%s_%s" % (t.name, el.name)
         self.write("integer, intent(in) :: %s" % (safe_i))
@@ -898,15 +900,18 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         # Check if the type has recursive definition:
         same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.name)
-        self.write_type_lines(el.type, same_type)
+            self.write_type_or_class_lines(t.name)
+        self.write_type_or_class_lines(el.type, same_type)
         self.write("integer, intent(out) :: %s" % (safe_n))
         self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             self.write()
             self.write("this_ptr = transfer(%s, this_ptr)" % (this))
-            array_name = "this_ptr%%p%%%s" % el.name
+            if (self.is_class(t.orig_name)):
+                array_name = "this_ptr%%p%%obj%%%s" % el.name
+            else:
+                array_name = "this_ptr%%p%%%s" % el.name
         else:
             array_name = "%s_%s" % (t.name, el.name)
 
@@ -997,10 +1002,10 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         self.write("implicit none")
         if isinstance(t, ft.Type):
-            self.write_type_lines(t.orig_name)
+            self.write_type_or_class_lines(t.orig_name)
 
         if el.type.startswith("type") and not (el.type == "type(" + t.orig_name + ")"):
-            self.write_type_lines(el.type)
+            self.write_type_or_class_lines(el.type)
 
         if isinstance(t, ft.Type):
             self.write("integer, intent(in)   :: this(%d)" % sizeof_fortran_t)
@@ -1027,9 +1032,14 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write(
-                        "%s_ptr%%p => this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
-                    )
+                    if (self.is_class(t.orig_name)):
+                        self.write(
+                            "%s_ptr%%p%%obj = this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
+                        )
+                    else:
+                        self.write(
+                            "%s_ptr%%p => this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
+                        )
                 else:
                     self.write(
                         "%s_ptr%%p => %s_%s" % (el.orig_name, t.name, el.orig_name)
@@ -1043,9 +1053,14 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     % (el.orig_name, localvar, el.orig_name)
                 )
                 if isinstance(t, ft.Type):
-                    self.write(
-                        "this_ptr%%p%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
-                    )
+                    if (self.is_class(t.orig_name)):
+                        self.write(
+                            "this_ptr%%p%%obj%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
+                        )
+                    else:
+                        self.write(
+                            "this_ptr%%p%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
+                        )
                 else:
                     self.write(
                         "%s_%s = %s_ptr%%p" % (t.name, el.orig_name, el.orig_name)
@@ -1063,12 +1078,18 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    self.write("%s = this_ptr%%p%%%s" % (localvar, el.orig_name))
+                    if (self.is_class(t.orig_name)):
+                        self.write("%s = this_ptr%%p%%obj%%%s" % (localvar, el.orig_name))
+                    else:
+                        self.write("%s = this_ptr%%p%%%s" % (localvar, el.orig_name))
                 else:
                     self.write("%s = %s_%s" % (localvar, t.name, el.orig_name))
             else:
                 if isinstance(t, ft.Type):
-                    self.write("this_ptr%%p%%%s = %s" % (el.orig_name, localvar))
+                    if (self.is_class(t.orig_name)):
+                        self.write("this_ptr%%p%%obj%%%s = %s" % (el.orig_name, localvar))
+                    else:
+                        self.write("this_ptr%%p%%%s = %s" % (el.orig_name, localvar))
                 else:
                     self.write("%s_%s = %s" % (t.name, el.orig_name, localvar))
         self.dedent()

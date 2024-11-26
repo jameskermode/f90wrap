@@ -44,10 +44,16 @@ def test_getter_setter():
 
 
 def test_get_set_direct():
-    """Direct access of member variables should throw an AttributeError."""
+    """Direct access of member variables."""
     obj = myclass_create(REF)
-    with pytest.raises(AttributeError, match="has no attribute 'val'"):
-        obj.val
+
+    assert abs(obj.val - REF) < TOL
+
+    obj.val = 2.0 * REF
+
+    assert abs(obj.val - 2.0 * REF) < TOL
+
+    del obj
 
 
 if __name__ == "__main__":
