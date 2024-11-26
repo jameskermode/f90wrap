@@ -626,6 +626,14 @@ except ValueError:
         self.write(format_doc_string(node))
         self.generic_visit(node)
 
+        if(not "class(%(classname)s)" % {"classname": node.name} in self.types):
+            self.write_member_variables(node)
+
+        self.write()
+        self.dedent()
+        self.write()
+
+    def write_member_variables(self, node):
         properties = []
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
@@ -643,9 +651,6 @@ except ValueError:
         self.write(
             "_dt_array_initialisers = [%s]" % (", ".join(node.dt_array_initialisers))
         )
-        self.write()
-        self.dedent()
-        self.write()
 
     def write_scalar_wrappers(self, node, el, properties):
         dct = dict(
