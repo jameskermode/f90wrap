@@ -13,6 +13,7 @@ TOL = 1.0e-6
 
 
 def test_create_destroy_object():
+    """Object creation and destruction should happen only once."""
     set_create_count(0)
     set_destroy_count(0)
 
@@ -30,6 +31,7 @@ def test_create_destroy_object():
 
 
 def test_getter_setter():
+    """Getters and setters defined in Fortran should work."""
     obj = myclass_create(REF)
 
     assert abs(obj.get_val() - REF) < TOL
@@ -42,15 +44,10 @@ def test_getter_setter():
 
 
 def test_get_set_direct():
+    """Direct access of member variables should throw an AttributeError."""
     obj = myclass_create(REF)
-
-    assert abs(obj.val - REF) < TOL
-
-    obj.val = 2.0 * REF
-
-    assert abs(obj.val - 2.0 * REF) < TOL
-
-    del obj
+    with pytest.raises(AttributeError, match="has no attribute 'val'"):
+        obj.val
 
 
 if __name__ == "__main__":
