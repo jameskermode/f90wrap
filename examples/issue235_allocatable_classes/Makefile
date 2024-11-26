@@ -7,11 +7,13 @@ all: wrapper
 test: wrapper
 	$(PYTHON) run.py
 
-wrapper: myclass.o myclass_factory.o
-	f90wrap -m itest -P myclass.f90 myclass_factory.f90 -v
+wrapper: f90wrapper myclass.o myclass_factory.o
 	f2py-f90wrap --build-dir . -c -m _itest --opt="-O0 -g" \
 		f90wrap_myclass.f90 f90wrap_myclass_factory.f90 \
 		myclass.o myclass_factory.o
+
+f90wrapper: myclass.f90 myclass_factory.f90
+	f90wrap -m itest -P myclass.f90 myclass_factory.f90 -v
 
 %.o : %.f90
 	$(FC) $(FCFLAGS) -c -g -O0 $< -o $@
