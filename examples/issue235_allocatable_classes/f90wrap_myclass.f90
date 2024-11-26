@@ -35,7 +35,7 @@ subroutine f90wrap_myclass_t__set__val(this, f90wrap_val)
 end subroutine f90wrap_myclass_t__set__val
 
 subroutine f90wrap_myclass__myclass_destroy__binding__myclass_t(self)
-    use myclass, only: myclass_destroy, myclass_t
+    use myclass, only: myclass_t
     implicit none
 
     type myclass_t_wrapper_type
@@ -47,7 +47,6 @@ subroutine f90wrap_myclass__myclass_destroy__binding__myclass_t(self)
     type(myclass_t_ptr_type) :: self_ptr
     integer, intent(in), dimension(2) :: self
     self_ptr = transfer(self, self_ptr)
-    call myclass_destroy(self=self_ptr%p%obj)
     deallocate(self_ptr%p)
 end subroutine f90wrap_myclass__myclass_destroy__binding__myclass_t
 
