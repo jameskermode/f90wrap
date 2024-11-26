@@ -218,7 +218,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("end type " + ty.name)
         self.write()
 
-    def write_type_lines(self, tname, recursive=False):
+    def write_type_lines(self, tname, recursive=False, tname_inner=None):
         """
         Write a pointer type for a given type name
 
@@ -231,20 +231,38 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             Adjusts array pointer for recursive derived type array
         """
         tname = ft.strip_type(tname)
+        if tname_inner is None:
+            tname_inner = tname
         if not recursive:
             self.write(
-                """type %(typename)s_ptr_type
-    type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_ptr_type"""
-                % {"typename": tname}
+                f"""type {tname}_ptr_type
+    type({tname_inner}), pointer :: p => NULL()
+end type {tname}_ptr_type"""
             )
         else:
             self.write(
-                """type %(typename)s_rec_ptr_type
-    type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_rec_ptr_type"""
-                % {"typename": tname}
+                f"""type {tname}_rec_ptr_type
+    type({tname_inner}), pointer :: p => NULL()
+end type {tname}_rec_ptr_type"""
             )
+
+    def write_class_lines(self, cname, recursive=False):
+        """
+        Write a pointer type for a given type name
+
+        Parameters
+        ----------
+        tname : `str`
+            Should be the name of a class in the wrapped code.
+        """
+        cname = ft.strip_type(cname)
+        self.write(
+            f"""type {cname}_wrapper_type
+    class({cname}), allocatable :: obj
+end type {cname}_wrapper_type"""
+        )
+        self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
+
 
     def write_arg_decl_lines(self, node):
         """
@@ -489,7 +507,10 @@ end type %(typename)s_rec_ptr_type"""
         for tname in node.types:
             if tname in self.types and "super-type" in self.types[tname].doc:
                 self.write_super_type_lines(self.types[tname])
-            self.write_type_lines(tname)
+            if f"class({tname})" in self.types:
+                self.write_class_lines(tname)
+            else:
+                self.write_type_lines(tname)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
