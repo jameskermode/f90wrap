@@ -3,6 +3,6 @@ import _itest
 import f90wrap.runtime
 import logging
 import numpy
-import itest.myclass_impl
 import itest.myclass_factory
+import itest.myclass_impl
 
