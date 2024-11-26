@@ -150,4 +150,36 @@ subroutine f90wrap_myclass__myclass_destroy(self)
     call myclass_destroy(self=self_ptr%p%obj)
 end subroutine f90wrap_myclass__myclass_destroy
 
+subroutine f90wrap_myclass__get__create_count(f90wrap_create_count)
+    use myclass, only: myclass_create_count => create_count
+    implicit none
+    integer, intent(out) :: f90wrap_create_count
+
+    f90wrap_create_count = myclass_create_count
+end subroutine f90wrap_myclass__get__create_count
+
+subroutine f90wrap_myclass__set__create_count(f90wrap_create_count)
+    use myclass, only: myclass_create_count => create_count
+    implicit none
+    integer, intent(in) :: f90wrap_create_count
+
+    myclass_create_count = f90wrap_create_count
+end subroutine f90wrap_myclass__set__create_count
+
+subroutine f90wrap_myclass__get__destroy_count(f90wrap_destroy_count)
+    use myclass, only: myclass_destroy_count => destroy_count
+    implicit none
+    integer, intent(out) :: f90wrap_destroy_count
+
+    f90wrap_destroy_count = myclass_destroy_count
+end subroutine f90wrap_myclass__get__destroy_count
+
+subroutine f90wrap_myclass__set__destroy_count(f90wrap_destroy_count)
+    use myclass, only: myclass_destroy_count => destroy_count
+    implicit none
+    integer, intent(in) :: f90wrap_destroy_count
+
+    myclass_destroy_count = f90wrap_destroy_count
+end subroutine f90wrap_myclass__set__destroy_count
+
 ! End of module myclass defined in file myclass.f90

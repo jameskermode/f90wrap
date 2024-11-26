@@ -1,6 +1,6 @@
 module myclass_factory
 
-use myclass, only: myclass_t
+use myclass, only: myclass_t, create_count
 implicit none
 
 contains
@@ -11,6 +11,7 @@ function myclass_create(val) result(myobject)
 
     allocate(myclass_t :: myobject)
     call myobject%set_val(val)
+    create_count = create_count + 1
 
 end function myclass_create
 

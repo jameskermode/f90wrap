@@ -2,6 +2,9 @@ module myclass
 
 implicit none
 
+integer :: create_count = 0
+integer :: destroy_count = 0
+
 type :: myclass_t
     real :: val
 contains
@@ -29,7 +32,7 @@ end subroutine myclass_set_val
 subroutine myclass_destroy(self)
     type(myclass_t), intent(inout) :: self
 
-    print *, "Finalising myclass_impl_t: ", self%val
+    destroy_count = destroy_count + 1
 end subroutine myclass_destroy
 
 end module myclass
