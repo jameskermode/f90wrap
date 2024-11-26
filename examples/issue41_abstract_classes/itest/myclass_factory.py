@@ -2,7 +2,7 @@
 Module myclass_factory
 
 
-Defined at myclass_factory.f90 lines 1-15
+Defined at myclass_factory.f90 lines 1-14
 
 """
 from __future__ import print_function, absolute_import, division
@@ -19,7 +19,7 @@ def create_myclass(impl_type):
     myobject = create_myclass(impl_type)
     
     
-    Defined at myclass_factory.f90 lines 6-15
+    Defined at myclass_factory.f90 lines 5-14
     
     Parameters
     ----------

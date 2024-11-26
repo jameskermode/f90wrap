@@ -1,6 +1,5 @@
 module myclass_factory
 
-use myclass_base, only: myclass_t
 use myclass_impl, only: myclass_impl_t
 implicit none
 

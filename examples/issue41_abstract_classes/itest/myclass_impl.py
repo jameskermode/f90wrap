@@ -2,7 +2,7 @@
 Module myclass_impl
 
 
-Defined at myclass_impl.f90 lines 1-17
+Defined at myclass_impl.f90 lines 1-16
 
 """
 from __future__ import print_function, absolute_import, division
@@ -20,7 +20,7 @@ class myclass_impl_t(f90wrap.runtime.FortranDerivedType):
     Type(name=myclass_impl_t)
     
     
-    Defined at myclass_impl.f90 lines 4-7
+    Defined at myclass_impl.f90 lines 3-6
     
     """
     def __del__(self):
@@ -28,7 +28,7 @@ class myclass_impl_t(f90wrap.runtime.FortranDerivedType):
         Destructor for class Myclass_Impl_T
         
         
-        Defined at myclass_impl.f90 lines 15-17
+        Defined at myclass_impl.f90 lines 14-16
         
         Parameters
         ----------
@@ -43,7 +43,7 @@ class myclass_impl_t(f90wrap.runtime.FortranDerivedType):
         Destructor for class Myclass_Impl_T
         
         
-        Defined at myclass_impl.f90 lines 15-17
+        Defined at myclass_impl.f90 lines 14-16
         
         Parameters
         ----------
@@ -58,7 +58,7 @@ class myclass_impl_t(f90wrap.runtime.FortranDerivedType):
         self = Myclass_Impl_T()
         
         
-        Defined at myclass_impl.f90 lines 4-7
+        Defined at myclass_impl.f90 lines 3-6
         
         
         Returns
@@ -78,7 +78,7 @@ class myclass_impl_t(f90wrap.runtime.FortranDerivedType):
         value = get_value__binding__myclass_impl_t(self)
         
         
-        Defined at myclass_impl.f90 lines 10-13
+        Defined at myclass_impl.f90 lines 9-12
         
         Parameters
         ----------
@@ -101,7 +101,7 @@ def get_value_impl(self):
     value = get_value_impl(self)
     
     
-    Defined at myclass_impl.f90 lines 10-13
+    Defined at myclass_impl.f90 lines 9-12
     
     Parameters
     ----------
