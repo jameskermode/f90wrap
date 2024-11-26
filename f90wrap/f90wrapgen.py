@@ -551,6 +551,10 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         """
         log.info("F90WrapperGenerator visiting type %s" % node.name)
 
+        if("class(%(classname)s)" % {"classname": node.name} in self.types):
+            log.info("Wrapping methods and no member variables for class %s" % node.name)
+            return self.generic_visit(node)
+
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
