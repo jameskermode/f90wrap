@@ -3,7 +3,7 @@ subroutine f90wrap_myclass_impl__myclass_impl_finalise__binding__mycla4a60(self)
     implicit none
 
     type myclass_impl_wrapper_t
-        class(myclass_impl_t), allocatable :: obj
+        type(myclass_impl_t), allocatable :: obj
     end type myclass_impl_wrapper_t
     type myclass_impl_t_ptr_type
         type(myclass_impl_wrapper_t), pointer :: p => NULL()
@@ -20,7 +20,7 @@ subroutine f90wrap_myclass_impl__myclass_impl_finalise(self)
     implicit none
 
     type myclass_impl_wrapper_t
-        class(myclass_impl_t), allocatable :: obj
+        type(myclass_impl_t), allocatable :: obj
     end type myclass_impl_wrapper_t
     type myclass_impl_t_ptr_type
         type(myclass_impl_wrapper_t), pointer :: p => NULL()
@@ -37,7 +37,7 @@ subroutine f90wrap_myclass_impl__myclass_impl_t_initialise(this)
     implicit none
 
     type myclass_impl_wrapper_t
-        class(myclass_impl_t), allocatable :: obj
+        type(myclass_impl_t), allocatable :: obj
     end type myclass_impl_wrapper_t
     type myclass_impl_t_ptr_type
         type(myclass_impl_wrapper_t), pointer :: p => NULL()
@@ -53,7 +53,7 @@ subroutine f90wrap_myclass_impl__get_value__binding__myclass_impl_t(self, value)
     implicit none
 
     type myclass_impl_wrapper_t
-        class(myclass_impl_t), allocatable :: obj
+        type(myclass_impl_t), allocatable :: obj
     end type myclass_impl_wrapper_t
     type myclass_impl_t_ptr_type
         type(myclass_impl_wrapper_t), pointer :: p => NULL()
@@ -70,7 +70,7 @@ subroutine f90wrap_myclass_impl__get_value_impl(self, value)
     implicit none
 
     type myclass_impl_wrapper_t
-        class(myclass_impl_t), allocatable :: obj
+        type(myclass_impl_t), allocatable :: obj
     end type myclass_impl_wrapper_t
     type myclass_impl_t_ptr_type
         type(myclass_impl_wrapper_t), pointer :: p => NULL()

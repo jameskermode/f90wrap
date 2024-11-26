@@ -2,7 +2,7 @@ module myclass_impl_reference_storage
     use myclass_impl, only: myclass_impl_t
     implicit none
     type myclass_impl_wrapper_t
-        class(myclass_impl_t), allocatable :: obj
+        type(myclass_impl_t), allocatable :: obj
     end type myclass_impl_wrapper_t
 
     type myclass_impl_t_ptr_type
