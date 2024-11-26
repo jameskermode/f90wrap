@@ -1,9 +1,8 @@
 module myclass_impl
 
-use myclass_base, only: myclass_t
 implicit none
 
-type, extends(myclass_t) :: myclass_impl_t
+type :: myclass_impl_t
 contains
     procedure :: get_value => get_value_impl
     final :: myclass_impl_finalise
