@@ -401,7 +401,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 return True
             if arg_type.startswith("type") and arg_type[5:-1]:
                 tname = arg_type[5:-1]
-                if self.is_class(self, tname):
+                if self.is_class(tname):
                     return True
             return False
 
