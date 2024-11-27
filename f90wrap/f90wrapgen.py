@@ -396,12 +396,12 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         def dummy_arg_name(arg):
             return arg.orig_name
 
-        def is_class(arg_type):
+        def is_type_a_class(arg_type):
             if arg_type.startswith("class") and arg_type[6:-1]:
                 return True
             if arg_type.startswith("type") and arg_type[5:-1]:
                 tname = arg_type[5:-1]
-                if "class(%(classname)s)" % {"classname": tname} in self.types:
+                if self.is_class(self, tname):
                     return True
             return False
 
@@ -411,7 +411,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                 hasattr(node, "transfer_out") and arg.name in node.transfer_out
             ):
                 name += "_ptr%p"
-            if is_class(arg.type):
+            if is_type_a_class(arg.type):
                 name += "%obj"
             if "super-type" in arg.doc:
                 name += "%items"
