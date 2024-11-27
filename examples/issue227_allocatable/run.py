@@ -1,18 +1,9 @@
 #!/usr/bin/env python
-import os
+import pytest
 import gc
 import tracemalloc
 
 import itest
-
-
-def main():
-    test_type_output_is_wrapped()
-    test_intrinsic_output_is_not_wrapped()
-    test_array_output_is_not_wrapped()
-    test_type_output_wrapper()
-    test_memory_leak()
-
 
 def test_type_output_is_wrapped():
     assert hasattr(itest.alloc_output, 'alloc_output_type_func')
@@ -51,4 +42,4 @@ def test_memory_leak():
 
 
 if __name__ == '__main__':
-    main()
+    pytest.main([__file__])

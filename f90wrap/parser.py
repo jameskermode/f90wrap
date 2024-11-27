@@ -67,7 +67,7 @@ module_end = re.compile('^end\s*module|end$', re.IGNORECASE)
 program = re.compile('^program', re.IGNORECASE)
 program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
 
-attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
+attribs = r'abstract|allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
 type_end = re.compile('^end\s*type|end$', re.IGNORECASE)
@@ -1279,6 +1279,7 @@ def check_binding(cl, file):
         if type == 'generic':
             name, targets = bindings.split('=>')
             name = name.strip().lower()
+            if name.startswith('deferred :: '): return [None, cl]
             log.debug('found generic binding %s => %s', name, targets)
             out.append(Binding(
                 name=name,
@@ -1299,6 +1300,7 @@ def check_binding(cl, file):
             for b in bindings.split(','):
                 name, *target = [ word.strip().lower() for word in b.split('=>')]
                 name = name.strip().lower()
+                if name.startswith('deferred :: '): return [None, cl]
                 target = target[0] if target else name
                 log.debug('found %s binding %s => %s', type, name, target)
                 out.append(Binding(

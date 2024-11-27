@@ -252,7 +252,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 continue
             else:
                 # allocatable arguments only allowed for derived types
-                if 'allocatable' in arg.attributes and not arg.type.startswith('type'):
+                if 'allocatable' in arg.attributes and not (
+                    arg.type.startswith('type') or arg.type.startswith('class')):
                     log.warning('removing routine %s due to allocatable intrinsic type arguments' % node.name)
                     return None
                 # no pointer arguments

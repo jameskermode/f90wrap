@@ -605,9 +605,16 @@ def find_types(tree, skipped_types=None):
                     node.uses = set([(mod.name, (node.name,))])
                     types[node.name] = node
                     types['type(%s)' % node.name] = node
-                    types['class(%s)' % node.name] = node
                 else:
                     log.info('Skipping type %s defined in module %s' % (node.name, mod.name))
+
+    for mod in walk_modules(tree):
+        for node in walk(mod):
+            if not 'type' in node.__dict__:
+                continue
+            if node.type.startswith('class('):
+                class_name = derived_typename(node.type)
+                types['class(%s)' % class_name] = types[class_name]
 
     return types
 

@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME     := itest
+
+test: build
+	$(PYTHON) run.py
