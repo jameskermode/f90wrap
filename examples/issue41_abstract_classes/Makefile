@@ -7,14 +7,14 @@ all: wrapper test_abstract_classes.x
 test: wrapper
 	$(PYTHON) run.py
 
-test_abstract_classes.x: main.f90 myclass_base.o myclass_impl.o myclass_factory.o
+test_abstract_classes.x: main.f90 myclass_base.o myclass_impl.o myclass_impl2.o myclass_factory.o
 	$(FC) $(FCFLAGS) -o $@ $^
 
-wrapper: myclass_base.o myclass_impl.o myclass_factory.o
-	f90wrap -m itest -P myclass_base.f90 myclass_impl.f90 myclass_factory.f90 -v
+wrapper: myclass_base.o myclass_impl.o myclass_impl2.o myclass_factory.o
+	f90wrap -m itest -P myclass_base.f90 myclass_impl.f90 myclass_impl2.f90 myclass_factory.f90 -v
 	f2py-f90wrap --build-dir . -c -m _itest --opt="-O0 -g" \
-		f90wrap_myclass_base.f90 f90wrap_myclass_impl.f90 f90wrap_myclass_factory.f90 \
-		myclass_base.o myclass_impl.o myclass_factory.o
+		f90wrap_myclass_base.f90 f90wrap_myclass_impl.f90 f90wrap_myclass_impl2.f90 f90wrap_myclass_factory.f90 \
+		myclass_base.o myclass_impl.o myclass_impl2.o myclass_factory.o
 
 %.o : %.f90
 	$(FC) $(FCFLAGS) -c -g -O0 $< -o $@
