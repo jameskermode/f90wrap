@@ -1,6 +1,6 @@
 program main
     use myclass_factory, only: create_myclass
-    use myclass_impl, only: myclass_impl_t
+    use myclass_base, only: myclass_t
     implicit none
 
     print *, "Start"
@@ -13,7 +13,7 @@ contains
 
 subroutine test
     real :: x
-    class(myclass_impl_t), allocatable :: myobject
+    class(myclass_t), allocatable :: myobject
 
     myobject = create_myclass("impl")
     call myobject%get_value(x)

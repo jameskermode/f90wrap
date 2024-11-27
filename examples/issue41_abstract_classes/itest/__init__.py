@@ -4,5 +4,6 @@ import f90wrap.runtime
 import logging
 import numpy
 import itest.myclass_factory
+import itest.myclass_base
 import itest.myclass_impl
 
