@@ -5,5 +5,6 @@ import logging
 import numpy
 import itest.myclass_factory
 import itest.myclass_base
+import itest.myclass_impl2
 import itest.myclass_impl
 

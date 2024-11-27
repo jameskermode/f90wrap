@@ -1,7 +1,7 @@
 ! Module myclass_impl defined in file myclass_impl.f90
 
-subroutine f90wrap_myclass_impl__myclass_impl_finalise__binding__mycla4a60(self)
-    use myclass_impl, only: myclass_impl_finalise, myclass_impl_t
+subroutine f90wrap_myclass_impl__myclass_impl_destroy__binding__myclas021a(self)
+    use myclass_impl, only: myclass_impl_destroy, myclass_impl_t
     implicit none
     
     type myclass_impl_t_wrapper_type
@@ -14,23 +14,7 @@ subroutine f90wrap_myclass_impl__myclass_impl_finalise__binding__mycla4a60(self)
     integer, intent(in), dimension(2) :: self
     self_ptr = transfer(self, self_ptr)
     deallocate(self_ptr%p)
-end subroutine f90wrap_myclass_impl__myclass_impl_finalise__binding__mycla4a60
-
-subroutine f90wrap_myclass_impl__myclass_impl_finalise(self)
-    use myclass_impl, only: myclass_impl_finalise, myclass_impl_t
-    implicit none
-    
-    type myclass_impl_t_wrapper_type
-        class(myclass_impl_t), allocatable :: obj
-    end type myclass_impl_t_wrapper_type
-    type myclass_impl_t_ptr_type
-        type(myclass_impl_t_wrapper_type), pointer :: p => NULL()
-    end type myclass_impl_t_ptr_type
-    type(myclass_impl_t_ptr_type) :: self_ptr
-    integer, intent(in), dimension(2) :: self
-    self_ptr = transfer(self, self_ptr)
-    deallocate(self_ptr%p)
-end subroutine f90wrap_myclass_impl__myclass_impl_finalise
+end subroutine f90wrap_myclass_impl__myclass_impl_destroy__binding__myclas021a
 
 subroutine f90wrap_myclass_impl__myclass_impl_t_initialise(this)
     use myclass_impl, only: myclass_impl_t
@@ -82,6 +66,22 @@ subroutine f90wrap_myclass_impl__get_value_impl(self, value)
     self_ptr = transfer(self, self_ptr)
     call get_value_impl(self=self_ptr%p%obj, value=value)
 end subroutine f90wrap_myclass_impl__get_value_impl
+
+subroutine f90wrap_myclass_impl__myclass_impl_destroy(self)
+    use myclass_impl, only: myclass_impl_destroy, myclass_impl_t
+    implicit none
+    
+    type myclass_impl_t_wrapper_type
+        class(myclass_impl_t), allocatable :: obj
+    end type myclass_impl_t_wrapper_type
+    type myclass_impl_t_ptr_type
+        type(myclass_impl_t_wrapper_type), pointer :: p => NULL()
+    end type myclass_impl_t_ptr_type
+    type(myclass_impl_t_ptr_type) :: self_ptr
+    integer, intent(in), dimension(2) :: self
+    self_ptr = transfer(self, self_ptr)
+    call myclass_impl_destroy(self=self_ptr%p%obj)
+end subroutine f90wrap_myclass_impl__myclass_impl_destroy
 
 ! End of module myclass_impl defined in file myclass_impl.f90
 
