@@ -567,6 +567,11 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         return self.generic_visit(node)
 
+    def _get_type_member_array_name(self, t, element_name):
+        if (self.is_class(t.orig_name)):
+            return "this_ptr%%p%%obj%%%s" % element_name
+        return "this_ptr%%p%%%s" % element_name
+
     def _write_sc_array_wrapper(self, t, el, dims, sizeof_fortran_t):
         """
         Write wrapper for arrays of intrinsic types
@@ -1088,8 +1093,3 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.dedent()
         self.write("end subroutine %s" % (subroutine_name))
         self.write()
-
-        def _get_type_member_array_name(self, t, el_name):
-            if (self.is_class(t.orig_name)):
-                return "this_ptr%%p%%obj%%%s" % el.name
-            return "this_ptr%%p%%%s" % el.name
