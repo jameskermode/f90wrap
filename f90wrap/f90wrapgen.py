@@ -628,10 +628,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("dtype = %s" % ft.fortran_array_type(el.type, self.kind_map))
         if isinstance(t, ft.Type):
             self.write("this_ptr = transfer(this, this_ptr)")
-            if (self.is_class(t.orig_name)):
-                array_name = "this_ptr%%p%%obj%%%s" % el.orig_name
-            else:
-                array_name = "this_ptr%%p%%%s" % el.orig_name
+            array_name = self._get_type_member_array_name(t, el.orig_name)
         else:
             array_name = "%s_%s" % (t.name, el.name)
 
@@ -785,10 +782,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
-            if (self.is_class(t.orig_name)):
-                array_name = "this_ptr%%p%%obj%%%s" % el.name
-            else:
-                array_name = "this_ptr%%p%%%s" % el.name
+            array_name = self._get_type_member_array_name(t, el.name)
         else:
             array_name = "%s_%s" % (t.name, el.name)
         self.write("integer, intent(in) :: %s" % (safe_i))
@@ -910,10 +904,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             self.write()
             self.write("this_ptr = transfer(%s, this_ptr)" % (this))
-            if (self.is_class(t.orig_name)):
-                array_name = "this_ptr%%p%%obj%%%s" % el.name
-            else:
-                array_name = "this_ptr%%p%%%s" % el.name
+            array_name = self._get_type_member_array_name(t, el.name)
         else:
             array_name = "%s_%s" % (t.name, el.name)
 
@@ -1097,3 +1088,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.dedent()
         self.write("end subroutine %s" % (subroutine_name))
         self.write()
+
+        def _get_type_member_array_name(self, t, el_name):
+            if (self.is_class(t.orig_name)):
+                return "this_ptr%%p%%obj%%%s" % el.name
+            return "this_ptr%%p%%%s" % el.name
