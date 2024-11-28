@@ -855,9 +855,9 @@ def add_missing_destructors(tree):
         for child in ft.iter_child_nodes(node):
             if 'destructor' in child.attributes:
                 log.info('found destructor %s', child.name)
+                child.attributes.append('skip_call')
                 break
         else:
-
             log.info('adding missing destructor for %s', node.name)
             new_node = ft.Subroutine('%s_finalise' % node.name,
                                      node.filename,

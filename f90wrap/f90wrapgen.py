@@ -531,9 +531,6 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             if hasattr(node, "orig_node") and isinstance(node.orig_node, ft.Function):
                 self.write("%s %s" % (node.orig_node.ret_val.type, node.orig_name))
 
-        if "destructor" in node.attributes and "self" in node.deallocate:
-            node.attributes.append("skip_call")
-
         self.write()
         for tname in node.types:
             if tname in self.types and "super-type" in self.types[tname].doc:
