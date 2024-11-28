@@ -270,7 +270,11 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
 
     def is_class(self, tname):
-        return "class(%(classname)s)" % {"classname": tname} in self.types
+        if not tname in self.types:
+            return False
+        if "used_as_class" in self.types[tname].attributes:
+            return True
+        return False
 
     def write_type_or_class_lines(self, tname, recursive=False):
         if self.is_class(tname):
