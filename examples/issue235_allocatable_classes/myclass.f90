@@ -33,6 +33,7 @@ subroutine myclass_destroy(self)
     type(myclass_t), intent(inout) :: self
 
     destroy_count = destroy_count + 1
+    print *, 'Destroying class_t with val = ', self%val
 end subroutine myclass_destroy
 
 end module myclass
