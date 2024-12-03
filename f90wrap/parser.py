@@ -98,10 +98,25 @@ funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 prototype = re.compile(r'^module procedure\s*(::)?\s*([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
 
 binding_types = r'procedure|generic|final'
+binding_type_group = r'^(' + binding_types + r')'
+no_bracket_for_interface = r'(?!\s*\()'
+double_dot_and_attributes = r'\s*((,([^:]*))?(::))?'
+name_target_group = r'\s*(.*)'
+
 binding = re.compile(
-    r'^(' + binding_types + r')' +
-    r'\s*((,([^:]*))?(::))?' +
-    r'\s*(.*)',
+    binding_type_group +
+    no_bracket_for_interface +
+    double_dot_and_attributes +
+    name_target_group,
+    re.IGNORECASE
+)
+
+interface_in_brackets = r'\s*\((.+)\)'
+deferred_binding = re.compile(
+    r'^(procedure)' +
+    interface_in_brackets +
+    double_dot_and_attributes +
+    name_target_group,
     re.IGNORECASE
 )
 
@@ -1269,18 +1284,40 @@ def check_prototype(cl, file):
 
 def check_binding(cl, file):
     m = binding.match(cl)
-    if m != None:
-        type = m.group(1).strip().lower()
-        attrs = m.group(4)
-        bindings = m.group(6)
-        if attrs:
-            attrs = [a.strip().lower() for a in attrs.split(',')]
-        out = []
-        if type == 'generic':
-            name, targets = bindings.split('=>')
+    if m == None:
+        return check_deferred_binding(cl, file)
+
+    type = m.group(1).strip().lower()
+    attrs = m.group(4)
+    bindings = m.group(6)
+    if attrs:
+        attrs = [a.strip().lower() for a in attrs.split(',')]
+    out = []
+    if type == 'generic':
+        name, targets = bindings.split('=>')
+        name = name.strip().lower()
+        log.debug('found generic binding %s => %s', name, targets)
+        out.append(Binding(
+            name=name,
+            lineno=file.lineno,
+            filename=file.filename,
+            type=type,
+            attributes=attrs,
+            procedures=[
+                Prototype(
+                    name=t.strip().lower(),
+                    lineno=file.lineno,
+                    filename=file.filename
+                )
+                for t in targets.split(',')
+            ],
+        ))
+    else:
+        for b in bindings.split(','):
+            name, *target = [ word.strip().lower() for word in b.split('=>')]
             name = name.strip().lower()
-            if name.startswith('deferred :: '): return [None, cl]
-            log.debug('found generic binding %s => %s', name, targets)
+            target = target[0] if target else name
+            log.debug('found %s binding %s => %s', type, name, target)
             out.append(Binding(
                 name=name,
                 lineno=file.lineno,
@@ -1289,39 +1326,47 @@ def check_binding(cl, file):
                 attributes=attrs,
                 procedures=[
                     Prototype(
-                        name=t.strip().lower(),
+                        name=target.strip().lower(),
                         lineno=file.lineno,
-                        filename=file.filename
-                    )
-                    for t in targets.split(',')
+                        filename=file.filename,
+                    ),
                 ],
             ))
-        else:
-            for b in bindings.split(','):
-                name, *target = [ word.strip().lower() for word in b.split('=>')]
-                name = name.strip().lower()
-                if name.startswith('deferred :: '): return [None, cl]
-                target = target[0] if target else name
-                log.debug('found %s binding %s => %s', type, name, target)
-                out.append(Binding(
-                    name=name,
-                    lineno=file.lineno,
-                    filename=file.filename,
-                    type=type,
-                    attributes=attrs,
-                    procedures=[
-                        Prototype(
-                            name=target.strip().lower(),
-                            lineno=file.lineno,
-                            filename=file.filename,
-                        ),
-                    ],
-                ))
-        cl = file.next()
-        return [out, cl]
-    else:
+    cl = file.next()
+    return [out, cl]
+
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+def check_deferred_binding(cl, file):
+    m = deferred_binding.match(cl)
+    if m == None:
         return [None, cl]
 
+    type = m.group(1).strip().lower()
+    interface = m.group(2).strip().lower()
+    attrs = m.group(5)
+    name = m.group(7)
+    if attrs:
+        attrs = [a.strip().lower() for a in attrs.split(',')]
+    out = []
+    log.debug('found deferred %s(%s) binding %s', type, interface, name)
+    out.append(Binding(
+        name=name,
+        lineno=file.lineno,
+        filename=file.filename,
+        type=type,
+        attributes=attrs,
+        procedures=[
+            Prototype(
+                name=interface,
+                lineno=file.lineno,
+                filename=file.filename
+            ),
+        ],
+    ))
+    cl = file.next()
+    return [out, cl]
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
