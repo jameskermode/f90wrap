@@ -25,7 +25,10 @@ EXAMPLES = arrayderivedtypes \
 	derivedtypes_procedure \
 	optional_string \
 	long_subroutine_name \
-	kind_map_default
+	kind_map_default \
+	issue206_subroutine_oldstyle \
+	issue227_allocatable \
+	issue235_allocatable_classes
 
 PYTHON = python
 
