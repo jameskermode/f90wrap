@@ -5,6 +5,9 @@ import tracemalloc
 
 import itest
 
+VAL = 10.0
+TOL = 1e-13
+
 def test_type_output_is_wrapped():
     assert hasattr(itest.alloc_output, 'alloc_output_type_func')
 
@@ -15,10 +18,6 @@ def test_intrinsic_output_is_not_wrapped():
 
 def test_array_output_is_not_wrapped():
     assert (not hasattr(itest.alloc_output, 'alloc_output_array_func'))
-
-
-VAL = 10.0
-TOL = 1e-13
 
 
 def test_type_output_wrapper():
