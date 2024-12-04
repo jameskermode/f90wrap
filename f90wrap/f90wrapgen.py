@@ -514,7 +514,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
-        if "is_abstract" in node.attributes and not "method" in node.attributes:
+        if "abstract" in node.attributes and not "method" in node.attributes:
             return
 
         call_name = node.orig_name

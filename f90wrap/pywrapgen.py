@@ -462,7 +462,7 @@ except ValueError:
 
     def visit_Procedure(self, node):
         log.info("PythonWrapperGenerator visiting routine %s" % node.name)
-        if "is_abstract" in node.attributes and not "method" in node.attributes:
+        if "abstract" in node.attributes and not "method" in node.attributes:
             return
         if "classmethod" in node.attributes:
             self.write_classmethod(node)

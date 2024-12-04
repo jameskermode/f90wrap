@@ -1231,7 +1231,7 @@ def procedures_and_abstract_interfaces(procedure_map, node):
     """
     extended_procedure_map = procedure_map.copy()
     for int in node.interfaces:
-        if not int.is_abstract:
+        if not 'abstract' in int.attributes:
             continue
         for proc in int.procedures:
             if proc.name not in extended_procedure_map:

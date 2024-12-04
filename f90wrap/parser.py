@@ -1286,7 +1286,7 @@ def check_abstract_interface(cl, file):
     if (not cl) or re.match(abstract_iface, cl) == None:
         return [None, cl]
 
-    out.is_abstract = True
+    out.attributes.append('abstract')
     out.filename = file.filename
     out.lineno = file.lineno
 
@@ -1296,7 +1296,7 @@ def check_abstract_interface(cl, file):
         # Subroutine declaration
         check = check_subt(cl, file)
         if check[0] != None:
-            check[0].attributes.append('is_abstract')
+            check[0].attributes.append('abstract')
             out.procedures.append(check[0])
             cl = check[1]
             continue
@@ -1304,7 +1304,7 @@ def check_abstract_interface(cl, file):
         # Function declaration
         check = check_funct(cl, file)
         if check[0] != None:
-            check[0].attributes.append('is_abstract')
+            check[0].attributes.append('abstract')
             out.procedures.append(check[0])
             cl = check[1]
             continue

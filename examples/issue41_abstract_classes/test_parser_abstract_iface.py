@@ -39,7 +39,7 @@ class TestParserAbstractInterface(unittest.TestCase):
         current_line = check[1]
         assert current_line == ''
         assert interface is not None
-        assert interface.is_abstract
+        assert 'abstract' in interface.attributes
         assert len(interface.procedures) == 3
         assert interface.procedures[0].name == 'get_value_i'
         assert interface.procedures[1].name == 'f'
