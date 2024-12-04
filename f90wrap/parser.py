@@ -85,7 +85,8 @@ comment = re.compile('!.*')  # A comment
 whitespace = re.compile(r'^\s*')  # Initial whitespace
 c_ret = re.compile(r'\r')
 
-iface = re.compile('^(?:abstract\s*)?interface', re.IGNORECASE)
+iface = re.compile('^interface', re.IGNORECASE)
+abstract_iface = re.compile('^abstract\s*interface', re.IGNORECASE)
 iface_end = re.compile('^end\s*interface|end$', re.IGNORECASE)
 
 subt = re.compile(r'^((' + prefixes + r')\s+)*subroutine', re.IGNORECASE)
@@ -557,6 +558,15 @@ def check_module(cl, file):
                 check = check_interface(cl, file)
                 if check[0] != None:
                     log.debug('    interface ' + check[0].name)
+                    check[0].mod_name = out.name
+                    out.interfaces.append(check[0])
+                    cl = check[1]
+                    continue
+
+                # Abstract interface definition
+                check = check_abstract_interface(cl, file)
+                if check[0] != None:
+                    log.debug('    abstract interface ')
                     check[0].mod_name = out.name
                     out.interfaces.append(check[0])
                     cl = check[1]
@@ -1265,6 +1275,42 @@ def check_interface_decl(cl, file):
 
     else:
         return [None, cl]
+
+
+def check_abstract_interface(cl, file):
+    global doc_plugin_module
+    out = Interface()
+
+    if (not cl) or re.match(abstract_iface, cl) == None:
+        return [None, cl]
+
+    out.is_abstract = True
+    out.filename = file.filename
+    out.lineno = file.lineno
+
+    cl = file.next()
+    while re.match(iface_end, cl) == None:
+
+        # Subroutine declaration
+        check = check_subt(cl, file)
+        if check[0] != None:
+            out.procedures.append(check[0])
+            cl = check[1]
+            continue
+
+        # Function declaration
+        check = check_funct(cl, file)
+        if check[0] != None:
+            out.procedures.append(check[0])
+            cl = check[1]
+            continue
+
+        cl = file.next()
+
+    cl = file.next()
+
+    out.lineno = slice(out.lineno, file.lineno - 1)
+    return [out, cl]
 
 
 def check_prototype(cl, file):

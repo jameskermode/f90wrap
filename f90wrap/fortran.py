@@ -348,12 +348,14 @@ class Interface(Fortran):
     _fields = ['procedures']
 
     def __init__(self, name='', filename='', doc=None,
-                 lineno=0, procedures=None, attributes=None, mod_name=None, type_name=None):
+                 lineno=0, procedures=None, attributes=None, mod_name=None,
+                 type_name=None, is_abstract=False):
         Fortran.__init__(self, name, filename, doc, lineno)
         self.procedures = procedures if procedures else []
         self.attributes = attributes if attributes else []
         self.mod_name = mod_name
         self.type_name = type_name
+        self.is_abstract = is_abstract
 
 class Binding(Fortran):
     """
