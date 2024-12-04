@@ -568,6 +568,8 @@ def check_module(cl, file):
                 if check[0] != None:
                     log.debug('    abstract interface ')
                     check[0].mod_name = out.name
+                    for proc in check[0].procedures:
+                        proc.mod_name = out.name
                     out.interfaces.append(check[0])
                     cl = check[1]
                     continue
@@ -1294,6 +1296,7 @@ def check_abstract_interface(cl, file):
         # Subroutine declaration
         check = check_subt(cl, file)
         if check[0] != None:
+            check[0].attributes.append('is_abstract')
             out.procedures.append(check[0])
             cl = check[1]
             continue
@@ -1301,6 +1304,7 @@ def check_abstract_interface(cl, file):
         # Function declaration
         check = check_funct(cl, file)
         if check[0] != None:
+            check[0].attributes.append('is_abstract')
             out.procedures.append(check[0])
             cl = check[1]
             continue

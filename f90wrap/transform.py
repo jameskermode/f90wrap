@@ -1186,7 +1186,7 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
     """
     def visit_Module(self, node):
         procedure_map = { p.name:p for p in node.procedures }
-#TODO:        add_procedures_from_abstract_interfaces(procedure_map, node)
+        proc_interf_map = procedures_and_abstract_interfaces(procedure_map, node)
         for type in node.types:
 
             # Pass 1: Associate module procedures with specific bindings
@@ -1194,7 +1194,7 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
                 if binding.type == 'generic':
                     continue
                 proto = binding.procedures[0]  # Only generics have multiple procedures
-                proc = procedure_map[proto.name]
+                proc = proc_interf_map[proto.name]
                 proc = copy.deepcopy(proc)
                 log.debug('Creating method for %s from procedure %s.', type.name, proc.name)
                 proc.type_name = type.name
@@ -1222,19 +1222,21 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
         return node
 
 
-def add_procedures_from_abstract_interfaces(procedure_map, node):
+def procedures_and_abstract_interfaces(procedure_map, node):
     """
     Add procedures from abstract interfaces to the procedure map
 
     This is needed because abstract interfaces are not included in the module
     interfaces list, and so are not resolved by ResolveInterfacePrototypes.
     """
+    extended_procedure_map = procedure_map.copy()
     for int in node.interfaces:
         if not int.is_abstract:
             continue
         for proc in int.procedures:
-            if proc.name not in procedure_map:
-                procedure_map[proc.name] = proc
+            if proc.name not in extended_procedure_map:
+                extended_procedure_map[proc.name] = proc
+    return extended_procedure_map
 
 
 class BindConstructorInterfaces(ft.FortranTransformer):

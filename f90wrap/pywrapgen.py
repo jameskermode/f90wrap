@@ -462,6 +462,8 @@ except ValueError:
 
     def visit_Procedure(self, node):
         log.info("PythonWrapperGenerator visiting routine %s" % node.name)
+        if "is_abstract" in node.attributes and not "method" in node.attributes:
+            return
         if "classmethod" in node.attributes:
             self.write_classmethod(node)
         elif "constructor" in node.attributes:
@@ -499,6 +501,7 @@ except ValueError:
             ):
                 # procedures outside of derived types become static methods
                 self.write("@staticmethod")
+
             self.write("def %(method_name)s(%(py_arg_names)s):" % dct)
             self.indent()
             self.write(format_doc_string(node))
