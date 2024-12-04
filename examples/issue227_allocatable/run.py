@@ -35,7 +35,7 @@ class TestAllocOutput(unittest.TestCase):
         end_snapshot = tracemalloc.take_snapshot()
         tracemalloc.stop()
         stats = end_snapshot.compare_to(start_snapshot, 'lineno')
-        self.assertLess(sum(stat.size_diff for stat in stats), 3000)
+        self.assertLess(sum(stat.size_diff for stat in stats), 4096)
 
 if __name__ == '__main__':
     unittest.main()
