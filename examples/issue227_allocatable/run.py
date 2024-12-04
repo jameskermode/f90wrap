@@ -28,14 +28,14 @@ class TestAllocOutput(unittest.TestCase):
         t = []
         tracemalloc.start()
         start_snapshot = tracemalloc.take_snapshot()
-        for i in range(2048):
+        for i in range(8192):
             t.append(itest.alloc_output.alloc_output_type_func(VAL))
         del t
         gc.collect()
         end_snapshot = tracemalloc.take_snapshot()
         tracemalloc.stop()
         stats = end_snapshot.compare_to(start_snapshot, 'lineno')
-        self.assertLess(sum(stat.size_diff for stat in stats), 1024)
+        self.assertLess(sum(stat.size_diff for stat in stats), 3000)
 
 if __name__ == '__main__':
     unittest.main()
