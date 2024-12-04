@@ -1189,47 +1189,45 @@ def check_interface(cl, file):
 
     out = Interface()
 
-    if re.match(iface, cl) != None:
-
-        out.filename = file.filename
-        out.lineno = file.lineno
-
-        cl = iface.sub('', cl)
-        out.name = cl.strip()
-
-        # if out.name == '':
-        #    return [None, cl]
-
-        if hold_doc is not None:
-            for line in hold_doc:
-                out.doc.append(line)
-            hold_doc = None
-
-        cl = file.next()
-        while re.match(iface_end, cl) == None:
-
-            check = check_doc(cl, file)
-            if check[0] != None:
-                out.doc.append(check[0])
-                cl = check[1]
-                continue
-
-            check = check_prototype(cl, file)
-            if check[0] != None:
-                for a in check[0]:
-                    out.procedures.append(a)
-                cl = check[1]
-                continue
-
-            cl = file.next()
-
-        cl = file.next()
-
-        out.lineno = slice(out.lineno, file.lineno - 1)
-        return [out, cl]
-
-    else:
+    if re.match(iface, cl) == None:
         return [None, cl]
+
+    out.filename = file.filename
+    out.lineno = file.lineno
+
+    cl = iface.sub('', cl)
+    out.name = cl.strip()
+
+    # if out.name == '':
+    #    return [None, cl]
+
+    if hold_doc is not None:
+        for line in hold_doc:
+            out.doc.append(line)
+        hold_doc = None
+
+    cl = file.next()
+    while re.match(iface_end, cl) == None:
+
+        check = check_doc(cl, file)
+        if check[0] != None:
+            out.doc.append(check[0])
+            cl = check[1]
+            continue
+
+        check = check_prototype(cl, file)
+        if check[0] != None:
+            for a in check[0]:
+                out.procedures.append(a)
+            cl = check[1]
+            continue
+
+        cl = file.next()
+
+    cl = file.next()
+
+    out.lineno = slice(out.lineno, file.lineno - 1)
+    return [out, cl]
 
 
 def check_interface_decl(cl, file):
