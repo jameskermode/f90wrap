@@ -85,7 +85,7 @@ comment = re.compile('!.*')  # A comment
 whitespace = re.compile(r'^\s*')  # Initial whitespace
 c_ret = re.compile(r'\r')
 
-iface = re.compile('^interface', re.IGNORECASE)
+iface = re.compile('^(?:abstract\s*)?interface', re.IGNORECASE)
 iface_end = re.compile('^end\s*interface|end$', re.IGNORECASE)
 
 subt = re.compile(r'^((' + prefixes + r')\s+)*subroutine', re.IGNORECASE)
