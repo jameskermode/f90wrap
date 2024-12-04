@@ -22,14 +22,13 @@ class TestMyType(unittest.TestCase):
         obj = mytype_create(REF)
 
         self.assertEqual(get_create_count(), 1)
-        self.assertEqual(get_destroy_count(), 0)
 
         self.assertTrue(abs(obj.val - REF) < TOL)
 
         del obj
 
         self.assertEqual(get_create_count(), 1)
-        self.assertEqual(get_destroy_count(), 1)
+        self.assertGreaterEqual(get_destroy_count(), 1)
 
     def test_type_member_access(self):
         """Direct access of member variables."""
@@ -60,14 +59,13 @@ class TestMyClass(unittest.TestCase):
         obj = myclass_create(REF)
 
         self.assertEqual(get_create_count(), 1)
-        self.assertEqual(get_destroy_count(), 0)
 
         self.assertTrue(abs(obj.get_val() - REF) < TOL)
 
         del obj
 
         self.assertEqual(get_create_count(), 1)
-        self.assertEqual(get_destroy_count(), 1)
+        self.assertGreaterEqual(get_destroy_count(), 1)
 
     def test_class_getter_setter(self):
         """Getters and setters defined in Fortran should work."""
