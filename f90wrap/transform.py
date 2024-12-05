@@ -282,7 +282,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                     # return none
                     if len(dims) > 1:
                         raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
-                    dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+                    dimensions_list = arg.split_dimensions(dims[0])
                     if len(dimensions_list) > 1 or ':' in dimensions_list:
                         log.warning('removing routine %s due to derived type array argument : %s -- currently, only '
                                      'fixed-lengh one-dimensional arrays of derived type are supported'
@@ -328,7 +328,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
         if typename and len(dims) != 0:
             if len(dims) > 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % node.name)
-            dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+            dimensions_list = ft.Argument.split_dimensions(dims[0])
             if len(dimensions_list) > 1 or ':' in dimensions_list:
                 log.warning(
                     'test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
@@ -577,29 +577,10 @@ class ArrayDimensionConverter(ft.FortranVisitor):
 
     valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/,]*\))|(len\(.*\)))$')
 
-    @staticmethod
-    def split_dimensions(dim):
-        """Given a string like "dimension(a,b,c)" return the list of dimensions ['a','b','c']."""
-        dim = dim[10:-1]  # remove "dimension(" and ")"
-        br = 0
-        d = 1
-        ds = ['']
-        for c in dim:
-            if c != ',': ds[-1] += c
-            if c == '(':
-                br += 1
-            elif c == ')':
-                br -= 1
-            elif c == ',':
-                if br == 0:
-                    ds.append('')
-                else:
-                    ds[-1] += ','
-        return ds
-
     def visit_Procedure(self, node):
 
         n_dummy = 0
+        all_new_dummy_args = []
         for arg in node.arguments:
             dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
             if dims == []:
@@ -607,7 +588,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
             if len(dims) != 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
 
-            ds = ArrayDimensionConverter.split_dimensions(dims[0])
+            ds = arg.split_dimensions(dims[0])
 
             new_dummy_args = []
             new_ds = []
@@ -621,7 +602,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                                           d.replace('len', 'slen'), arg.name))
                     new_ds.append(d)
                     continue
-                dummy_arg = ft.Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
+                dummy_arg = ft.Argument(name='f90wrap_n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
 
                 if 'intent(out)' not in arg.attributes:
                     dummy_arg.f2py_line = ('!f2py intent(hide), depend(%s) :: %s = shape(%s,%d)' %
@@ -634,7 +615,12 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                 log.debug('adding dummy arguments %r to %s' % (new_dummy_args, node.name))
                 arg.attributes = ([attr for attr in arg.attributes if not attr.startswith('dimension')] +
                                   ['dimension(%s)' % ','.join(new_ds)])
-                node.arguments.extend(new_dummy_args)
+                all_new_dummy_args.extend(new_dummy_args)
+
+        # New dummy args are prepended so that they are defined before being used as array dimensions
+        # This avoids implicit declaration
+        if all_new_dummy_args != []:
+            node.arguments = all_new_dummy_args + node.arguments
 
 
 class MethodFinder(ft.FortranTransformer):
@@ -885,13 +871,14 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
 
         # insert ret_val after last non-optional argument
         arguments = node.arguments[:]
-        i = 0
+        j = len(arguments)
         for i, arg in enumerate(arguments):
             if 'optional' in arg.attributes:
+                j = i
                 break
-        arguments.insert(i, node.ret_val)
-        arguments[i].name = 'ret_' + arguments[i].name
-        arguments[i].attributes.append('intent(out)')
+        arguments.insert(j, node.ret_val)
+        arguments[j].name = 'ret_' + arguments[j].name
+        arguments[j].attributes.append('intent(out)')
 
         new_node = ft.Subroutine(node.name,
                                  node.filename,
@@ -924,13 +911,27 @@ class IntentOutToReturnValues(ft.FortranTransformer):
 
         ret_val = []
         ret_val_doc = None
+        arguments = []
+
+        # Push first non-optional arguments
+        for arg in node.arguments:
+            if 'optional' in arg.attributes:
+                break
+            if 'intent(out)' in arg.attributes:
+                ret_val.append(arg)
+            else:
+                arguments.append(arg)
+
+        # Push Function return value
         if isinstance(node, ft.Function) and node.ret_val is not None:
             ret_val.append(node.ret_val)
             if node.ret_val_doc is not None:
                 ret_val_doc = node.ret_val_doc
 
-        arguments = []
+        # Push remaining optional arguments
         for arg in node.arguments:
+            if not 'optional' in arg.attributes:
+                continue
             if 'intent(out)' in arg.attributes:
                 ret_val.append(arg)
             else:
@@ -990,7 +991,8 @@ class RenameReservedWords(ft.FortranVisitor):
                 new_attribs = []
                 for attrib in node.attributes:
                     if attrib.startswith('dimension('):
-                        new_attribs.append(attrib.replace(old_name, new_name))
+                        # Only replace if matchs a word
+                        new_attribs.append(re.sub(r'(\b)%s(\b)'%old_name, r'\1%s\2'%new_name, attrib))
                     else:
                         new_attribs.append(attrib)
                 node.attributes = new_attribs
@@ -1029,11 +1031,10 @@ class RenameArgumentsPython(ft.FortranVisitor):
 class RenameInterfacesPython(ft.FortranVisitor):
     def visit_Interface(self, node):
         for proc in node.procedures:
-            if hasattr(proc, 'method_name'):
-                proc.method_name = '_' + proc.method_name
-            else:
-                proc.method_name = '_' + proc.name
-        node.method_name = node.name
+            if not hasattr(proc, 'method_name'):
+                proc.method_name = proc.name
+        if not hasattr(node,'method_name'):
+            node.method_name = node.name
         if node.name == 'assignment(=)':
             node.method_name = 'assignment'
         elif node.name == 'operator(+)':
@@ -1130,22 +1131,6 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
         # original resolution logic was implemented when resolution occurred in
         # the parser. Technically this is quadratic complexity, but the number
         # of interface prototypes is generally small...
-        def inject_procedure(interfaces, procedure):
-            for iface in interfaces:
-                for i, p in enumerate(iface.procedures):
-                    if procedure.name == p.name:
-                        log.debug("Procedure %s moved to interface %s", procedure.name, iface.name)
-                        iface.procedures[i] = procedure # Replace the prototype
-                        return True
-            log.debug(f"Procedure %s is not used in any interface", procedure.name)
-            return False
-
-        unused = []
-        for mp in node.procedures:
-            if not inject_procedure(node.interfaces, mp):
-                unused.append(mp)
-        node.procedures = unused
-        return node
 
         # Attempt 1:
         # Insert procedures at first reference. Elegant and equivalent to Option 0,
@@ -1162,14 +1147,14 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
         # fortran code gen b/c identically named wrappers will be generated for
         # each interface, causing a name clash. This could be fixed in code gen
         # by adding the interface name to the wrapper function name.
-        #procedure_map = { p.name:p for p in node.procedures }
-        #unused = set(procedure_map.keys())
-        #for int in node.interfaces:
-        #    iprocs = { p.name for p in int.procedures }
-        #    unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
-        #    int.procedures = [ procedure_map[p] for p in iprocs ]
-        #node.procedures = [ procedure_map[p] for p in unused ]
-        #return node
+        procedure_map = { p.name:p for p in node.procedures }
+        unused = set(procedure_map.keys())
+        for int in node.interfaces:
+            iprocs = { p.name for p in int.procedures }
+            unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
+            int.procedures = [ procedure_map[p] for p in iprocs ]
+        node.procedures = [ procedure_map[p] for p in unused ]
+        return node
 
 
 class ResolveBindingPrototypes(ft.FortranTransformer):
@@ -1415,7 +1400,7 @@ def create_super_types(tree, types):
     for ty in types.values():
         for dimensions_attribute in ty.super_types_dimensions:
             # each type might have many "dimension" attributes since "append_type_dimension"
-            dimensions = ArrayDimensionConverter.split_dimensions(dimensions_attribute)
+            dimensions = ft.Argument.split_dimensions(dimensions_attribute)
             if len(dimensions) == 1:  # at this point, only 1D arrays are supported
                 d = dimensions[0]
                 if str(d) == ':':
@@ -1464,7 +1449,7 @@ def fix_subroutine_type_arrays(tree, types):
             if ft.is_derived_type(arg.type) and len(dimensions_attribute) == 1:
                 # an argument should only have 0 or 1 "dimension" attributes
                 # If the argument is an 1D-array of types, convert it to super-type:
-                d = ArrayDimensionConverter.split_dimensions(dimensions_attribute[0])[0]
+                d = ft.Argument.split_dimensions(dimensions_attribute[0])[0]
                 if str(d) == ':':
                     continue
                 # change the type to super-type

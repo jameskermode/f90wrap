@@ -30,7 +30,6 @@ import numpy as np
 from f90wrap import codegen as cg
 from f90wrap import fortran as ft
 from f90wrap.six import string_types  # Python 2/3 compatibility library
-from f90wrap.transform import ArrayDimensionConverter
 from f90wrap.transform import shorten_long_name
 
 log = logging.getLogger(__name__)
@@ -96,6 +95,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.kind_map = kind_map
         self.types = types
         self.default_to_inout = default_to_inout
+        self.routines = []
 
     def visit_Root(self, node):
         """
@@ -466,6 +466,12 @@ end type %(typename)s_rec_ptr_type"""
         call_name = node.orig_name
         if hasattr(node, "call_name"):
             call_name = node.call_name
+
+        if node.name in self.routines:
+            return self.generic_visit(node)
+
+        self.routines.append(node.name)
+
         log.info(
             "F90WrapperGenerator visiting routine %s call_name %s mod_name %r"
             % (node.name, call_name, node.mod_name)
@@ -567,7 +573,7 @@ end type %(typename)s_rec_ptr_type"""
         self.write("integer(c_int), intent(out) :: nd")
         self.write("integer(c_int), intent(out) :: dtype")
         try:
-            rank = len(ArrayDimensionConverter.split_dimensions(dims))
+            rank = len(ft.Argument.split_dimensions(dims))
             if el.type.startswith("character"):
                 rank += 1
         except ValueError:
@@ -627,7 +633,7 @@ end type %(typename)s_rec_ptr_type"""
         """
         if (
             element.type.startswith("type")
-            and len(ArrayDimensionConverter.split_dimensions(dims)) != 1
+            and len(ft.Argument.split_dimensions(dims)) != 1
         ):
             return
 
