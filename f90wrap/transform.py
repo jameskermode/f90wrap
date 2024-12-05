@@ -150,6 +150,11 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         if self.mod is None:
             return self.generic_visit(node)
 
+        for attr in node.attributes:
+            match = re.match('bound\(.*?\)', attr)
+            if match:
+                return self.generic_visit(node)
+
         if node.name in self.mod.private_symbols:
             log.debug('removing private symbol %s' % node.name)
             return None
@@ -206,6 +211,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
         return self.generic_visit(node)
 
     def visit_Binding(self, node):
+        # FIXME do not filter generic binding for now
+        if node.type == 'generic':
+            return node
+
         # Remove unwrapable procedures from bindings
         new_procs = []
         for proc in node.procedures:
@@ -228,6 +237,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
         # don't wrap operator overloading routines
         if node.name.startswith('operator('):
             return None
+
+        # Do not process prototypes
+        if not(hasattr(node, 'attributes') and hasattr(node, 'arguments')):
+            return self.generic_visit(node)
 
         # FIXME don't wrap callback arguments
         if 'callback' in node.attributes:
@@ -282,7 +295,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
                     # return none
                     if len(dims) > 1:
                         raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
-                    dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+                    dimensions_list = arg.split_dimensions(dims[0])
                     if len(dimensions_list) > 1 or ':' in dimensions_list:
                         log.warning('removing routine %s due to derived type array argument : %s -- currently, only '
                                      'fixed-lengh one-dimensional arrays of derived type are supported'
@@ -328,7 +341,7 @@ class UnwrappablesRemover(ft.FortranTransformer):
         if typename and len(dims) != 0:
             if len(dims) > 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % node.name)
-            dimensions_list = ArrayDimensionConverter.split_dimensions(dims[0])
+            dimensions_list = ft.Argument.split_dimensions(dims[0])
             if len(dimensions_list) > 1 or ':' in dimensions_list:
                 log.warning(
                     'test removing optional argument %s as only one dimensional fixed-length arrays are currently supported for derived type %s array' %
@@ -435,6 +448,26 @@ def fix_subroutine_uses_clauses(tree, types):
     return tree
 
 
+def find_inheritence_relations(tree):
+    """
+    Fill child and parent member with fortran inheritences
+    """
+    type_map = ft.find_types(tree)
+    module_map = { m.name:m for m in tree.modules }
+    for node in type_map.values():
+        for attr in node.attributes:
+            match = re.match('extends\((.*?)\)', attr)
+            if match:
+                parent = match.group(1)
+                node.parent = type_map[parent]
+
+                parent_mod = module_map[node.parent.mod_name]
+                child_mod = module_map[node.mod_name]
+                if parent_mod != child_mod:
+                    child_mod.mod_depends.add(parent_mod)
+    return tree
+
+
 def fix_element_uses_clauses(tree, types):
     """
     Add uses clauses to derived type elements in modules
@@ -465,6 +498,15 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
         sub.deallocate = []
 
         if 'constructor' in sub.attributes:
+            # Put the return value of the fortran constructors at first position in the arguments list
+            if 'fortranconstructor' in sub.attributes:
+                j = -1
+                for i, arg in enumerate(sub.arguments):
+                    if 'optional' in arg.attributes:
+                        j = i
+                        break
+                assert(sub.arguments[j].name[:4]=='ret_')
+                sub.arguments.insert(0, sub.arguments.pop(j))
             sub.arguments[0].attributes = set_intent(sub.arguments[0].attributes, 'intent(out)')
 
         if 'destructor' in sub.attributes:
@@ -577,29 +619,10 @@ class ArrayDimensionConverter(ft.FortranVisitor):
 
     valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/,]*\))|(len\(.*\)))$')
 
-    @staticmethod
-    def split_dimensions(dim):
-        """Given a string like "dimension(a,b,c)" return the list of dimensions ['a','b','c']."""
-        dim = dim[10:-1]  # remove "dimension(" and ")"
-        br = 0
-        d = 1
-        ds = ['']
-        for c in dim:
-            if c != ',': ds[-1] += c
-            if c == '(':
-                br += 1
-            elif c == ')':
-                br -= 1
-            elif c == ',':
-                if br == 0:
-                    ds.append('')
-                else:
-                    ds[-1] += ','
-        return ds
-
     def visit_Procedure(self, node):
 
         n_dummy = 0
+        all_new_dummy_args = []
         for arg in node.arguments:
             dims = [attr for attr in arg.attributes if attr.startswith('dimension')]
             if dims == []:
@@ -607,7 +630,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
             if len(dims) != 1:
                 raise ValueError('more than one dimension attribute found for arg %s' % arg.name)
 
-            ds = ArrayDimensionConverter.split_dimensions(dims[0])
+            ds = arg.split_dimensions(dims[0])
 
             new_dummy_args = []
             new_ds = []
@@ -621,7 +644,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                                           d.replace('len', 'slen'), arg.name))
                     new_ds.append(d)
                     continue
-                dummy_arg = ft.Argument(name='n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
+                dummy_arg = ft.Argument(name='f90wrap_n%d' % n_dummy, type='integer', attributes=['intent(hide)'])
 
                 if 'intent(out)' not in arg.attributes:
                     dummy_arg.f2py_line = ('!f2py intent(hide), depend(%s) :: %s = shape(%s,%d)' %
@@ -634,7 +657,12 @@ class ArrayDimensionConverter(ft.FortranVisitor):
                 log.debug('adding dummy arguments %r to %s' % (new_dummy_args, node.name))
                 arg.attributes = ([attr for attr in arg.attributes if not attr.startswith('dimension')] +
                                   ['dimension(%s)' % ','.join(new_ds)])
-                node.arguments.extend(new_dummy_args)
+                all_new_dummy_args.extend(new_dummy_args)
+
+        # New dummy args are prepended so that they are defined before being used as array dimensions
+        # This avoids implicit declaration
+        if all_new_dummy_args != []:
+            node.arguments = all_new_dummy_args + node.arguments
 
 
 class MethodFinder(ft.FortranTransformer):
@@ -665,6 +693,12 @@ class MethodFinder(ft.FortranTransformer):
             # some procedures remain so we need to keep the Interface around
             node.procedures = new_procs
             return node
+
+    def visit_Binding(self, node):
+        for proc in node.procedures:
+            proc.method_name = node.name
+        return node
+
 
     def visit_Procedure(self, node, interface=None):
         if (len(node.arguments) == 0 or
@@ -826,7 +860,9 @@ def add_missing_constructors(tree):
                 log.info('found constructor %s', child.name)
                 break
         else:
-
+            proc_attributes = ['constructor', 'skip_call']
+            if 'abstract' in node.attributes:
+                proc_attributes.append('abstract')
             log.info('adding missing constructor for %s', node.name)
             new_node = ft.Subroutine('%s_initialise' % node.name,
                                      node.filename,
@@ -839,7 +875,7 @@ def add_missing_constructors(tree):
                                                   attributes=['intent(out)'],
                                                   type='type(%s)' % node.name)],
                                      node.uses,
-                                     ['constructor', 'skip_call'],
+                                     proc_attributes,
                                      mod_name=node.mod_name,
                                      type_name=node.name)
             new_node.method_name = '__init__'
@@ -856,7 +892,9 @@ def add_missing_destructors(tree):
                 log.info('found destructor %s', child.name)
                 break
         else:
-
+            proc_attributes = ['destructor', 'skip_call']
+            if 'abstract' in node.attributes:
+                proc_attributes.append('abstract')
             log.info('adding missing destructor for %s', node.name)
             new_node = ft.Subroutine('%s_finalise' % node.name,
                                      node.filename,
@@ -869,7 +907,7 @@ def add_missing_destructors(tree):
                                                   attributes=['intent(inout)'],
                                                   type='type(%s)' % node.name)],
                                      node.uses,
-                                     ['destructor', 'skip_call'],
+                                     proc_attributes,
                                      mod_name=node.mod_name,
                                      type_name=node.name)
             new_node.method_name = '__del__'
@@ -885,13 +923,14 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
 
         # insert ret_val after last non-optional argument
         arguments = node.arguments[:]
-        i = 0
+        j = len(arguments)
         for i, arg in enumerate(arguments):
             if 'optional' in arg.attributes:
+                j = i
                 break
-        arguments.insert(i, node.ret_val)
-        arguments[i].name = 'ret_' + arguments[i].name
-        arguments[i].attributes.append('intent(out)')
+        arguments.insert(j, node.ret_val)
+        arguments[j].name = 'ret_' + arguments[j].name
+        arguments[j].attributes.append('intent(out)')
 
         new_node = ft.Subroutine(node.name,
                                  node.filename,
@@ -918,19 +957,34 @@ class IntentOutToReturnValues(ft.FortranTransformer):
     """
 
     def visit_Procedure(self, node):
-        if 'constructor' in node.attributes:
+        # fortranconstructor are functionn the self object is allready marked as inten(out)
+        if 'constructor' in node.attributes and not 'fortranconstructor' in node.attributes:
             node.arguments[0].attributes = set_intent(node.arguments[0].attributes,
                                                       'intent(out)')
 
         ret_val = []
         ret_val_doc = None
+        arguments = []
+
+        # Push first non-optional arguments
+        for arg in node.arguments:
+            if 'optional' in arg.attributes:
+                break
+            if 'intent(out)' in arg.attributes:
+                ret_val.append(arg)
+            else:
+                arguments.append(arg)
+
+        # Push Function return value
         if isinstance(node, ft.Function) and node.ret_val is not None:
             ret_val.append(node.ret_val)
             if node.ret_val_doc is not None:
                 ret_val_doc = node.ret_val_doc
 
-        arguments = []
+        # Push remaining optional arguments
         for arg in node.arguments:
+            if not 'optional' in arg.attributes:
+                continue
             if 'intent(out)' in arg.attributes:
                 ret_val.append(arg)
             else:
@@ -990,7 +1044,8 @@ class RenameReservedWords(ft.FortranVisitor):
                 new_attribs = []
                 for attrib in node.attributes:
                     if attrib.startswith('dimension('):
-                        new_attribs.append(attrib.replace(old_name, new_name))
+                        # Only replace if matchs a word
+                        new_attribs.append(re.sub(r'(\b)%s(\b)'%old_name, r'\1%s\2'%new_name, attrib))
                     else:
                         new_attribs.append(attrib)
                 node.attributes = new_attribs
@@ -1026,14 +1081,73 @@ class RenameArgumentsPython(ft.FortranVisitor):
         return node
 
 
-class RenameInterfacesPython(ft.FortranVisitor):
+class DuplicateAbstractImplementation(ft.FortranVisitor):
+    """Duplicate bound procedure node from abstract class to childs type"""
+
+    def visit_Type(self, node):
+        parent = node.parent
+        if parent and 'abstract' in parent.attributes:
+            for binding in parent.bindings:
+                procedures = []
+                # Copy bindings from parent class replacing parent class with child class were needed
+                for proc in binding.procedures:
+                    new_proc = copy.deepcopy(proc)
+                    new_proc.name = '%s_%s'%(proc.name, node.name)
+                    for arg in new_proc.arguments:
+                        arg.type = arg.type.replace(parent.name, node.name)
+                    if 'abstract' not in node.attributes:
+                        new_proc.attributes.remove('abstract')
+                    procedures.append(new_proc)
+                child_binding = copy.deepcopy(binding)
+                child_binding.procedures = procedures
+                binding_names = [b.name for b in node.bindings]
+                # Only add copy if binding is not already overloaded
+                if child_binding.name not in binding_names:
+                    node.bindings.append(child_binding)
+
+        return self.generic_visit(node)
+
+
+class ReorderForInheritance(ft.FortranVisitor):
+    """Reorder so that parent classes are defined defore child"""
+
+    def visit_Root(self, node):
+        node.modules.sort(reverse=True)
+        return self.generic_visit(node)
+
+    def visit_Module(self, node):
+        node.types.sort(reverse=True)
+        return self.generic_visit(node)
+
+
+class LinkBoundDType(ft.FortranVisitor):
+    """Add bound info in procedure nodes"""
+
+    def visit_Type(self, node):
+        for binding in node.bindings:
+            binding.dtype = node
+            if binding.type == 'procedure':
+                for proc in binding.procedures:
+                    proc.attributes.append('bound(%s)'%binding.name)
+                if 'abstract' in node.attributes:
+                    proc.attributes.append('abstract')
+        return self.generic_visit(node)
+
+class RenameInterfacesBindingsPython(ft.FortranVisitor):
     def visit_Interface(self, node):
         for proc in node.procedures:
-            if hasattr(proc, 'method_name'):
-                proc.method_name = '_' + proc.method_name
-            else:
-                proc.method_name = '_' + proc.name
-        node.method_name = node.name
+            if not hasattr(proc, 'method_name'):
+                proc.method_name = proc.name
+        if not hasattr(node,'method_name'):
+            node.method_name = node.name
+        return node
+
+    def visit_Binding(self, node):
+        for proc in node.procedures:
+            if not hasattr(proc, 'method_name'):
+                proc.method_name = proc.name
+        if not hasattr(node,'method_name'):
+            node.method_name = node.name
         if node.name == 'assignment(=)':
             node.method_name = 'assignment'
         elif node.name == 'operator(+)':
@@ -1130,22 +1244,6 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
         # original resolution logic was implemented when resolution occurred in
         # the parser. Technically this is quadratic complexity, but the number
         # of interface prototypes is generally small...
-        def inject_procedure(interfaces, procedure):
-            for iface in interfaces:
-                for i, p in enumerate(iface.procedures):
-                    if procedure.name == p.name:
-                        log.debug("Procedure %s moved to interface %s", procedure.name, iface.name)
-                        iface.procedures[i] = procedure # Replace the prototype
-                        return True
-            log.debug(f"Procedure %s is not used in any interface", procedure.name)
-            return False
-
-        unused = []
-        for mp in node.procedures:
-            if not inject_procedure(node.interfaces, mp):
-                unused.append(mp)
-        node.procedures = unused
-        return node
 
         # Attempt 1:
         # Insert procedures at first reference. Elegant and equivalent to Option 0,
@@ -1162,14 +1260,14 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
         # fortran code gen b/c identically named wrappers will be generated for
         # each interface, causing a name clash. This could be fixed in code gen
         # by adding the interface name to the wrapper function name.
-        #procedure_map = { p.name:p for p in node.procedures }
-        #unused = set(procedure_map.keys())
-        #for int in node.interfaces:
-        #    iprocs = { p.name for p in int.procedures }
-        #    unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
-        #    int.procedures = [ procedure_map[p] for p in iprocs ]
-        #node.procedures = [ procedure_map[p] for p in unused ]
-        #return node
+        procedure_map = { p.name:p for p in node.procedures }
+        unused = set(procedure_map.keys())
+        for int in node.interfaces:
+           iprocs = { p.name for p in int.procedures }
+           unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
+           int.procedures = [ procedure_map[p] for p in iprocs if p in procedure_map ]
+        node.procedures = [ procedure_map[p] for p in unused ]
+        return node
 
 
 class ResolveBindingPrototypes(ft.FortranTransformer):
@@ -1204,15 +1302,6 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
                     type.bindings[ib].attributes.append('destructor')
                 binding.procedures = [proc]
 
-            # Pass 2: Consolidate specific bindings into generic bindings, if needed
-            binding_map = { b.name:b for b in type.bindings }
-            for binding in type.bindings:
-                if binding.type != 'generic':
-                    continue
-                # For generics, prototypes name specific bindings
-                binding.procedures = [ binding_map.pop(p.name).procedures[0] for p in binding.procedures ]
-            type.bindings = list(binding_map.values())
-
         node.procedures = list(procedure_map.values())
         return node
 
@@ -1234,9 +1323,12 @@ class BindConstructorInterfaces(ft.FortranTransformer):
             interface = interface_map.pop(type.name)
             log.debug('Move interface %s into type %s and mark constructor', interface.name, type.name)
             interface.attributes.append('constructor')
+            # We need an aditional info for fortran wrapped constructor
+            interface.attributes.append('fortranconstructor')
             for p in interface.procedures:
                 p.type_name = type.name
                 p.attributes.append('constructor')
+                p.attributes.append('fortranconstructor')
             type.interfaces.append(interface)
         node.interfaces = list(interface_map.values())
         return node
@@ -1261,8 +1353,12 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
      * Update of subroutine uses clauses
     """
 
-    tree = ResolveInterfacePrototypes().visit(tree)
     tree = ResolveBindingPrototypes().visit(tree)
+    tree = ResolveInterfacePrototypes().visit(tree)
+    LinkBoundDType().visit(tree)
+    find_inheritence_relations(tree)
+    ReorderForInheritance().visit(tree)
+    DuplicateAbstractImplementation().visit(tree)
     tree = BindConstructorInterfaces().visit(tree)
     tree = OnlyAndSkip(kept_subs, kept_mods).visit(tree)
     tree = remove_private_symbols(tree, force_public)
@@ -1314,7 +1410,7 @@ def transform_to_py_wrapper(tree, types):
     IntentOutToReturnValues().visit(tree)
     RenameArgumentsPython(types).visit(tree)
     ReorderOptionalArgumentsPython().visit(tree)
-    RenameInterfacesPython().visit(tree)
+    RenameInterfacesBindingsPython().visit(tree)
     return tree
 
 
@@ -1415,7 +1511,7 @@ def create_super_types(tree, types):
     for ty in types.values():
         for dimensions_attribute in ty.super_types_dimensions:
             # each type might have many "dimension" attributes since "append_type_dimension"
-            dimensions = ArrayDimensionConverter.split_dimensions(dimensions_attribute)
+            dimensions = ft.Argument.split_dimensions(dimensions_attribute)
             if len(dimensions) == 1:  # at this point, only 1D arrays are supported
                 d = dimensions[0]
                 if str(d) == ':':
@@ -1464,7 +1560,7 @@ def fix_subroutine_type_arrays(tree, types):
             if ft.is_derived_type(arg.type) and len(dimensions_attribute) == 1:
                 # an argument should only have 0 or 1 "dimension" attributes
                 # If the argument is an 1D-array of types, convert it to super-type:
-                d = ArrayDimensionConverter.split_dimensions(dimensions_attribute[0])[0]
+                d = ft.Argument.split_dimensions(dimensions_attribute[0])[0]
                 if str(d) == ':':
                     continue
                 # change the type to super-type

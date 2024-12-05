@@ -15,6 +15,44 @@ class TestTypeCheck(unittest.TestCase):
     def test_string_in_3(self):
         m_string_test.string_in(np.bytes_('yo'))
 
+    def test_string_in_4(self):
+        with self.assertRaises(TypeError):
+            m_string_test.string_in(np.array(['yo']))
+
+    @unittest.skipIf(version.parse(np.version.version) > version.parse("1.23.5") , "This test is known to fail on numpy version newer than 1.23.5, dtype=c should not be used")
+    def test_string_in_array_deprecated(self):
+        in_array = np.array(['one   ', 'two   '], dtype='c')
+        m_string_test.string_in_array(in_array)
+
+    @unittest.skipIf(version.parse(np.version.version) > version.parse("1.23.5") , "This test is known to fail on numpy version newer than 1.23.5, dtype=c should not be used")
+    def test_string_in_array_2_deprecated(self):
+        in_array = np.array(['three ', 'two   '], dtype='c')
+        with self.assertRaises(RuntimeError) as context:
+          m_string_test.string_in_array(in_array)
+
+    @unittest.skipIf(version.parse(np.version.version) > version.parse("1.23.5") , "This test is known to fail on numpy version newer than 1.23.5, dtype=c should not be used")
+    def test_string_in_array_3_deprecated(self):
+        in_array = np.array(['one   ', 'four  '], dtype='c')
+        with self.assertRaises(RuntimeError) as context:
+          m_string_test.string_in_array(in_array)
+
+    @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
+    def test_string_in_array(self):
+        in_array = np.array(['one   ', 'two   '], dtype='S6')
+        m_string_test.string_in_array(in_array)
+
+    @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
+    def test_string_in_array_2(self):
+        in_array = np.array(['three ', 'two   '], dtype='S6')
+        with self.assertRaises(RuntimeError) as context:
+          m_string_test.string_in_array(in_array)
+
+    @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
+    def test_string_in_array_3(self):
+        in_array = np.array(['one   ', 'four  '], dtype='S6')
+        with self.assertRaises(RuntimeError) as context:
+          m_string_test.string_in_array(in_array)
+
     def test_string_to_string(self):
         in_string = 'yo'
         out_string = m_string_test.string_to_string(in_string)

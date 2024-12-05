@@ -3,6 +3,7 @@ module m_string_test
   implicit none
   private
   public :: string_in
+  public :: string_in_array
   public :: string_to_string
   public :: string_to_string_array
   public :: string_out
@@ -13,6 +14,19 @@ contains
 
   subroutine string_in(input)
     character(len=*), intent(in) :: input
+  end subroutine
+
+  subroutine string_in_array(input)
+    character(len=6), intent(in) :: input(:)
+    integer :: i
+
+    if (input(1).ne."one   ") then
+      call f90wrap_abort("First char input is incorrect, should be 'one', but is '" // input(1) // "'" )
+    endif
+
+    if (input(2).ne."two   ") then
+      call f90wrap_abort("Second char input is incorrect, should be 'two', but is '" // input(2) // "'" )
+    endif
   end subroutine
 
   subroutine string_to_string(input,output)

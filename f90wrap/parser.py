@@ -67,7 +67,7 @@ module_end = re.compile('^end\s*module|end$', re.IGNORECASE)
 program = re.compile('^program', re.IGNORECASE)
 program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
 
-attribs = r'allocatable|pointer|save|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
+attribs = r'allocatable|pointer|save|contiguous|dimension *\(.*?\)|parameter|target|public|private|abstract|extends *\(.*?\)|bind\(C\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
 type_end = re.compile('^end\s*type|end$', re.IGNORECASE)
@@ -76,7 +76,7 @@ dummy_types_re = re.compile('recursive|pure|elemental', re.IGNORECASE)
 
 prefixes = r'elemental|impure|module|non_recursive|pure|recursive'
 types = r'double precision|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
-a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private'
+a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private|contiguous'
 
 types_re = re.compile(types, re.IGNORECASE)
 
@@ -127,7 +127,8 @@ fdoc_comm_mid = re.compile(r'!\s*\*FD')
 fdoc_mark = re.compile('_FD\s*')
 fdoc_rv_mark = re.compile('_FDRV\s*')
 
-doxygen_keys = re.compile('_COMMENT.*\\\\(brief|details|file|author|copyright)')
+doxygen_main = re.compile('_COMMENT.*\\\\(brief|details)')
+doxygen_others = re.compile('_COMMENT.*\\\\(file|author|copyright)')
 doxygen_param = re.compile('_COMMENT.*\\\\(param|returns)')
 doxygen_param_group = re.compile('_COMMENT.*\\\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
 
@@ -349,18 +350,20 @@ def check_uses(cline, file):
 def check_doc(cline, file):
     out = None
     if cline:
-        for pattern in [fdoc_mark, doxygen_keys, doxygen_param]:
+        for pattern in [fdoc_mark, doxygen_main, doxygen_others, doxygen_param]:
             match = re.search(pattern, cline)
             if match != None:
                 if pattern == doxygen_param:
                     # Leave pattern for later parsing in check_arg
-                    out = cline
-                elif pattern == doxygen_keys:
+                    out = cline.strip()
+                elif pattern == doxygen_main:
+                    key = match.group(1)
+                    out = pattern.sub('', cline).strip(' ') + '\n'
+                elif pattern == doxygen_others:
                     key = match.group(1)
                     out = key.capitalize() + ': ' + pattern.sub('', cline).strip(' ')
                 else:
                     out = pattern.sub('', cline).strip(' ')
-                out = out.rstrip()
                 cline = file.next()
                 return [out, cline]
     return [out, cline]
@@ -1276,31 +1279,11 @@ def check_binding(cl, file):
         if attrs:
             attrs = [a.strip().lower() for a in attrs.split(',')]
         out = []
-        if type == 'generic':
-            name, targets = bindings.split('=>')
-            name = name.strip().lower()
-            log.debug('found generic binding %s => %s', name, targets)
-            out.append(Binding(
-                name=name,
-                lineno=file.lineno,
-                filename=file.filename,
-                type=type,
-                attributes=attrs,
-                procedures=[
-                    Prototype(
-                        name=t.strip().lower(),
-                        lineno=file.lineno,
-                        filename=file.filename
-                    )
-                    for t in targets.split(',')
-                ],
-            ))
-        else:
-            for b in bindings.split(','):
-                name, *target = [ word.strip().lower() for word in b.split('=>')]
+        if not re.search('deferred', bindings):
+            if type == 'generic':
+                name, targets = bindings.split('=>')
                 name = name.strip().lower()
-                target = target[0] if target else name
-                log.debug('found %s binding %s => %s', type, name, target)
+                log.debug('found generic binding %s => %s', name, targets)
                 out.append(Binding(
                     name=name,
                     lineno=file.lineno,
@@ -1309,12 +1292,33 @@ def check_binding(cl, file):
                     attributes=attrs,
                     procedures=[
                         Prototype(
-                            name=target.strip().lower(),
+                            name=t.strip().lower(),
                             lineno=file.lineno,
-                            filename=file.filename,
-                        ),
+                            filename=file.filename
+                        )
+                        for t in targets.split(',')
                     ],
                 ))
+            else:
+                for b in bindings.split(','):
+                    name, *target = [ word.strip().lower() for word in b.split('=>')]
+                    name = name.strip().lower()
+                    target = target[0] if target else name
+                    log.debug('found %s binding %s => %s', type, name, target)
+                    out.append(Binding(
+                        name=name,
+                        lineno=file.lineno,
+                        filename=file.filename,
+                        type=type,
+                        attributes=attrs,
+                        procedures=[
+                            Prototype(
+                                name=target.strip().lower(),
+                                lineno=file.lineno,
+                                filename=file.filename,
+                            ),
+                        ],
+                    ))
         cl = file.next()
         return [out, cl]
     else:
@@ -1471,7 +1475,7 @@ def check_arg(cl, file):
                         comm = match.group(4)
                         if name in nl:
                             hold_doc.remove(line)
-                            doxygen_map[name] = ' '.join([direction, comm]).strip(' ')
+                            doxygen_map[name] = ' '.join([comm, direction]).strip(' ')
 
         dc = []
 

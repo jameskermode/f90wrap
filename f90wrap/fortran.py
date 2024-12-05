@@ -172,6 +172,9 @@ class Module(Fortran):
 
     private_symbols : list of `str` , default ``None``
         The symbols within the module that are private
+
+    mod_depends : list of :class:`fortran.Module` , default ``None``
+        Module on which current module depends
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran module.") + __doc__
     _fields = ['types', 'elements', 'procedures', 'interfaces', 'uses']
@@ -179,7 +182,8 @@ class Module(Fortran):
     def __init__(self, name='', filename='', doc=None, lineno=0,
                  types=None, elements=None, procedures=None,
                  interfaces=None, uses=None, default_access='public',
-                 public_symbols=None, private_symbols=None):
+                 public_symbols=None, private_symbols=None,
+                 mod_depends=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         if types is None:
             types = []
@@ -203,6 +207,9 @@ class Module(Fortran):
         if private_symbols is None:
             private_symbols = []
         self.private_symbols = private_symbols
+        if mod_depends is None:
+            mod_depends = set()
+        self.mod_depends = mod_depends
 
     # Required for the Module object to be hashable so one can create sets of Modules
     # So this function should return a unique imprint of the object
@@ -212,6 +219,10 @@ class Module(Fortran):
     # This is maybe unnecessarily long ?
     def __hash__(self):
         return int(''.join(str(ord(x)).zfill(3) for x in self.filename + self.name))
+
+    # Needed to reorder modules in genereted code
+    def __lt__(self, other):
+        return other in self.mod_depends
 
 
 class Procedure(Fortran):
@@ -308,7 +319,37 @@ class Element(Declaration):
 
 class Argument(Declaration):
     __doc__ = _rep_des(Declaration.__doc__, "Represents a Procedure Argument.")
-    pass
+
+    @staticmethod
+    def split_dimensions(dim):
+        """Given a string like "dimension(a,b,c)" return the list of dimensions ['a','b','c']."""
+        dim = dim[10:-1]  # remove "dimension(" and ")"
+        br = 0
+        d = 1
+        ds = ['']
+        for c in dim:
+            if c != ',': ds[-1] += c
+            if c == '(':
+                br += 1
+            elif c == ')':
+                br -= 1
+            elif c == ',':
+                if br == 0:
+                    ds.append('')
+                else:
+                    ds[-1] += ','
+        return ds
+
+    def dims_list(self):
+        dims = list(filter(lambda x: x.startswith("dimension"), self.attributes))
+        if len(dims) > 1:
+            raise ValueError('more than one dimension attribute found for arg %s:\\\n%s' % (self.name, ','.join(dims)))
+        try:
+            ft_array_dims_list = self.split_dimensions(dims[0])
+        except IndexError:
+            ft_array_dims_list = []
+        ft_array_dims_list = [elem.strip(' ') for elem in ft_array_dims_list]
+        return ft_array_dims_list
 
 class Type(Fortran):
     """
@@ -317,13 +358,16 @@ class Type(Fortran):
 
     procedures : list of :class:`fortran.Procedure`
         Procedures defined with the type.
+
+    parent : list of :class:`fortran.Type , default ``None``
+        Type from which current type inherite.
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Derived-type.") + __doc__
     _fields = ['elements', 'procedures', 'bindings', 'interfaces']
 
     def __init__(self, name='', filename='', doc=None,
                  lineno=0, elements=None, procedures=None, bindings=None, interfaces=None,
-                 mod_name=None):
+                 mod_name=None, parent=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         self.elements = elements if elements else []
         self.procedures = procedures if procedures else []
@@ -331,7 +375,11 @@ class Type(Fortran):
         self.interfaces = interfaces if interfaces else []
         self.mod_name = mod_name
         self.super_types_dimensions = set()
+        self.parent = parent
 
+    # Needed to reorder types in genereted code
+    def __lt__(self, other):
+        return other == self.parent
 
 class Interface(Fortran):
     """
@@ -827,8 +875,14 @@ def split_type_kind(typename):
     type*kind -> (type, kind)
     type(kind) -> (type, kind)
     type(kind=kind) -> (type, kind)
+    character(len=*) -> (character, *)
     """
-    if '*' in typename:
+
+    if typename.startswith('character'):
+        type = 'character'
+        kind = typename[len('character'):]
+        kind = kind.replace('len=', '')
+    elif '*' in typename:
         type = typename[:typename.index('*')]
         kind = typename[typename.index('*') + 1:]
     elif '(' in typename:
@@ -892,9 +946,10 @@ def normalise_type(typename, kind_map):
     c_type = f2c_type(typename, kind_map)
     c_type_to_fortran_kind = {
         'char' : '',
-        'signed_char' : '',
+        'signed_char' : '(1)',
         'short' : '(2)',
         'int' : '(4)',
+        'long' : '(8)',
         'long_long' : '(8)',
         'float' :  '(4)',
         'double' : '(8)',
@@ -912,9 +967,9 @@ def normalise_type(typename, kind_map):
     return type + kind
 
 
-def fortran_array_type(typename, kind_map):
+def f2numpy_type(typename, kind_map):
     """
-    Convert string repr of Fortran type to equivalent numpy array typenum
+    Convert string repr of Fortran type to equivalent numpy array type
     """
     c_type = f2c_type(typename, kind_map)
 
@@ -924,6 +979,7 @@ def fortran_array_type(typename, kind_map):
         'signed_char' : 'int8',
         'short' : 'int16',
         'int' : 'int32',
+        'long' : 'int64',
         'long_long' : 'int64',
         'float' :  'float32',
         'double' : 'float64',
@@ -936,10 +992,16 @@ def fortran_array_type(typename, kind_map):
 
     if c_type not in c_type_to_numpy_type:
         raise RuntimeError('Unknown C type %s' % c_type)
-
-    # find numpy numerical type code
-    numpy_type = np.dtype(c_type_to_numpy_type[c_type]).num
+    numpy_type = np.dtype(c_type_to_numpy_type[c_type])
     return numpy_type
+
+def fortran_array_type(typename, kind_map):
+    """
+    Convert string repr of Fortran type to equivalent numpy array typenum
+    """
+    # find numpy numerical type code
+    numpy_type_num = f2numpy_type(typename, kind_map).num
+    return numpy_type_num
 
 def f2py_type(type, attributes=None):
     """
