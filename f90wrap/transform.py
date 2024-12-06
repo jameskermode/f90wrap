@@ -252,7 +252,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 continue
             else:
                 # allocatable arguments only allowed for derived types
-                if 'allocatable' in arg.attributes and not arg.type.startswith('type'):
+                if 'allocatable' in arg.attributes and not (
+                    arg.type.startswith('type') or arg.type.startswith('class')):
                     log.warning('removing routine %s due to allocatable intrinsic type arguments' % node.name)
                     return None
                 # no pointer arguments
@@ -821,6 +822,9 @@ def add_missing_constructors(tree):
     for node in ft.walk(tree):
         if not isinstance(node, ft.Type):
             continue
+        if "abstract" in node.attributes:
+            log.info('Skipping constructor for abstract type %s', node.name)
+            continue
         for child in ft.iter_child_nodes(node):
             if 'constructor' in child.attributes:
                 log.info('found constructor %s', child.name)
@@ -854,9 +858,9 @@ def add_missing_destructors(tree):
         for child in ft.iter_child_nodes(node):
             if 'destructor' in child.attributes:
                 log.info('found destructor %s', child.name)
+                child.attributes.append('skip_call')
                 break
         else:
-
             log.info('adding missing destructor for %s', node.name)
             new_node = ft.Subroutine('%s_finalise' % node.name,
                                      node.filename,
@@ -1182,6 +1186,7 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
     """
     def visit_Module(self, node):
         procedure_map = { p.name:p for p in node.procedures }
+        proc_interf_map = procedures_and_abstract_interfaces(procedure_map, node)
         for type in node.types:
 
             # Pass 1: Associate module procedures with specific bindings
@@ -1189,7 +1194,7 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
                 if binding.type == 'generic':
                     continue
                 proto = binding.procedures[0]  # Only generics have multiple procedures
-                proc = procedure_map[proto.name]
+                proc = proc_interf_map[proto.name]
                 proc = copy.deepcopy(proc)
                 log.debug('Creating method for %s from procedure %s.', type.name, proc.name)
                 proc.type_name = type.name
@@ -1215,6 +1220,23 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
 
         node.procedures = list(procedure_map.values())
         return node
+
+
+def procedures_and_abstract_interfaces(procedure_map, node):
+    """
+    Add procedures from abstract interfaces to the procedure map
+
+    This is needed because abstract interfaces are not included in the module
+    interfaces list, and so are not resolved by ResolveInterfacePrototypes.
+    """
+    extended_procedure_map = procedure_map.copy()
+    for int in node.interfaces:
+        if not 'abstract' in int.attributes:
+            continue
+        for proc in int.procedures:
+            if proc.name not in extended_procedure_map:
+                extended_procedure_map[proc.name] = proc
+    return extended_procedure_map
 
 
 class BindConstructorInterfaces(ft.FortranTransformer):
