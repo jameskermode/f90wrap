@@ -615,7 +615,7 @@ def find_types(tree, skipped_types=None):
                 continue
             if node.type.startswith('class('):
                 class_name = derived_typename(node.type)
-                if class_name in skipped_types:
+                if not class_name in types or class_name in skipped_types:
                     continue
                 if 'used_as_class' not in types[class_name].attributes:
                     types[class_name].attributes.append('used_as_class')
