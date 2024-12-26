@@ -277,9 +277,12 @@ end type %(typename)s%(suffix)s"""
         self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
 
     def is_class(self, tname):
-        if not tname in self.types:
+        if not tname:
             return False
-        if "used_as_class" in self.types[tname].attributes:
+        tname_lower = tname.lower()
+        if not tname_lower in self.types:
+            return False
+        if "used_as_class" in self.types[tname_lower].attributes:
             return True
         return False
 
