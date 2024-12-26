@@ -458,7 +458,11 @@ end type %(typename)s%(suffix)s"""
                     if match:
                         call_name = match.group(1)
                         arg_names.remove(arg)
-            func_name = "%s%%p%%%s" % (call_name, bound_name)
+
+            if (self.is_class(node.type_name)):
+                func_name = "%s%%p%%obj%%%s" % (call_name, bound_name)
+            else:
+                func_name = "%s%%p%%%s" % (call_name, bound_name)
 
         if isinstance(orig_node, ft.Function):
             self.write(
