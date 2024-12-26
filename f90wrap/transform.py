@@ -948,6 +948,8 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
             new_node.type = node.type
         if hasattr(node, 'binding_name'):
             new_node.binding_name = node.binding_name
+        if hasattr(node, 'type_name'):
+            new_node.type_name = node.type_name
         new_node.orig_name = node.orig_name
         new_node.orig_node = node  # keep a reference to the original node
         return new_node
