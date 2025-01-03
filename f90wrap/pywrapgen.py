@@ -25,6 +25,7 @@ import os
 import logging
 import re
 import numpy as np
+from packaging import version
 
 from f90wrap.transform import shorten_long_name
 from f90wrap import fortran as ft
@@ -130,11 +131,19 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.type_check = type_check
         self.relative = relative
 
+        if version.parse(np.version.version) < version.parse("2.0"):
+            self.numpy_complexwarning = "numpy.ComplexWarning"
+        else:
+            self.numpy_complexwarning = "numpy.exceptions.ComplexWarning"
+
     def write_imports(self, insert=0):
-        default_imports = [(self.f90_mod_name, None),
-                           ('f90wrap.runtime', None),
-                           ('logging', None),
-                           ('numpy', None)]
+        default_imports = [
+            (self.f90_mod_name, None),
+            ("f90wrap.runtime", None),
+            ("logging", None),
+            ("numpy", None),
+            ("warnings", None),
+        ]
         if self.relative: default_imports[0] = ('..', self.f90_mod_name)
         imp_lines = ['from __future__ import print_function, absolute_import, division']
         for (mod, symbol) in default_imports + list(self.imports):
@@ -228,6 +237,11 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         if self.make_package:
             index = self.write_imports(index)
             self.writelines(["_arrays = {}", "_objs = {}", "\n"], insert=index)
+            self.write()
+            version.parse(np.version.version) > version.parse("1.23.5")
+            self.write(
+                f'warnings.filterwarnings("error", category={self.numpy_complexwarning})'
+            )
             self.write()
 
         if self.make_package:
@@ -424,8 +438,26 @@ except ValueError:
             dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
 
             if isinstance(node, ft.Function):
-                dct["result"] = ", ".join([ret_val.name for ret_val in node.ret_val])
-                dct["call"] = "%(result)s = " % dct
+                dct["result"] = ", ".join(
+                    [ret_val.name for ret_val in node.ret_val]
+                )
+                dct["call"] = ", ".join([ret_val.name for ret_val in node.ret_val])
+                if dct["call"]:
+                    dct["call"] = dct["call"] + " = "
+
+            py_sign_names = [
+                arg.py_name + py_arg_value(arg) for arg in node.arguments
+            ]
+            f90_call_names = [
+                "%s=%s" % (arg.name, arg.py_value) if arg.py_value else "%s" % arg.name
+                for arg in node.arguments
+            ]
+
+            # Add optional argument to specify if function is called from interface
+            py_sign_names.append("interface_call=False")
+
+            dct["py_arg_names"] = ", ".join(py_sign_names)
+            dct["f90_arg_names"] = ", ".join(f90_call_names)
 
             if (
                 not self.make_package
@@ -534,6 +566,51 @@ except ValueError:
             self.dedent()
             self.write()
 
+    def write_exception_handler(self, dct):
+        # try to call each in turn until no TypeError raised
+        self.write("for proc in %(proc_names)s:" % dct)
+        self.indent()
+        self.write("exception=None")
+        self.write("try:")
+        self.indent()
+        self.write("return proc(*args, **kwargs, interface_call=True)")
+        self.dedent()
+        self.write(
+            f"except (TypeError, ValueError, AttributeError, IndexError, {self.numpy_complexwarning}) as err:"
+        )
+        self.indent()
+        self.write("exception = \"'%s: %s'\" % (type(err).__name__, str(err))")
+        self.write("continue")
+        self.dedent()
+        self.dedent()
+        self.write()
+
+        self.write("argTypes=[]")
+        self.write("for arg in args:")
+        self.indent()
+        self.write("try:")
+        self.indent()
+        self.write(
+            "argTypes.append(\"%s: dims '%s', type '%s',\"\n\" type code '%s'\"\n%(str(type(arg)),"
+            "arg.ndim, arg.dtype, arg.dtype.num))"
+        )
+        self.dedent()
+        self.write("except AttributeError:")
+        self.indent()
+        self.write("argTypes.append(str(type(arg)))")
+        self.dedent()
+        self.dedent()
+
+        self.write('raise TypeError("Not able to call a version of "')
+        self.indent()
+        self.write('"%(intf_name)s compatible with the provided args:"' % dct)
+        self.write(
+            '"\\n%s\\nLast exception was: %s"%("\\n".join(argTypes), exception))'
+        )
+        self.dedent()
+        self.dedent()
+        self.write()
+
     def visit_Interface(self, node):
         log.info("PythonWrapperGenerator visiting interface %s" % node.name)
 
@@ -566,44 +643,7 @@ except ValueError:
         self.write("def %(intf_name)s(*args, **kwargs):" % dct)
         self.indent()
         self.write(self._format_doc_string(node))
-        # try to call each in turn until no TypeError raised
-        self.write("for proc in %(proc_names)s:" % dct)
-        self.indent()
-        self.write("try:")
-        self.indent()
-        self.write("return proc(*args, **kwargs)")
-        self.dedent()
-        self.write("except TypeError:")
-        self.indent()
-        self.write("continue")
-        self.dedent()
-        self.dedent()
-        self.write()
-
-        if self.type_check:
-            self.write("argTypes=[]")
-            self.write("for arg in args:")
-            self.indent()
-            self.write("try:")
-            self.indent()
-            self.write(
-                "argTypes.append(\"%s: dims '%s', type '%s'\"%(str(type(arg)),"
-                "arg.ndim, arg.dtype))"
-            )
-            self.dedent()
-            self.write("except AttributeError:")
-            self.indent()
-            self.write("argTypes.append(str(type(arg)))")
-            self.dedent()
-            self.dedent()
-
-            self.write('raise TypeError("Not able to call a version of "')
-            self.indent()
-            self.write("\"'%(intf_name)s' compatible with the provided args:\"" % dct)
-            self.write('"\\n%s\\n"%"\\n".join(argTypes))')
-            self.dedent()
-        self.dedent()
-        self.write()
+        self.write_exception_handler(dct)
 
     def visit_Type(self, node):
         log.info("PythonWrapperGenerator visiting type %s" % node.name)
@@ -937,89 +977,155 @@ return %(el_name)s"""
         # to ensure either the correct version of an interface is used
         # either an exception is returned
         for arg in node.arguments:
-            if "optional" not in arg.attributes:
-                ft_array_dim_list = list(
-                    filter(lambda x: x.startswith("dimension"), arg.attributes)
-                )
-                if ft_array_dim_list:
-                    if ":" in ft_array_dim_list[0]:
-                        ft_array_dim = ft_array_dim_list[0].count(",") + 1
-                    else:
-                        ft_array_dim = -1
+            # Check if optional argument is being passed
+            if "optional" in arg.attributes:
+                self.write("if {0} is not None:".format(arg.py_name))
+                self.indent()
+
+            ft_array_dim_list = list(
+                filter(lambda x: x.startswith("dimension"), arg.attributes)
+            )
+            if ft_array_dim_list:
+                if ":" in ft_array_dim_list[0]:
+                    ft_array_dim = ft_array_dim_list[0].count(",") + 1
                 else:
-                    ft_array_dim = 0
+                    ft_array_dim = -1
+            else:
+                ft_array_dim = 0
 
-                # Checks for derived types
-                if arg.type.startswith("type") or arg.type.startswith("class"):
-                    cls_mod_name = self.types[ft.strip_type(arg.type)].mod_name
-                    cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
+            # Checks for derived types
+            if arg.type.startswith("type") or arg.type.startswith("class"):
+                cls_mod_name = self.types[ft.strip_type(arg.type)].mod_name
+                cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
 
-                    cls_name = normalise_class_name(
-                        ft.strip_type(arg.type), self.class_names
+                cls_name = normalise_class_name(
+                    ft.strip_type(arg.type), self.class_names
+                )
+                self.write(
+                    "if not isinstance({0}, {1}.{2}) :".format(
+                        arg.py_name, cls_mod_name, cls_name
                     )
+                )
+                self.indent()
+                self.write("raise TypeError")
+                self.dedent()
+
+                if self.make_package:
+                    self.imports.add((self.py_mod_name, cls_mod_name))
+            else:
+                # Checks for Numpy array dimension and types
+                # It will fail for types that are not in the kind map
+                # Good enough for now if it works on standrad types
+                try:
+                    array_type = ft.fortran_array_type(arg.type, self.kind_map)
+                    pytype = ft.f2numpy_type(arg.type, self.kind_map)
+                except RuntimeError:
+                    continue
+
+                self.write(
+                    "if isinstance({0},(numpy.ndarray, numpy.generic)):".format(
+                        arg.py_name
+                    )
+                )
+                self.indent()
+
+                convertible_types = [
+                    np.short,
+                    np.ushort,
+                    np.int32,
+                    np.uintc,
+                    np.int64,
+                    np.uint,
+                    np.longlong,
+                    np.ulonglong,
+                    np.float16,
+                    np.float32,
+                    np.float64,
+                    np.longdouble,
+                ]
+                if ft_array_dim == 0 and "intent(in)" in arg.attributes:
                     self.write(
-                        "if not isinstance({0}, {1}.{2}) :".format(
-                            arg.py_name, cls_mod_name, cls_name
+                        "if not interface_call and {0}.dtype.num in {{{1}}}:".format(
+                            arg.py_name,
+                            ", ".join(
+                                [str(atype().dtype.num) for atype in convertible_types]
+                            ),
                         )
                     )
                     self.indent()
-                    self.write("raise TypeError")
+                    self.write("{0} = {0}.astype('{1}')".format(arg.py_name, pytype))
+                    self.dedent()
+                if ft_array_dim == -1:
+                    self.write(
+                        "if {0}.dtype.num != {1}:".format(arg.py_name, array_type)
+                    )
+                # Allow fortran character to match python ubyte, unicode_ or string_
+                elif array_type == np.ubyte().dtype.num:
+                    str_types = {
+                        np.ubyte().dtype.num,
+                        np.bytes_().dtype.num,
+                        np.str_().dtype.num,
+                    }
+                    str_types = {str(num) for num in str_types}
+                    # Python char array have one supplementary dimension
+                    # https://stackoverflow.com/questions/41864984/how-to-pass-array-of-strings-to-fortran-subroutine-using-f2py
+                    if ft_array_dim > 0:
+                        str_dims = {ft_array_dim, ft_array_dim + 1}
+                    else:
+                        str_dims = {
+                            ft_array_dim,
+                        }
+                    str_dims = {str(num) for num in str_dims}
+                    self.write(
+                        "if {0}.ndim not in {{{1}}} or {0}.dtype.num not in {{{2}}}:".format(
+                            arg.py_name, ",".join(str_dims), ",".join(str_types)
+                        )
+                    )
+                else:
+                    self.write(
+                        "if {0}.ndim != {1} or {0}.dtype.num != {2}:".format(
+                            arg.py_name, str(ft_array_dim), array_type
+                        )
+                    )
+
+                self.indent()
+                self.write(
+                    "raise TypeError(\"Expecting '{0}' (code '{1}')\"\n"
+                    "\" with dim '{2}' but got '%s' (code '%s') with dim '%s'\"\n"
+                    "%({3}.dtype, {3}.dtype.num, {3}.ndim))".format(
+                        ft.f2py_type(arg.type),
+                        array_type,
+                        str(ft_array_dim),
+                        arg.py_name,
+                    )
+                )
+                self.dedent()
+                self.dedent()
+                if ft_array_dim == 0:
+                    self.write(
+                        "elif not isinstance({0},{1}):".format(
+                            arg.py_name, ft.f2py_type(arg.type)
+                        )
+                    )
+                    self.indent()
+                    self.write(
+                        "raise TypeError(\"Expecting '{0}' but got '%s'\"%type({1}))".format(
+                            ft.f2py_type(arg.type), arg.py_name
+                        )
+                    )
+                    self.dedent()
+                else:
+                    self.write("else:")
+                    self.indent()
+                    self.write(
+                        "raise TypeError(\"Expecting numpy array but got '%s'\"%type({0}))".format(
+                            arg.py_name
+                        )
+                    )
                     self.dedent()
 
-                    if self.make_package:
-                        self.imports.add((self.py_mod_name, cls_mod_name))
-                else:
-                    # Checks for Numpy array dimension and types
-                    # It will fail for types that are not in the kind map
-                    # Good enough for now if it works on standrad types
-                    try:
-                        array_type = ft.fortran_array_type(arg.type, self.kind_map)
-                    except RuntimeError:
-                        continue
-
-                    py_type = ft.f2py_type(arg.type)
-
-                    # bool are ignored because fortran logical are mapped to integers
-                    if py_type not in ["bool"]:
-                        self.write(
-                            "if isinstance({0},(numpy.ndarray, numpy.generic)):".format(
-                                arg.py_name
-                            )
-                        )
-                        self.indent()
-                        if ft_array_dim == -1:
-                            self.write(
-                                "if {0}.dtype.num != {1}:".format(
-                                    arg.py_name, array_type
-                                )
-                            )
-                        else:
-                            self.write(
-                                "if {0}.ndim != {1} or {0}.dtype.num != {2}:".format(
-                                    arg.py_name, str(ft_array_dim), array_type
-                                )
-                            )
-
-                        self.indent()
-                        self.write("raise TypeError")
-                        self.dedent()
-                        self.dedent()
-                        if ft_array_dim == 0:
-                            # Do not write checks for unknown types
-                            if py_type not in ["unknown"]:
-                                self.write(
-                                    "elif not isinstance({0},{1}):".format(
-                                        arg.py_name, py_type
-                                    )
-                                )
-                                self.indent()
-                                self.write("raise TypeError")
-                                self.dedent()
-                        else:
-                            self.write("else:")
-                            self.indent()
-                            self.write("raise TypeError")
-                            self.dedent()
+            if "optional" in arg.attributes:
+                self.dedent()
 
     def _format_doc_string(self, node):
         """
