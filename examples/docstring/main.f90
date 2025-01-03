@@ -12,7 +12,8 @@ module m_circle
      real :: radius
   end type t_circle
 
-  public :: construct_circle,incomplete_doc_sub
+  public :: construct_circle,construct_circle_more_doc
+  public :: incomplete_doc_sub
   public :: no_direction,doc_inside
   public :: output_1,function_2,details_doc
 
@@ -29,6 +30,20 @@ contains
     real, intent(in) :: radius
     circle%radius = radius
   end subroutine construct_circle
+
+    !===========================================================================
+    !>
+    !! \brief Initialize circle with more doc
+    !! \author test_author
+    !! \copyright test_copyright
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius      radius of the circle
+    !<
+  subroutine construct_circle_more_doc(circle,radius)
+    type(t_circle) :: circle
+    real, intent(in) :: radius
+    circle%radius = radius
+  end subroutine construct_circle_more_doc
 
     !===========================================================================
     !>

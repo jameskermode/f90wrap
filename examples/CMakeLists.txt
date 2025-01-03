@@ -26,6 +26,7 @@ list(APPEND tests
     subroutine_contains_issue101
     type_bn
     kind_map_default
+    docstring
 )
 
 foreach(test ${tests})
