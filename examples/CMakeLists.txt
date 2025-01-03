@@ -32,6 +32,9 @@ list(APPEND tests
     string_array_input_f2py
     type_check
     optional_string
+    long_subroutine_name
+    output_kind
+    remove_pointer_arg
 )
 
 foreach(test ${tests})

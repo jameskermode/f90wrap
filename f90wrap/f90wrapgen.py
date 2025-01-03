@@ -95,6 +95,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.kind_map = kind_map
         self.types = types
         self.default_to_inout = default_to_inout
+        self.routines = []
 
     def visit_Root(self, node):
         """
@@ -465,6 +466,12 @@ end type %(typename)s_rec_ptr_type"""
         call_name = node.orig_name
         if hasattr(node, "call_name"):
             call_name = node.call_name
+
+        if node.name in self.routines:
+            return self.generic_visit(node)
+
+        self.routines.append(node.name)
+
         log.info(
             "F90WrapperGenerator visiting routine %s call_name %s mod_name %r"
             % (node.name, call_name, node.mod_name)

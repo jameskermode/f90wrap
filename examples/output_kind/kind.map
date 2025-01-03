@@ -1,0 +1,3 @@
+{'integer':{'1':'signed_char', '2':'short', '4':'int', '8':'long'},\
+'real':{'4': 'float', '8': 'double'},\
+}

@@ -35,4 +35,4 @@ f2py: ${F90WRAP_SRC}
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} f90wrap_*.f90 *.o
 
 test: f2py
-	${PYTHON} test.py
+	${PYTHON} tests.py

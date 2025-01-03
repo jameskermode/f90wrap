@@ -28,7 +28,9 @@ EXAMPLES = arrayderivedtypes \
 	optional_string \
 	long_subroutine_name \
 	kind_map_default \
-	intent_out_size
+	intent_out_size \
+	output_kind \
+	remove_pointer_arg
 
 PYTHON = python
 
