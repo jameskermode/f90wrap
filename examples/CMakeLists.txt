@@ -35,6 +35,7 @@ list(APPEND tests
     long_subroutine_name
     output_kind
     remove_pointer_arg
+    fortran_oo
 )
 
 foreach(test ${tests})

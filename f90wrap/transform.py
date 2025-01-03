@@ -150,6 +150,11 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
         if self.mod is None:
             return self.generic_visit(node)
 
+        for attr in node.attributes:
+            match = re.match('bound\(.*?\)', attr)
+            if match:
+                return self.generic_visit(node)
+
         if node.name in self.mod.private_symbols:
             log.debug('removing private symbol %s' % node.name)
             return None
@@ -206,6 +211,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
         return self.generic_visit(node)
 
     def visit_Binding(self, node):
+        # FIXME do not filter generic binding for now
+        if node.type == 'generic':
+            return node
+
         # Remove unwrapable procedures from bindings
         new_procs = []
         for proc in node.procedures:
@@ -228,6 +237,10 @@ class UnwrappablesRemover(ft.FortranTransformer):
         # don't wrap operator overloading routines
         if node.name.startswith('operator('):
             return None
+
+        # Do not process prototypes
+        if not(hasattr(node, 'attributes') and hasattr(node, 'arguments')):
+            return self.generic_visit(node)
 
         # FIXME don't wrap callback arguments
         if 'callback' in node.attributes:
@@ -435,6 +448,26 @@ def fix_subroutine_uses_clauses(tree, types):
     return tree
 
 
+def find_inheritence_relations(tree):
+    """
+    Fill child and parent member with fortran inheritences
+    """
+    type_map = ft.find_types(tree)
+    module_map = { m.name:m for m in tree.modules }
+    for node in type_map.values():
+        for attr in node.attributes:
+            match = re.match('extends\((.*?)\)', attr)
+            if match:
+                parent = match.group(1)
+                node.parent = type_map[parent]
+
+                parent_mod = module_map[node.parent.mod_name]
+                child_mod = module_map[node.mod_name]
+                if parent_mod != child_mod:
+                    child_mod.mod_depends.add(parent_mod)
+    return tree
+
+
 def fix_element_uses_clauses(tree, types):
     """
     Add uses clauses to derived type elements in modules
@@ -465,6 +498,15 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
         sub.deallocate = []
 
         if 'constructor' in sub.attributes:
+            # Put the return value of the fortran constructors at first position in the arguments list
+            if 'fortranconstructor' in sub.attributes:
+                j = -1
+                for i, arg in enumerate(sub.arguments):
+                    if 'optional' in arg.attributes:
+                        j = i
+                        break
+                assert(sub.arguments[j].name[:4]=='ret_')
+                sub.arguments.insert(0, sub.arguments.pop(j))
             sub.arguments[0].attributes = set_intent(sub.arguments[0].attributes, 'intent(out)')
 
         if 'destructor' in sub.attributes:
@@ -652,6 +694,12 @@ class MethodFinder(ft.FortranTransformer):
             node.procedures = new_procs
             return node
 
+    def visit_Binding(self, node):
+        for proc in node.procedures:
+            proc.method_name = node.name
+        return node
+
+
     def visit_Procedure(self, node, interface=None):
         if (len(node.arguments) == 0 or
                 (node.arguments[0] is not None and
@@ -812,7 +860,9 @@ def add_missing_constructors(tree):
                 log.info('found constructor %s', child.name)
                 break
         else:
-
+            proc_attributes = ['constructor', 'skip_call']
+            if 'abstract' in node.attributes:
+                proc_attributes.append('abstract')
             log.info('adding missing constructor for %s', node.name)
             new_node = ft.Subroutine('%s_initialise' % node.name,
                                      node.filename,
@@ -825,7 +875,7 @@ def add_missing_constructors(tree):
                                                   attributes=['intent(out)'],
                                                   type='type(%s)' % node.name)],
                                      node.uses,
-                                     ['constructor', 'skip_call'],
+                                     proc_attributes,
                                      mod_name=node.mod_name,
                                      type_name=node.name)
             new_node.method_name = '__init__'
@@ -842,7 +892,9 @@ def add_missing_destructors(tree):
                 log.info('found destructor %s', child.name)
                 break
         else:
-
+            proc_attributes = ['destructor', 'skip_call']
+            if 'abstract' in node.attributes:
+                proc_attributes.append('abstract')
             log.info('adding missing destructor for %s', node.name)
             new_node = ft.Subroutine('%s_finalise' % node.name,
                                      node.filename,
@@ -855,7 +907,7 @@ def add_missing_destructors(tree):
                                                   attributes=['intent(inout)'],
                                                   type='type(%s)' % node.name)],
                                      node.uses,
-                                     ['destructor', 'skip_call'],
+                                     proc_attributes,
                                      mod_name=node.mod_name,
                                      type_name=node.name)
             new_node.method_name = '__del__'
@@ -905,7 +957,8 @@ class IntentOutToReturnValues(ft.FortranTransformer):
     """
 
     def visit_Procedure(self, node):
-        if 'constructor' in node.attributes:
+        # fortranconstructor are functionn the self object is allready marked as inten(out)
+        if 'constructor' in node.attributes and not 'fortranconstructor' in node.attributes:
             node.arguments[0].attributes = set_intent(node.arguments[0].attributes,
                                                       'intent(out)')
 
@@ -1028,8 +1081,68 @@ class RenameArgumentsPython(ft.FortranVisitor):
         return node
 
 
-class RenameInterfacesPython(ft.FortranVisitor):
+class DuplicateAbstractImplementation(ft.FortranVisitor):
+    """Duplicate bound procedure node from abstract class to childs type"""
+
+    def visit_Type(self, node):
+        parent = node.parent
+        if parent and 'abstract' in parent.attributes:
+            for binding in parent.bindings:
+                procedures = []
+                # Copy bindings from parent class replacing parent class with child class were needed
+                for proc in binding.procedures:
+                    new_proc = copy.deepcopy(proc)
+                    new_proc.name = '%s_%s'%(proc.name, node.name)
+                    for arg in new_proc.arguments:
+                        arg.type = arg.type.replace(parent.name, node.name)
+                    if 'abstract' not in node.attributes:
+                        new_proc.attributes.remove('abstract')
+                    procedures.append(new_proc)
+                child_binding = copy.deepcopy(binding)
+                child_binding.procedures = procedures
+                binding_names = [b.name for b in node.bindings]
+                # Only add copy if binding is not already overloaded
+                if child_binding.name not in binding_names:
+                    node.bindings.append(child_binding)
+
+        return self.generic_visit(node)
+
+
+class ReorderForInheritance(ft.FortranVisitor):
+    """Reorder so that parent classes are defined defore child"""
+
+    def visit_Root(self, node):
+        node.modules.sort(reverse=True)
+        return self.generic_visit(node)
+
+    def visit_Module(self, node):
+        node.types.sort(reverse=True)
+        return self.generic_visit(node)
+
+
+class LinkBoundDType(ft.FortranVisitor):
+    """Add bound info in procedure nodes"""
+
+    def visit_Type(self, node):
+        for binding in node.bindings:
+            binding.dtype = node
+            if binding.type == 'procedure':
+                for proc in binding.procedures:
+                    proc.attributes.append('bound(%s)'%binding.name)
+                if 'abstract' in node.attributes:
+                    proc.attributes.append('abstract')
+        return self.generic_visit(node)
+
+class RenameInterfacesBindingsPython(ft.FortranVisitor):
     def visit_Interface(self, node):
+        for proc in node.procedures:
+            if not hasattr(proc, 'method_name'):
+                proc.method_name = proc.name
+        if not hasattr(node,'method_name'):
+            node.method_name = node.name
+        return node
+
+    def visit_Binding(self, node):
         for proc in node.procedures:
             if not hasattr(proc, 'method_name'):
                 proc.method_name = proc.name
@@ -1150,9 +1263,9 @@ class ResolveInterfacePrototypes(ft.FortranTransformer):
         procedure_map = { p.name:p for p in node.procedures }
         unused = set(procedure_map.keys())
         for int in node.interfaces:
-            iprocs = { p.name for p in int.procedures }
-            unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
-            int.procedures = [ procedure_map[p] for p in iprocs ]
+           iprocs = { p.name for p in int.procedures }
+           unused -= iprocs # Can't eagerly remove b/c may be in multiple interfaces
+           int.procedures = [ procedure_map[p] for p in iprocs if p in procedure_map ]
         node.procedures = [ procedure_map[p] for p in unused ]
         return node
 
@@ -1189,15 +1302,6 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
                     type.bindings[ib].attributes.append('destructor')
                 binding.procedures = [proc]
 
-            # Pass 2: Consolidate specific bindings into generic bindings, if needed
-            binding_map = { b.name:b for b in type.bindings }
-            for binding in type.bindings:
-                if binding.type != 'generic':
-                    continue
-                # For generics, prototypes name specific bindings
-                binding.procedures = [ binding_map.pop(p.name).procedures[0] for p in binding.procedures ]
-            type.bindings = list(binding_map.values())
-
         node.procedures = list(procedure_map.values())
         return node
 
@@ -1219,9 +1323,12 @@ class BindConstructorInterfaces(ft.FortranTransformer):
             interface = interface_map.pop(type.name)
             log.debug('Move interface %s into type %s and mark constructor', interface.name, type.name)
             interface.attributes.append('constructor')
+            # We need an aditional info for fortran wrapped constructor
+            interface.attributes.append('fortranconstructor')
             for p in interface.procedures:
                 p.type_name = type.name
                 p.attributes.append('constructor')
+                p.attributes.append('fortranconstructor')
             type.interfaces.append(interface)
         node.interfaces = list(interface_map.values())
         return node
@@ -1246,8 +1353,12 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
      * Update of subroutine uses clauses
     """
 
-    tree = ResolveInterfacePrototypes().visit(tree)
     tree = ResolveBindingPrototypes().visit(tree)
+    tree = ResolveInterfacePrototypes().visit(tree)
+    LinkBoundDType().visit(tree)
+    find_inheritence_relations(tree)
+    ReorderForInheritance().visit(tree)
+    DuplicateAbstractImplementation().visit(tree)
     tree = BindConstructorInterfaces().visit(tree)
     tree = OnlyAndSkip(kept_subs, kept_mods).visit(tree)
     tree = remove_private_symbols(tree, force_public)
@@ -1299,7 +1410,7 @@ def transform_to_py_wrapper(tree, types):
     IntentOutToReturnValues().visit(tree)
     RenameArgumentsPython(types).visit(tree)
     ReorderOptionalArgumentsPython().visit(tree)
-    RenameInterfacesPython().visit(tree)
+    RenameInterfacesBindingsPython().visit(tree)
     return tree
 
 

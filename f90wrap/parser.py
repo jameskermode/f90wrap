@@ -67,7 +67,7 @@ module_end = re.compile('^end\s*module|end$', re.IGNORECASE)
 program = re.compile('^program', re.IGNORECASE)
 program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
 
-attribs = r'allocatable|pointer|save|contiguous|dimension *\(.*?\)|parameter|target|public|private|extends *\(.*?\)'  # jrk33 added target
+attribs = r'allocatable|pointer|save|contiguous|dimension *\(.*?\)|parameter|target|public|private|abstract|extends *\(.*?\)|bind\(C\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
 type_end = re.compile('^end\s*type|end$', re.IGNORECASE)
@@ -1279,31 +1279,11 @@ def check_binding(cl, file):
         if attrs:
             attrs = [a.strip().lower() for a in attrs.split(',')]
         out = []
-        if type == 'generic':
-            name, targets = bindings.split('=>')
-            name = name.strip().lower()
-            log.debug('found generic binding %s => %s', name, targets)
-            out.append(Binding(
-                name=name,
-                lineno=file.lineno,
-                filename=file.filename,
-                type=type,
-                attributes=attrs,
-                procedures=[
-                    Prototype(
-                        name=t.strip().lower(),
-                        lineno=file.lineno,
-                        filename=file.filename
-                    )
-                    for t in targets.split(',')
-                ],
-            ))
-        else:
-            for b in bindings.split(','):
-                name, *target = [ word.strip().lower() for word in b.split('=>')]
+        if not re.search('deferred', bindings):
+            if type == 'generic':
+                name, targets = bindings.split('=>')
                 name = name.strip().lower()
-                target = target[0] if target else name
-                log.debug('found %s binding %s => %s', type, name, target)
+                log.debug('found generic binding %s => %s', name, targets)
                 out.append(Binding(
                     name=name,
                     lineno=file.lineno,
@@ -1312,12 +1292,33 @@ def check_binding(cl, file):
                     attributes=attrs,
                     procedures=[
                         Prototype(
-                            name=target.strip().lower(),
+                            name=t.strip().lower(),
                             lineno=file.lineno,
-                            filename=file.filename,
-                        ),
+                            filename=file.filename
+                        )
+                        for t in targets.split(',')
                     ],
                 ))
+            else:
+                for b in bindings.split(','):
+                    name, *target = [ word.strip().lower() for word in b.split('=>')]
+                    name = name.strip().lower()
+                    target = target[0] if target else name
+                    log.debug('found %s binding %s => %s', type, name, target)
+                    out.append(Binding(
+                        name=name,
+                        lineno=file.lineno,
+                        filename=file.filename,
+                        type=type,
+                        attributes=attrs,
+                        procedures=[
+                            Prototype(
+                                name=target.strip().lower(),
+                                lineno=file.lineno,
+                                filename=file.filename,
+                            ),
+                        ],
+                    ))
         cl = file.next()
         return [out, cl]
     else:

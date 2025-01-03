@@ -172,6 +172,9 @@ class Module(Fortran):
 
     private_symbols : list of `str` , default ``None``
         The symbols within the module that are private
+
+    mod_depends : list of :class:`fortran.Module` , default ``None``
+        Module on which current module depends
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran module.") + __doc__
     _fields = ['types', 'elements', 'procedures', 'interfaces', 'uses']
@@ -179,7 +182,8 @@ class Module(Fortran):
     def __init__(self, name='', filename='', doc=None, lineno=0,
                  types=None, elements=None, procedures=None,
                  interfaces=None, uses=None, default_access='public',
-                 public_symbols=None, private_symbols=None):
+                 public_symbols=None, private_symbols=None,
+                 mod_depends=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         if types is None:
             types = []
@@ -203,6 +207,9 @@ class Module(Fortran):
         if private_symbols is None:
             private_symbols = []
         self.private_symbols = private_symbols
+        if mod_depends is None:
+            mod_depends = set()
+        self.mod_depends = mod_depends
 
     # Required for the Module object to be hashable so one can create sets of Modules
     # So this function should return a unique imprint of the object
@@ -212,6 +219,10 @@ class Module(Fortran):
     # This is maybe unnecessarily long ?
     def __hash__(self):
         return int(''.join(str(ord(x)).zfill(3) for x in self.filename + self.name))
+
+    # Needed to reorder modules in genereted code
+    def __lt__(self, other):
+        return other in self.mod_depends
 
 
 class Procedure(Fortran):
@@ -347,13 +358,16 @@ class Type(Fortran):
 
     procedures : list of :class:`fortran.Procedure`
         Procedures defined with the type.
+
+    parent : list of :class:`fortran.Type , default ``None``
+        Type from which current type inherite.
     """
     __doc__ = _rep_des(Fortran.__doc__, "Represents a Fortran Derived-type.") + __doc__
     _fields = ['elements', 'procedures', 'bindings', 'interfaces']
 
     def __init__(self, name='', filename='', doc=None,
                  lineno=0, elements=None, procedures=None, bindings=None, interfaces=None,
-                 mod_name=None):
+                 mod_name=None, parent=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         self.elements = elements if elements else []
         self.procedures = procedures if procedures else []
@@ -361,7 +375,11 @@ class Type(Fortran):
         self.interfaces = interfaces if interfaces else []
         self.mod_name = mod_name
         self.super_types_dimensions = set()
+        self.parent = parent
 
+    # Needed to reorder types in genereted code
+    def __lt__(self, other):
+        return other == self.parent
 
 class Interface(Fortran):
     """

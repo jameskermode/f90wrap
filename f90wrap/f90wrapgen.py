@@ -24,6 +24,7 @@
 import logging
 import os
 import warnings
+import re
 
 import numpy as np
 
@@ -181,6 +182,13 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             for mod, only in extra_uses_dict.items():
                 node_uses.append((mod, only))
 
+        if (
+            hasattr(node, "attributes")
+            and "destructor" in node.attributes
+            and not "skip_call" in node.attributes
+        ):
+            node_uses.append((node.mod_name, [node.call_name]))
+
         if node_uses:
             for mod, only in node_uses:
                 if mod in all_uses:
@@ -231,20 +239,23 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             Adjusts array pointer for recursive derived type array
         """
         tname = ft.strip_type(tname)
-        if not recursive:
-            self.write(
-                """type %(typename)s_ptr_type
-    type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_ptr_type"""
-                % {"typename": tname}
-            )
+
+        if "abstract" in self.types[tname].attributes:
+            class_type = "class"
         else:
-            self.write(
-                """type %(typename)s_rec_ptr_type
-    type(%(typename)s), pointer :: p => NULL()
-end type %(typename)s_rec_ptr_type"""
-                % {"typename": tname}
-            )
+            class_type = "type"
+
+        if not recursive:
+            suffix = "_ptr_type"
+        else:
+            suffix = "_rec_ptr_type"
+
+        self.write(
+            """type %(typename)s%(suffix)s
+    %(class_type)s(%(typename)s), pointer :: p => NULL()
+end type %(typename)s%(suffix)s"""
+            % {"suffix": suffix, "class_type": class_type, "typename": tname}
+        )
 
     def write_arg_decl_lines(self, node):
         """
@@ -385,36 +396,22 @@ end type %(typename)s_rec_ptr_type"""
                 if "intent(hide)" not in arg.attributes
             ]
 
-        # Check type-bound procedure
-        obj = None
-        if hasattr(node, "binding_name") and node.binding_name:
-            for i, arg in enumerate(arg_node.arguments):
-                if arg.type.startswith("class") and arg.type[6:-1]:
-                    obj = arg_names.pop(i).split("=")[1]
-                    break
-
-        # Write type-bound procedure
-        if obj and func_name != "assignment(=)":
-            if isinstance(orig_node, ft.Function):
-                self.write(
-                    "%(ret_val)s = %(obj)s%(func_name)s(%(arg_names)s)"
-                    % {
-                        "ret_val": actual_arg_name(orig_node.ret_val),
-                        "obj": obj + "%",
-                        "func_name": func_name,
-                        "arg_names": ", ".join(arg_names),
-                    }
-                )
-            else:
-                self.write(
-                    "call %(obj)s%(sub_name)s(%(arg_names)s)"
-                    % {
-                        "sub_name": func_name,
-                        "obj": obj + "%",
-                        "arg_names": ", ".join(arg_names),
-                    }
-                )
-            return
+        # If procedure is bound make the call via type%bound_name syntax
+        bound_name = None
+        for attr in node.attributes:
+            match = re.match("bound\((.*?)\)", attr)
+            if match:
+                bound_name = match.group(1)
+        if bound_name:
+            # Remove this in argument passing
+            call_name = None
+            for arg in arg_names[:]:
+                if not call_name:
+                    match = re.search("=(.*_ptr)", arg)
+                    if match:
+                        call_name = match.group(1)
+                        arg_names.remove(arg)
+            func_name = "%s%%p%%%s" % (call_name, bound_name)
 
         if isinstance(orig_node, ft.Function):
             self.write(
@@ -463,6 +460,9 @@ end type %(typename)s_rec_ptr_type"""
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
+        if "abstract" in node.attributes:
+            return self.generic_visit(node)
+
         call_name = node.orig_name
         if hasattr(node, "call_name"):
             call_name = node.call_name
