@@ -27,6 +27,8 @@ list(APPEND tests
     type_bn
     kind_map_default
     docstring
+    return_array
+    intent_out_size
 )
 
 foreach(test ${tests})
@@ -37,5 +39,3 @@ foreach(test ${tests})
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/${test}"
     )
 endforeach()
-
-

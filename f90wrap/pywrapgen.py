@@ -24,8 +24,8 @@
 import os
 import logging
 import re
+import numpy as np
 
-from f90wrap.transform import ArrayDimensionConverter
 from f90wrap.transform import shorten_long_name
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
@@ -448,6 +448,62 @@ except ValueError:
                         ("None if %(arg_py_name)s is None else %(arg_py_name)s._handle")
                         % {"arg_py_name": arg.py_name},
                     )
+            # Add dimension argument for fortran functions that returns an array
+            if isinstance(node, ft.Function):
+
+                def f902py_name(node, f90_name):
+                    for arg in node.arguments:
+                        if arg.name == f90_name:
+                            return arg.py_name
+                    return ""
+
+                args_py_names = [arg.py_name for arg in node.arguments]
+                offset = 0
+                # Regular arguments are first, compute the index offset
+                for arg in node.arguments:
+                    offset += len(arg.dims_list())
+                for retval in node.ret_val:
+                    the_dim = ""
+                    try:
+                        the_dim = retval.dims_list()[0]
+                    except IndexError:
+                        pass
+                    for dim_str in retval.dims_list():
+                        # "size" is replaced by "size_bn" ("badname") by numpy.f2py
+                        keyword = "size"
+                        try:
+                            keyword = np.f2py.crackfortran.badnames[keyword]
+                        except KeyError:
+                            pass
+                        match = re.search("%s\((.*)\)" % keyword, dim_str)
+
+                        if match:
+                            # Case where return size is size of input
+                            size_arg = match.group(1).split(",")
+                            py_name = f902py_name(node, size_arg[0])
+                            try:
+                                dim_num = int(size_arg[1]) - 1
+                            except IndexError:
+                                dim_num = 0
+                            out_dim = "%s.shape[%d]" % (py_name, dim_num)
+                        else:
+                            # Case where return size is input
+                            py_name = f902py_name(node, dim_str.split("%")[0])
+                            # It could be a member of an object
+                            members_arg = dim_str.split("%")[1:]
+                            if members_arg:
+                                out_dim = "%s.%s" % (py_name, ".".join(members_arg))
+                            else:
+                                out_dim = "%s" % (py_name)
+
+                        if py_name in args_py_names:
+                            log.info("Adding dimension argument to '%s'" % node.name)
+                            dct["f90_arg_names"] = "%s, %s" % (
+                                dct["f90_arg_names"],
+                                "f90wrap_n%d=%s" % (offset, out_dim),
+                            )
+                        offset += 1
+
             call_line = (
                 "%(call)s%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
             )
@@ -815,10 +871,7 @@ return %(el_name)s"""
         self.write()
 
     def write_dt_array_wrapper(self, node, el, dims):
-        if (
-            el.type.startswith("type")
-            and len(ArrayDimensionConverter.split_dimensions(dims)) != 1
-        ):
+        if el.type.startswith("type") and len(ft.Argument.split_dimensions(dims)) != 1:
             return
 
         func_name = "init_array_%s" % el.name

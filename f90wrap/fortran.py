@@ -308,7 +308,37 @@ class Element(Declaration):
 
 class Argument(Declaration):
     __doc__ = _rep_des(Declaration.__doc__, "Represents a Procedure Argument.")
-    pass
+
+    @staticmethod
+    def split_dimensions(dim):
+        """Given a string like "dimension(a,b,c)" return the list of dimensions ['a','b','c']."""
+        dim = dim[10:-1]  # remove "dimension(" and ")"
+        br = 0
+        d = 1
+        ds = ['']
+        for c in dim:
+            if c != ',': ds[-1] += c
+            if c == '(':
+                br += 1
+            elif c == ')':
+                br -= 1
+            elif c == ',':
+                if br == 0:
+                    ds.append('')
+                else:
+                    ds[-1] += ','
+        return ds
+
+    def dims_list(self):
+        dims = list(filter(lambda x: x.startswith("dimension"), self.attributes))
+        if len(dims) > 1:
+            raise ValueError('more than one dimension attribute found for arg %s:\\\n%s' % (self.name, ','.join(dims)))
+        try:
+            ft_array_dims_list = self.split_dimensions(dims[0])
+        except IndexError:
+            ft_array_dims_list = []
+        ft_array_dims_list = [elem.strip(' ') for elem in ft_array_dims_list]
+        return ft_array_dims_list
 
 class Type(Fortran):
     """
