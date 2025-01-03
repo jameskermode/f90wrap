@@ -289,6 +289,14 @@ except ValueError:
         self.current_module = None
 
     def write_constructor(self, node):
+        if "abstract" in node.attributes:
+            self.write("def __init__(self):")
+            self.indent()
+            self.write('raise(NotImplementedError("This is an abstract class"))')
+            self.dedent()
+            self.write()
+            return
+
         handle_arg = ft.Argument(
             name="handle",
             filename=node.filename,
@@ -320,8 +328,8 @@ except ValueError:
         )
 
         if node.mod_name is not None:
-            dct['func_name'] = node.mod_name + '__' + node.name
-        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
+            dct["func_name"] = node.mod_name + "__" + node.name
+        dct["subroutine_name"] = shorten_long_name("%(prefix)s%(func_name)s" % dct)
 
         self.write("def __init__(self, %(py_arg_names)s):" % dct)
         self.indent()
@@ -338,10 +346,29 @@ except ValueError:
                 )
         self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
 
-        self.write('result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct)
-        self.write('self._handle = result[0] if isinstance(result, tuple) else result')
+        self.write(
+            "result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
+        )
+        self.write(
+            "self._handle = result[0] if isinstance(result, tuple) else result"
+        )
         self.dedent()
         self.write()
+
+    def write_classmethod(self, node):
+        dct = dict(
+            func_name=node.name,
+            method_name=hasattr(node, "method_name") and node.method_name or node.name,
+            prefix=self.prefix,
+            mod_name=self.f90_mod_name,
+            py_arg_names=", ".join(
+                [arg.py_name + py_arg_value(arg) for arg in node.arguments]
+            ),
+            f90_arg_names=", ".join(
+                ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
+            ),
+            call="",
+        )
 
     def write_classmethod(self, node):
         dct = dict(
@@ -388,35 +415,49 @@ except ValueError:
         self.write()
 
     def write_destructor(self, node):
-        dct = dict(func_name=node.name,
-                   prefix=self.prefix,
-                   mod_name=self.f90_mod_name,
-                   py_arg_names=', '.join(['%s%s' % (arg.py_name,
-                                                     'optional' in arg.attributes and '=None' or '')
-                                           for arg in node.arguments]),
-                   f90_arg_names=', '.join(['%s=%s' % (arg.name, arg.py_value) for arg in node.arguments]))
+        if "abstract" in node.attributes:
+            return
+
+        dct = dict(
+            func_name=node.name,
+            prefix=self.prefix,
+            mod_name=self.f90_mod_name,
+            py_arg_names=", ".join(
+                [
+                    "%s%s"
+                    % (arg.py_name, "optional" in arg.attributes and "=None" or "")
+                    for arg in node.arguments
+                ]
+            ),
+            f90_arg_names=", ".join(
+                ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
+            ),
+        )
         if node.mod_name is not None:
-            dct['func_name'] = node.mod_name + '__' + node.name
-        dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
+            dct["func_name"] = node.mod_name + "__" + node.name
+        dct["subroutine_name"] = shorten_long_name("%(prefix)s%(func_name)s" % dct)
 
         self.write("def __del__(%(py_arg_names)s):" % dct)
         self.indent()
         self.write(self._format_doc_string(node))
         self.write("if self._alloc:")
         self.indent()
-        self.write('%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)' % dct)
+        self.write("%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct)
         self.dedent()
         self.dedent()
         self.write()
 
     def visit_Procedure(self, node):
         log.info("PythonWrapperGenerator visiting routine %s" % node.name)
-        if "classmethod" in node.attributes:
-            self.write_classmethod(node)
-        elif "constructor" in node.attributes:
+        if "constructor" in node.attributes:
             self.write_constructor(node)
         elif "destructor" in node.attributes:
             self.write_destructor(node)
+        elif "classmethod" in node.attributes:
+            self.write_classmethod(node)
+        elif "abstract" in node.attributes and not "method" in node.attributes:
+            return self.generic_visit(node)
+
         else:
             dct = dict(
                 func_name=node.name,
@@ -466,6 +507,7 @@ except ValueError:
             ):
                 # procedures outside of derived types become static methods
                 self.write("@staticmethod")
+
             self.write("def %(method_name)s(%(py_arg_names)s):" % dct)
             self.indent()
             self.write(self._format_doc_string(node))
@@ -544,7 +586,7 @@ except ValueError:
             if isinstance(node, ft.Function):
                 # convert any derived type return values to Python objects
                 for ret_val in node.ret_val:
-                    if ret_val.type.startswith("type"):
+                    if ret_val.type.startswith("type") or ret_val.type.startswith("class"):
                         cls_name = normalise_class_name(
                             ft.strip_type(ret_val.type), self.class_names
                         )
@@ -611,6 +653,30 @@ except ValueError:
         self.dedent()
         self.write()
 
+    def visit_Binding(self, node):
+        # Handle generic binding similary as interfaces
+        # Leave other binding type alone
+        if node.type != "generic":
+            return self.generic_visit(node)
+
+        log.info("PythonWrapperGenerator visiting generic binding %s" % node.name)
+
+        # first output all the procedures within the interface
+        self.generic_visit(node)
+
+        proc_names = []
+        for proc in node.procedures:
+            proc_name = "self.%s" % proc.name
+            proc_names.append(proc_name)
+
+        dct = dict(
+            intf_name=node.method_name, proc_names="[" + ", ".join(proc_names) + "]"
+        )
+        self.write("def %(intf_name)s(self, *args, **kwargs):" % dct)
+        self.indent()
+        self.write(self._format_doc_string(node))
+        self.write_exception_handler(dct)
+
     def visit_Interface(self, node):
         log.info("PythonWrapperGenerator visiting interface %s" % node.name)
 
@@ -649,14 +715,28 @@ except ValueError:
         log.info("PythonWrapperGenerator visiting type %s" % node.name)
         node.dt_array_initialisers = []
         cls_name = normalise_class_name(node.name, self.class_names)
+        cls_parent = "f90wrap.runtime.FortranDerivedType"
+        if node.parent:
+            cls_parent = normalise_class_name(node.parent.name, self.class_names)
+            if node.parent.mod_name != node.mod_name:
+                cls_parent = "%s.%s" % (node.parent.mod_name, cls_parent)
+                if self.make_package:
+                    self.imports.add((self.py_mod_name, node.parent.mod_name))
         self.write(
             '@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name)
         )
-        self.write("class %s(f90wrap.runtime.FortranDerivedType):" % cls_name)
+        self.write("class %s(%s):" % (cls_name, cls_parent))
         self.indent()
         self.write(self._format_doc_string(node))
         self.generic_visit(node)
 
+        self.write_member_variables(node)
+
+        self.write()
+        self.dedent()
+        self.write()
+
+    def write_member_variables(self, node):
         properties = []
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
@@ -674,9 +754,6 @@ except ValueError:
         self.write(
             "_dt_array_initialisers = [%s]" % (", ".join(node.dt_array_initialisers))
         )
-        self.write()
-        self.dedent()
-        self.write()
 
     def write_scalar_wrappers(self, node, el, properties):
         dct = dict(

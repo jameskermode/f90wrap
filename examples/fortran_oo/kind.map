@@ -1,0 +1,5 @@
+{'complex':{'':'complex_float', '4':'complex_float', '8':'complex_double'},\
+'integer':{'':'int', '1':'signed_char', '2':'short','4':'int', 'c_int':'int', '8':'long_long', 'c_int64_t':'long_long'},\
+'real':{'': 'float', '4': 'float', 'c_float':'float', '8': 'double'},\
+'logical':{'': 'bool'},\
+}
