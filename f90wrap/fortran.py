@@ -857,8 +857,14 @@ def split_type_kind(typename):
     type*kind -> (type, kind)
     type(kind) -> (type, kind)
     type(kind=kind) -> (type, kind)
+    character(len=*) -> (character, *)
     """
-    if '*' in typename:
+
+    if typename.startswith('character'):
+        type = 'character'
+        kind = typename[len('character'):]
+        kind = kind.replace('len=', '')
+    elif '*' in typename:
         type = typename[:typename.index('*')]
         kind = typename[typename.index('*') + 1:]
     elif '(' in typename:
@@ -922,9 +928,10 @@ def normalise_type(typename, kind_map):
     c_type = f2c_type(typename, kind_map)
     c_type_to_fortran_kind = {
         'char' : '',
-        'signed_char' : '',
+        'signed_char' : '(1)',
         'short' : '(2)',
         'int' : '(4)',
+        'long' : '(8)',
         'long_long' : '(8)',
         'float' :  '(4)',
         'double' : '(8)',
@@ -954,6 +961,7 @@ def f2numpy_type(typename, kind_map):
         'signed_char' : 'int8',
         'short' : 'int16',
         'int' : 'int32',
+        'long' : 'int64',
         'long_long' : 'int64',
         'float' :  'float32',
         'double' : 'float64',
