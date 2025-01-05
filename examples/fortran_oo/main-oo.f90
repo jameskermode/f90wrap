@@ -2,11 +2,11 @@ module m_geometry
   use m_base_poly, only : Polygone
   implicit none
   private
-  real(kind=8) :: pi = 3.1415926535897931d0 ! Class-wide private constant
+  real(kind=8), parameter :: pi = atan(1.d0)*4.0d0  ! Class-wide private constant
 
   type, public, abstract, extends(Polygone) :: Rectangle
-      real :: length
-      real :: width
+      real(kind=8) :: length
+      real(kind=8) :: width
     contains
       procedure :: perimeter => rectangle_perimeter
       procedure :: is_square => rectangle_is_square
@@ -20,8 +20,9 @@ module m_geometry
   end type Square
 
   abstract interface
-    function abstract_area(this)
+    function abstract_area(this) result(area)
       import Rectangle
+      real(kind=8) :: area
       class(Rectangle), intent(in)  :: this
     end function abstract_area
   end interface
@@ -31,7 +32,7 @@ module m_geometry
   end interface Square
 
   type, public :: Circle
-     real :: radius
+     real(kind=8) :: radius
    contains
      procedure :: area => circle_area
      procedure :: print => circle_print
@@ -88,31 +89,31 @@ contains
 
   function get_circle_radius(my_circle) result(radius)
     class(Circle), intent(in) :: my_circle
-    real :: radius
+    real(kind=8) :: radius
     radius = my_circle%radius
   end function get_circle_radius
 
   function get_ball_radius(my_ball) result(radius)
     class(Ball), intent(in) :: my_ball
-    real :: radius
+    real(kind=8) :: radius
     radius = my_ball%radius
   end function get_ball_radius
 
   function circle_area(this) result(area)
     class(Circle), intent(in) :: this
-    real :: area
+    real(kind=8) :: area
     area = pi * this%radius**2
   end function circle_area
 
   subroutine circle_print(this)
     class(Circle), intent(in) :: this
-    real :: area
+    real(kind=8) :: area
     area = this%area()  ! Call the type-bound function
   end subroutine circle_print
 
   subroutine circle_obj_name(obj)
     class(Circle), intent(in) :: obj
-    real :: area
+    real(kind=8) :: area
     area = obj%area()  ! Call the type-bound function
   end subroutine circle_obj_name
 
@@ -132,14 +133,14 @@ contains
 
   function ball_area(this) result(area)
     class(Ball), intent(in) :: this
-    real :: area
-    area = 4. * pi * this%radius**2
+    real(kind=8) :: area
+    area = 4.0d0 * pi * this%radius**2
   end function ball_area
 
   function ball_volume(this) result(volume)
     class(Ball), intent(in) :: this
-    real :: volume
-    volume = 4./3. * pi * this%radius**3
+    real(kind=8) :: volume
+    volume = 4.0d0/3.0d0 * pi * this%radius**3
   end function ball_volume
 
   subroutine ball_private(this)
@@ -150,25 +151,25 @@ contains
     class(Circle), intent(in) :: this
     real(kind=4), intent(in) :: radius
     real(kind=4) :: perimeter
-    perimeter = 2. * pi * radius
+    perimeter = 2.0 * pi * radius
   end function circle_perimeter_4
 
   function circle_perimeter_8(this, radius) result(perimeter)
     class(Circle), intent(in) :: this
     real(kind=8), intent(in) :: radius
     real(kind=8) :: perimeter
-    perimeter = 2. * pi * radius
+    perimeter = 2.0d0 * pi * radius
   end function circle_perimeter_8
 
   function rectangle_perimeter(this) result(perimeter)
     class(Rectangle), intent(in) :: this
-    real :: perimeter
+    real(kind=8) :: perimeter
     perimeter = 2*this%length + 2*this%width
   end function rectangle_perimeter
 
   function square_area(this) result(area)
     class(Square), intent(in) :: this
-    real :: area
+    real(kind=8) :: area
     area = this%length * this%length
   end function square_area
 
@@ -185,5 +186,3 @@ contains
   end function square_is_square
 
 end module m_geometry
-
-
