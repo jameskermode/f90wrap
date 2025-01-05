@@ -274,3 +274,6 @@ class Tests_abstract_type():
     square.width = new_size
     assert new_size == pytest.approx(square.length, rel=precision)
     assert new_size == pytest.approx(square.width, rel=precision)
+
+if __name__ == '__main__':
+    pytest.main()
