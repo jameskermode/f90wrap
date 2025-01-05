@@ -4,4 +4,4 @@ NAME     := pywrapper
 WRAPFLAGS += --type-check --kind-map kind.map
 
 test: build
-	$(PYTHON) tests.py
+	$(PYTHON) oowrap_test.py
