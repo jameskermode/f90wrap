@@ -8,12 +8,12 @@ test: wrapper
 	$(PYTHON) run.py
 
 wrapper: f90wrapper mytype.o myclass.o myclass_factory.o
-	f2py-f90wrap --build-dir . -c -m _itest --opt="-O0 -g" \
+	$(PYTHON) -m f90wrap --f2py-f90wrap --build-dir . -c -m _itest --opt="-O0 -g" \
 		f90wrap_mytype.f90 f90wrap_myclass.f90 f90wrap_myclass_factory.f90 \
-		mytype.o myclass.o myclass_factory.o
+		mytype.o myclass.o myclass_factory.o --lower
 
 f90wrapper: mytype.f90 myclass.f90 myclass_factory.f90
-	f90wrap -m itest -P mytype.f90 myclass.f90 myclass_factory.f90 -v
+	$(PYTHON) -m f90wrap -m itest mytype.f90 myclass.f90 myclass_factory.f90 -v
 
 %.o : %.f90
 	$(FC) $(FCFLAGS) -c -g -O0 $< -o $@
