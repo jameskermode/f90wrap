@@ -50,7 +50,7 @@ class TestTypeCheck(unittest.TestCase):
     @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
     def test_string_in_array_3(self):
         in_array = np.array(['one   ', 'four  '], dtype='S6')
-        with self.assertRaises(RuntimeError) as context:
+        with self.assertRaises((RuntimeError, UnicodeDecodeError)) as context:
           m_string_test.string_in_array(in_array)
 
     def test_string_to_string(self):

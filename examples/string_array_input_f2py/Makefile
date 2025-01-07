@@ -31,4 +31,5 @@ f2py: ${OBJ} ${SIGNATURES}
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD}_no_sign ${F2PYFLAGS} ${F90_SRC}
 
 test: f2py
-	${PYTHON} tests.py
+	${PYTHON} tests_sign.py
+	${PYTHON} tests_no_sign.py
