@@ -15,7 +15,7 @@ F2PY        = f2py
 LINK		= -lgfortran
 .PHONY: all clean
 
-all: f2py test
+all: test
 
 clean:
 	rm -rf *.mod *.smod *.o f90wrap*.f90 ${PY_MOD}_*.py _${PY_MOD}*.so __pycache__/ .f2py_f2cmap build ${PY_MOD}_*/ ${SIGNATURES}
