@@ -265,7 +265,8 @@ class UnwrappablesRemover(ft.FortranTransformer):
                 continue
             else:
                 # allocatable arguments only allowed for derived types
-                if 'allocatable' in arg.attributes and not arg.type.startswith('type'):
+                if 'allocatable' in arg.attributes and not (
+                    arg.type.startswith('type') or arg.type.startswith('class')):
                     log.warning('removing routine %s due to allocatable intrinsic type arguments' % node.name)
                     return None
                 # no pointer arguments
@@ -890,6 +891,7 @@ def add_missing_destructors(tree):
         for child in ft.iter_child_nodes(node):
             if 'destructor' in child.attributes:
                 log.info('found destructor %s', child.name)
+                child.attributes.append('skip_call')
                 break
         else:
             proc_attributes = ['destructor', 'skip_call']
@@ -946,6 +948,8 @@ class FunctionToSubroutineConverter(ft.FortranTransformer):
             new_node.type = node.type
         if hasattr(node, 'binding_name'):
             new_node.binding_name = node.binding_name
+        if hasattr(node, 'type_name'):
+            new_node.type_name = node.type_name
         new_node.orig_name = node.orig_name
         new_node.orig_node = node  # keep a reference to the original node
         return new_node

@@ -6,6 +6,7 @@ build
 *.mod
 *.a
 *.so
+*.x
 f90wrap*.f90
 *.pyc
 .pydevproject
@@ -20,3 +21,4 @@ src.*
 .ipynb_checkpoints
 .idea/
 *.swp
+itest/
