@@ -86,6 +86,7 @@ whitespace = re.compile(r'^\s*')  # Initial whitespace
 c_ret = re.compile(r'\r')
 
 iface = re.compile('^interface', re.IGNORECASE)
+abstract_iface = re.compile('^abstract\s*interface', re.IGNORECASE)
 iface_end = re.compile('^end\s*interface|end$', re.IGNORECASE)
 
 subt = re.compile(r'^((' + prefixes + r')\s+)*subroutine', re.IGNORECASE)
@@ -98,10 +99,25 @@ funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 prototype = re.compile(r'^module procedure\s*(::)?\s*([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
 
 binding_types = r'procedure|generic|final'
+binding_type_group = r'^(' + binding_types + r')'
+no_bracket_for_interface = r'(?!\s*\()'
+double_dot_and_attributes = r'\s*((,([^:]*))?(::))?'
+name_target_group = r'\s*(.*)'
+
 binding = re.compile(
-    r'^(' + binding_types + r')' +
-    r'\s*((,([^:]*))?(::))?' +
-    r'\s*(.*)',
+    binding_type_group +
+    no_bracket_for_interface +
+    double_dot_and_attributes +
+    name_target_group,
+    re.IGNORECASE
+)
+
+interface_in_brackets = r'\s*\((.+)\)'
+deferred_binding = re.compile(
+    r'^(procedure)' +
+    interface_in_brackets +
+    double_dot_and_attributes +
+    name_target_group,
     re.IGNORECASE
 )
 
@@ -546,6 +562,17 @@ def check_module(cl, file):
                 if check[0] != None:
                     log.debug('    interface ' + check[0].name)
                     check[0].mod_name = out.name
+                    out.interfaces.append(check[0])
+                    cl = check[1]
+                    continue
+
+                # Abstract interface definition
+                check = check_abstract_interface(cl, file)
+                if check[0] != None:
+                    log.debug('    abstract interface ')
+                    check[0].mod_name = out.name
+                    for proc in check[0].procedures:
+                        proc.mod_name = out.name
                     out.interfaces.append(check[0])
                     cl = check[1]
                     continue
@@ -1177,47 +1204,45 @@ def check_interface(cl, file):
 
     out = Interface()
 
-    if re.match(iface, cl) != None:
-
-        out.filename = file.filename
-        out.lineno = file.lineno
-
-        cl = iface.sub('', cl)
-        out.name = cl.strip()
-
-        # if out.name == '':
-        #    return [None, cl]
-
-        if hold_doc is not None:
-            for line in hold_doc:
-                out.doc.append(line)
-            hold_doc = None
-
-        cl = file.next()
-        while re.match(iface_end, cl) == None:
-
-            check = check_doc(cl, file)
-            if check[0] != None:
-                out.doc.append(check[0])
-                cl = check[1]
-                continue
-
-            check = check_prototype(cl, file)
-            if check[0] != None:
-                for a in check[0]:
-                    out.procedures.append(a)
-                cl = check[1]
-                continue
-
-            cl = file.next()
-
-        cl = file.next()
-
-        out.lineno = slice(out.lineno, file.lineno - 1)
-        return [out, cl]
-
-    else:
+    if re.match(iface, cl) == None:
         return [None, cl]
+
+    out.filename = file.filename
+    out.lineno = file.lineno
+
+    cl = iface.sub('', cl)
+    out.name = cl.strip()
+
+    # if out.name == '':
+    #    return [None, cl]
+
+    if hold_doc is not None:
+        for line in hold_doc:
+            out.doc.append(line)
+        hold_doc = None
+
+    cl = file.next()
+    while re.match(iface_end, cl) == None:
+
+        check = check_doc(cl, file)
+        if check[0] != None:
+            out.doc.append(check[0])
+            cl = check[1]
+            continue
+
+        check = check_prototype(cl, file)
+        if check[0] != None:
+            for a in check[0]:
+                out.procedures.append(a)
+            cl = check[1]
+            continue
+
+        cl = file.next()
+
+    cl = file.next()
+
+    out.lineno = slice(out.lineno, file.lineno - 1)
+    return [out, cl]
 
 
 def check_interface_decl(cl, file):
@@ -1257,6 +1282,44 @@ def check_interface_decl(cl, file):
         return [None, cl]
 
 
+def check_abstract_interface(cl, file):
+    global doc_plugin_module
+    out = Interface()
+
+    if (not cl) or re.match(abstract_iface, cl) == None:
+        return [None, cl]
+
+    out.attributes.append('abstract')
+    out.filename = file.filename
+    out.lineno = file.lineno
+
+    cl = file.next()
+    while re.match(iface_end, cl) == None:
+
+        # Subroutine declaration
+        check = check_subt(cl, file)
+        if check[0] != None:
+            check[0].attributes.append('abstract')
+            out.procedures.append(check[0])
+            cl = check[1]
+            continue
+
+        # Function declaration
+        check = check_funct(cl, file)
+        if check[0] != None:
+            check[0].attributes.append('abstract')
+            out.procedures.append(check[0])
+            cl = check[1]
+            continue
+
+        cl = file.next()
+
+    cl = file.next()
+
+    out.lineno = slice(out.lineno, file.lineno - 1)
+    return [out, cl]
+
+
 def check_prototype(cl, file):
     m = prototype.match(cl)
     if m != None:
@@ -1272,58 +1335,89 @@ def check_prototype(cl, file):
 
 def check_binding(cl, file):
     m = binding.match(cl)
-    if m != None:
-        type = m.group(1).strip().lower()
-        attrs = m.group(4)
-        bindings = m.group(6)
-        if attrs:
-            attrs = [a.strip().lower() for a in attrs.split(',')]
-        out = []
-        if not re.search('deferred', bindings):
-            if type == 'generic':
-                name, targets = bindings.split('=>')
-                name = name.strip().lower()
-                log.debug('found generic binding %s => %s', name, targets)
-                out.append(Binding(
-                    name=name,
+    if m == None:
+        return check_deferred_binding(cl, file)
+
+    type = m.group(1).strip().lower()
+    attrs = m.group(4)
+    bindings = m.group(6)
+    if attrs:
+        attrs = [a.strip().lower() for a in attrs.split(',')]
+    out = []
+    if type == 'generic':
+        name, targets = bindings.split('=>')
+        name = name.strip().lower()
+        log.debug('found generic binding %s => %s', name, targets)
+        out.append(Binding(
+            name=name,
+            lineno=file.lineno,
+            filename=file.filename,
+            type=type,
+            attributes=attrs,
+            procedures=[
+                Prototype(
+                    name=t.strip().lower(),
                     lineno=file.lineno,
-                    filename=file.filename,
-                    type=type,
-                    attributes=attrs,
-                    procedures=[
-                        Prototype(
-                            name=t.strip().lower(),
-                            lineno=file.lineno,
-                            filename=file.filename
-                        )
-                        for t in targets.split(',')
-                    ],
-                ))
-            else:
-                for b in bindings.split(','):
-                    name, *target = [ word.strip().lower() for word in b.split('=>')]
-                    name = name.strip().lower()
-                    target = target[0] if target else name
-                    log.debug('found %s binding %s => %s', type, name, target)
-                    out.append(Binding(
-                        name=name,
+                    filename=file.filename
+                )
+                for t in targets.split(',')
+            ],
+        ))
+    else:
+        for b in bindings.split(','):
+            name, *target = [ word.strip().lower() for word in b.split('=>')]
+            name = name.strip().lower()
+            target = target[0] if target else name
+            log.debug('found %s binding %s => %s', type, name, target)
+            out.append(Binding(
+                name=name,
+                lineno=file.lineno,
+                filename=file.filename,
+                type=type,
+                attributes=attrs,
+                procedures=[
+                    Prototype(
+                        name=target.strip().lower(),
                         lineno=file.lineno,
                         filename=file.filename,
-                        type=type,
-                        attributes=attrs,
-                        procedures=[
-                            Prototype(
-                                name=target.strip().lower(),
-                                lineno=file.lineno,
-                                filename=file.filename,
-                            ),
-                        ],
-                    ))
-        cl = file.next()
-        return [out, cl]
-    else:
+                    ),
+                ],
+            ))
+    cl = file.next()
+    return [out, cl]
+
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+def check_deferred_binding(cl, file):
+    m = deferred_binding.match(cl)
+    if m == None:
         return [None, cl]
 
+    type = m.group(1).strip().lower()
+    interface = m.group(2).strip().lower()
+    attrs = m.group(5)
+    name = m.group(7)
+    if attrs:
+        attrs = [a.strip().lower() for a in attrs.split(',')]
+    out = []
+    log.debug('found deferred %s(%s) binding %s', type, interface, name)
+    out.append(Binding(
+        name=name,
+        lineno=file.lineno,
+        filename=file.filename,
+        type=type,
+        attributes=attrs,
+        procedures=[
+            Prototype(
+                name=interface,
+                lineno=file.lineno,
+                filename=file.filename
+            ),
+        ],
+    ))
+    cl = file.next()
+    return [out, cl]
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

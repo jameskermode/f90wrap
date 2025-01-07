@@ -514,7 +514,7 @@ end type %(typename)s%(suffix)s"""
         """
         Write wrapper code necessary for a Fortran subroutine or function
         """
-        if "abstract" in node.attributes:
+        if "abstract" in node.attributes and not "method" in node.attributes:
             return self.generic_visit(node)
 
         call_name = node.orig_name

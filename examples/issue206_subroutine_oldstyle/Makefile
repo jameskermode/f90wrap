@@ -8,8 +8,7 @@ PYTHON = python
 
 all: subroutine_oldstyle.o
 	f90wrap -m itest -P subroutine_oldstyle.f -v
-	f2py-f90wrap --fcompiler=$(FC) --build-dir . -c -m _itest f90wrap_toplevel.f90 \
-		subroutine_oldstyle.o
+	f2py-f90wrap --build-dir . -c -m _itest f90wrap_toplevel.f90 subroutine_oldstyle.o
 
 test: all
 	$(PYTHON) run.py

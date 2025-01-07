@@ -2,7 +2,7 @@ FC = gfortran
 FCFLAGS = -fPIC
 PYTHON = python
 
-all: wrapper
+all: test
 
 test: wrapper
 	$(PYTHON) run.py
