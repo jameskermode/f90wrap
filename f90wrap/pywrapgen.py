@@ -236,12 +236,12 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         # insert import statements at the beginning of module
         if self.make_package:
             index = self.write_imports(index)
-            self.writelines(["_arrays = {}", "_objs = {}", "\n"], insert=index)
-            self.write()
-            version.parse(np.version.version) > version.parse("1.23.5")
-            self.write(
-                f'warnings.filterwarnings("error", category={self.numpy_complexwarning})'
+            index = self.writelines(['logger = logging.getLogger(__name__)'], insert=index)
+            index = self.writelines(
+                [f'warnings.filterwarnings("error", category={self.numpy_complexwarning})'],
+                insert=index
             )
+            self.writelines(["_arrays = {}", "_objs = {}", "\n"], insert=index)
             self.write()
 
         if self.make_package:
@@ -260,7 +260,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     for func in _array_initialisers:
         func()
 except ValueError:
-    logging.debug('unallocated array(s) detected on import of module "%s".')
+    logger.debug('unallocated array(s) detected on import of module "%s".')
 """
                 % node.name
             )
