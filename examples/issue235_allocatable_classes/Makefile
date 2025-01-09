@@ -21,5 +21,5 @@ f90wrapper: mytype.f90 myclass.f90 myclass_factory.f90
 clean:
 	rm -f *.o f90wrap*.f90 *.so *.mod
 	rm -rf src.*/
-	rm -rf itest/
+	rm -rf itest.py
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
