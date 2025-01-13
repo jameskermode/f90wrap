@@ -143,6 +143,8 @@ USAGE
                             help="Generate a Python package instead of a single module")
         parser.add_argument('-a', '--abort-func', default='f90wrap_abort',
                             help='Name of Fortran subroutine to invoke if a fatal error occurs')
+        parser.add_argument('--auto-raise-error', type=str, default='',
+                            help="Generate calls to abort subroutine in f90wrap fortran wrappers: 'err_num_variable,err_msg_variable'")
         parser.add_argument("--only", nargs="*", default=[], help="Subroutines to include in wrapper")
         parser.add_argument("--skip", nargs="*", default=[],
                             help="Subroutines to exclude modules and subroutines from wrapper")
@@ -389,12 +391,15 @@ USAGE
                                       py_mod_names=py_mod_names,
                                       class_names=class_names,
                                       max_length=py_max_line_length,
+                                      auto_raise=auto_raise_error,
                                       type_check=type_check,
                                       relative = relative,
                                       ).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
                                   abort_func, kind_map, types, default_to_inout,
-                                  max_length=f90_max_line_length).visit(f90_tree)
+                                  max_length=f90_max_line_length,
+                                  default_string_length=default_string_length,
+                                  auto_raise=auto_raise_error).visit(f90_tree)
         return 0
 
     except KeyboardInterrupt:
