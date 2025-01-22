@@ -53,6 +53,11 @@ class TestTypeCheck(unittest.TestCase):
         with self.assertRaises((RuntimeError, UnicodeDecodeError)) as context:
           m_string_test.string_in_array(in_array)
 
+    @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
+    def test_string_in_array_hardcoded_size(self):
+        in_array = np.array(['one   ', 'two   '], dtype='S6')
+        m_string_test.string_in_array_hardcoded_size(in_array)
+
     def test_string_to_string(self):
         in_string = 'yo'
         out_string = m_string_test.string_to_string(in_string)

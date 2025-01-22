@@ -1139,12 +1139,9 @@ return %(el_name)s"""
                     self.indent()
                     self.write("{0} = {0}.astype('{1}')".format(arg.py_name, pytype))
                     self.dedent()
-                if ft_array_dim == -1:
-                    self.write(
-                        "if {0}.dtype.num != {1}:".format(arg.py_name, array_type)
-                    )
+
                 # Allow fortran character to match python ubyte, unicode_ or string_
-                elif array_type == np.ubyte().dtype.num:
+                if array_type == np.ubyte().dtype.num:
                     str_types = {
                         np.ubyte().dtype.num,
                         np.bytes_().dtype.num,
@@ -1160,10 +1157,21 @@ return %(el_name)s"""
                             ft_array_dim,
                         }
                     str_dims = {str(num) for num in str_dims}
-                    self.write(
-                        "if {0}.ndim not in {{{1}}} or {0}.dtype.num not in {{{2}}}:".format(
-                            arg.py_name, ",".join(str_dims), ",".join(str_types)
+                    if ft_array_dim == -1:
+                        self.write(
+                            "if {0}.dtype.num not in {{{1}}}:".format(
+                                arg.py_name, ",".join(str_types)
+                            )
                         )
+                    else:
+                        self.write(
+                            "if {0}.ndim not in {{{1}}} or {0}.dtype.num not in {{{2}}}:".format(
+                                arg.py_name, ",".join(str_dims), ",".join(str_types)
+                            )
+                        )
+                elif ft_array_dim == -1:
+                    self.write(
+                        "if {0}.dtype.num != {1}:".format(arg.py_name, array_type)
                     )
                 else:
                     self.write(
