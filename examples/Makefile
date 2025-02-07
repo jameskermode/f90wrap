@@ -1,3 +1,5 @@
+include make.inc
+
 EXAMPLES = arrayderivedtypes \
 	arrays \
 	arrays_fixed \
@@ -38,7 +40,6 @@ EXAMPLES = arrayderivedtypes \
 	auto_raise_error \
 	relative_import
 
-PYTHON = python
 
 all: test
 

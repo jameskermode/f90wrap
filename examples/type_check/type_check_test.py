@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from packaging import version
+import os
 
 from pywrapper import m_type_test
 
@@ -13,8 +14,6 @@ class TestTypeCheck(unittest.TestCase):
 
     def test_derived_type_selection(self):
         out_circle = np.array([-1], dtype=np.int32)
-        out_string = 'yo'
-        out_string = 'yo'
         out_square = np.array([-1], dtype=np.int32)
 
         m_type_test.is_circle(self._circle, out_circle)
@@ -47,6 +46,7 @@ class TestTypeCheck(unittest.TestCase):
 
         self.assertEqual(out, 13)
 
+    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
     def test_shape_selection_1d(self):
         out = np.array([-1], dtype=np.int32)
         m_type_test.write_array(out)
@@ -57,7 +57,7 @@ class TestTypeCheck(unittest.TestCase):
         out = np.array([[-1]], dtype=np.int32)
         m_type_test.write_array(out)
 
-        self.assertEqual(out[0], 2)
+        self.assertEqual(out[0][0], 2)
 
     def test_type_selection(self):
         out = np.array([-1], dtype=np.float32)

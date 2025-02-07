@@ -5,12 +5,16 @@ NAME2    := Example_pkg
 WRAPFLAGS += -k kind_map
 MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
+ifeq ($(F90),nvfortran)
+	F90FLAGS     += -Mpreprocess
+endif
+
 test: build
 	$(PYTHON) tests.py
 
 build2: build
 	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS="$(WRAPFLAGS) -P"
 
-clean: 
+clean:
 	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME)
 	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME2)

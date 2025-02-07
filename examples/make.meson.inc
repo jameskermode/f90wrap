@@ -1,11 +1,18 @@
-CC        = gcc
-F90       = gfortran
-F90FLAGS  = -fPIC -xf95-cpp-input 
-FPP       = gfortran -E
+CC        ?= gcc
+F90       ?= gfortran
+F90FLAGS  = -fPIC
+FPP       := gfortran -xf95-cpp-input -E
 PYTHON    = python
 #NAME      = name
 WRAPFLAGS := -v
 F2PYFLAGS := --lower
+
+ifeq ($(F90), gfortran)
+	F90FLAGS  := $(F90FLAGS) -xf95-cpp-input
+else ifeq ($(F90), nvfortran)
+	F90FLAGS  := $(F90FLAGS) -Mpreprocess
+endif
+
 
 .SUFFIXES: .f90 .fpp .f
 
@@ -26,9 +33,9 @@ LIBSRC_WRAP_FPP_FILES := $(LIBSRC_WRAP_FILES:%.f90=%.fpp)
 
 
 .f90.fpp:
-	${FPP} ${F90FLAGS} $<  -o $@
+	${FPP} $<  -o $@
 .f.fpp:
-	${FPP} ${F90FLAGS} $<  -o $@
+	${FPP} $<  -o $@
 
 
 extension: ${LIBSRC_WRAP_FPP_FILES}
@@ -46,9 +53,9 @@ build: extension
 	meson compile -C _build_dir
 	mv _build_dir/_${NAME}*.so .
 
-clean: 
+clean:
 	-rm -f f90wrap_*.f90 *.o *.mod *.fpp *.a
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build
 	-rm -rf _${NAME}* ${NAME}*/ ${NAME}.py
 	-rm -rf _build_dir
 	-rm -f meson.build*
