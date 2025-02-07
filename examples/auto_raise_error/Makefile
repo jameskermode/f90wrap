@@ -2,18 +2,12 @@
 #                   define the compiler names
 #=======================================================================
 
-CC          = gcc
-F90         = gfortran
-PYTHON      = python
-CFLAGS      = -fPIC
-F90FLAGS    = -fPIC
+include ../make.inc
 PY_MOD      = pywrapper
 F90_SRC     = main.f90
 OBJ         = $(F90_SRC:.f90=.o)
 F90WRAP_SRC = $(addprefix f90wrap_,${F90_SRC})
 WRAPFLAGS   = -v --auto-raise-error ierr,errmsg
-F2PYFLAGS   = --build-dir build
-F90WRAP     = f90wrap
 F2PY        = f2py-f90wrap
 .PHONY: all clean
 

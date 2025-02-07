@@ -1,9 +1,5 @@
-CC = gcc
-F90 = gfortran
-FPP = gfortran -E
-F90FLAGS = -x f95-cpp-input -fPIC
-CFLAGS = -fPIC
-PYTHON = python
+include ../make.inc
+F90FLAGS += -x f95-cpp-input
 
 UNAME = $(shell uname)
 
@@ -28,7 +24,7 @@ all: test
 clean:
 	-rm -f ${LIBSRC_OBJECTS} libsrc.a _mockdt*.so _mockdtpkg*.so *.mod f90wrap*.* *.fpp
 	-rm -rf mockdtpkg/
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build
 
 .f90.o:
 	${F90} ${F90FLAGS} -c $< -o $@
@@ -37,18 +33,18 @@ clean:
 	${CC} ${CFLAGS} -c $< -o $@
 
 .f90.fpp:
-	${FPP} ${F90FLAGS} $<  -o $@
+	${FPP} ${FPP_F90FLAGS} $<  -o $@
 
 libsrc.a: ${LIBSRC_OBJECTS}
 	${LIBTOOL} $@ $?
 
 _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -k kind_map -v 
-	f2py-f90wrap --build-dir . -c -m _mockdt -L. -lsrc f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _mockdt -L. -lsrc f90wrap*.f90
 
 _mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m mockdtpkg ${LIBSRC_FPP_FILES} -k kind_map -v -P
-	f2py-f90wrap --build-dir . -c -m _mockdtpkg -L. -lsrc f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _mockdtpkg -L. -lsrc f90wrap*.f90
 
 test: _mockdt.so _mockdtpkg.so
 	$(PYTHON) test.py

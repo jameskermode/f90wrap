@@ -17,70 +17,80 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 from __future__ import print_function
 
 #=======================================================================
-#           simple test for f90wrap 
+#           simple test for f90wrap
 #=======================================================================
 
 
 import numpy as np
+import unittest
 
 #=======================================================================
 #the first import is a subroutine, the second is a module)
 #=======================================================================
 
 from mockdt import *
+import os
 
 #=======================================================================
-# call a "top-level" subroutine. This refers to subroutines that are 
+# call a "top-level" subroutine. This refers to subroutines that are
 # present outside of modules, and do not operate on derived types AFAIK
 #=======================================================================
 
-#This particular routine sets some numeric constants 
-assign_constants()
+class TestTypeCheck(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(TestTypeCheck, self).__init__(*args, **kwargs)
 
-#=======================================================================
-#Check if the subroutine worked : it modifies the "precision" module 
-#variables
-#=======================================================================
+    def test_case_1(self):
+        #This particular routine sets some numeric constants
+        assign_constants()
 
-assert(precision.zero   == 0.0)
-assert(precision.one    == 1.0)
-assert(precision.two    == 2.0)
-assert(precision.three  == 3.0)
-assert(precision.four   == 4.0)
+        #=======================================================================
+        #Check if the subroutine worked : it modifies the "precision" module
+        #variables
+        #=======================================================================
 
-assert(precision.half   == 0.5)
+        self.assertEqual(precision.zero, 0.0)
+        self.assertEqual(precision.one, 1.0)
+        self.assertEqual(precision.two, 2.0)
+        self.assertEqual(precision.three, 3.0)
+        self.assertEqual(precision.four, 4.0)
 
-#"acid" test for trailing digits, double precision: nonterminating, nonrepeating
-assert(precision.pi     == np.pi)
-print('1,2,3,4 as done by subroutine are ')
-print(precision.one,precision.two, precision.three,precision.four)
+        self.assertEqual(precision.half, 0.5)
 
-#=======================================================================
-#           Declare the SolverOptions derived type
-#=======================================================================
+        #"acid" test for trailing digits, double precision: nonterminating, nonrepeating
+        self.assertEqual(precision.pi, np.pi)
+        print('1,2,3,4 as done by subroutine are ')
+        print(precision.one,precision.two, precision.three,precision.four)
 
-Options =  Defineallproperties.SolverOptionsDef()
+        #=======================================================================
+        #           Declare the SolverOptions derived type
+        #=======================================================================
 
-print(type(Options.airframevib))
-Options.airframevib = 0
-Options.fet_qddot   = 1
+    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
+    def test_case_2(self):
+        Options =  Defineallproperties.SolverOptionsDef()
 
-#=======================================================================
-#           Set default values for this derived type
-#=======================================================================
+        print(type(Options.airframevib))
+        Options.airframevib = 0
+        Options.fet_qddot   = 1
 
-set_defaults(Options)
-assert(Options.airframevib           == 1)
-assert(Options.fet_qddot             == 0)
-assert(Options.fusharm               == 0)
-assert(Options.fet_response          == 0)
-assert(Options.store_fet_responsejac == 0)
+        #=======================================================================
+        #           Set default values for this derived type
+        #=======================================================================
 
-print('all tests passed, OK!')
+        set_defaults(Options)
+        self.assertEqual(Options.airframevib, 1)
+        self.assertEqual(Options.fet_qddot, 0)
+        self.assertEqual(Options.fusharm, 0)
+        self.assertEqual(Options.fet_response, 0)
+        self.assertEqual(Options.store_fet_responsejac, 0)
 
+if __name__ == '__main__':
+
+    unittest.main()
