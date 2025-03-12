@@ -143,6 +143,22 @@ class TestDocstring(unittest.TestCase):
 
     assert clean_str(ref_docstring) == clean_str(docstring)
 
+  def test_err_cleanup(self):
+    docstring = m_circle.ierr_errmsg.__doc__
+    ref_docstring = """
+    subroutine is able to raise error
+
+    output = ierr_errmsg()
+    Defined at main.f90 lines 59-61
+
+    Returns
+    -------
+    output : float32
+        this is 1 [out]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
   def test_function_return(self):
     docstring = m_circle.function_2.__doc__
     ref_docstring = """
