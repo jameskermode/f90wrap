@@ -19,6 +19,7 @@ module m_circle
   public :: output_1,function_2
   public :: details_doc,details_with_parenthesis
   public :: multiline_details,empty_lines_details,long_line_brief
+  public :: ierr_errmsg
 
 
 contains
@@ -106,6 +107,20 @@ contains
     real, intent(out) :: output
     output = 1
   end subroutine output_1
+
+    !===========================================================================
+    !>
+    !! \brief subroutine is able to raise error
+    !! \param[out]     output       this is 1
+    !! \param[out]     ierr         error code
+    !! \param[out]     errmsg       error message
+    !<
+  subroutine ierr_errmsg(output,ierr,errmsg)
+    real,                 intent(out) :: output
+    integer,              intent(out) :: ierr
+    character(len=*),     intent(out) :: errmsg
+    output = 1
+  end subroutine ierr_errmsg
 
   !===========================================================================
   !>

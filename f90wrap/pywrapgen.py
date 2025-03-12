@@ -45,54 +45,6 @@ def py_arg_value(arg):
 def normalise_class_name(name, name_map):
     return name_map.get(name.lower(), name.title())
 
-
-def format_call_signature(node):
-    if isinstance(node, ft.Procedure):
-        sig = ""
-        if isinstance(node, ft.Function):
-            sig += ", ".join(ret_val.py_name for ret_val in node.ret_val)
-            sig += " = "
-        if "constructor" in node.attributes:
-            sig += node.type_name.title()
-        elif "destructor" in node.attributes:
-            return "Destructor for class %s" % node.type_name.title()
-        else:
-            if hasattr(node, "method_name"):
-                sig += node.method_name
-            else:
-                sig += node.name
-        sig += "("
-        had_optional = False
-        for i, arg in enumerate(node.arguments):
-            if not had_optional and "optional" in arg.attributes:
-                sig += "["
-                had_optional = True
-            if i != 0:
-                sig += ", "
-            sig += arg.py_name
-        if had_optional:
-            sig += "]"
-        sig += ")"
-        rex = re.compile(r"\s+")  # collapse multiple whitespace
-        sig = rex.sub(" ", sig)
-        return sig
-    elif isinstance(node, ft.Module):
-        return "Module %s" % node.name
-    elif isinstance(node, ft.Element):
-        return "Element %s ftype=%s pytype=%s" % (
-            node.name,
-            node.type,
-            ft.f2py_type(node.type),
-        )
-    elif isinstance(node, ft.Interface):
-        if hasattr(node, "method_name"):
-            name = node.method_name
-        else:
-            name = node.name
-        return "%s(*args, **kwargs)" % name
-    else:
-        return str(node)
-
 class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def __init__(
             self,
@@ -449,6 +401,11 @@ except ValueError:
 
     def visit_Procedure(self, node):
         log.info("PythonWrapperGenerator visiting routine %s" % node.name)
+
+        self._filtered_arguments = node.arguments
+        if isinstance(node, ft.Function):
+            self._filtered_ret_val = node.ret_val
+
         if "constructor" in node.attributes:
             self.write_constructor(node)
         elif "destructor" in node.attributes:
@@ -478,10 +435,6 @@ except ValueError:
                 dct['func_name'] = node.mod_name + '__' + node.name
             dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
 
-            self._filtered_arguments = node.arguments
-            if isinstance(node, ft.Function):
-                filtered_ret_val = node.ret_val
-
             if self._err_num_var is not None and self._err_msg_var is not None:
                 self._filtered_arguments = [
                     arg
@@ -489,17 +442,17 @@ except ValueError:
                     if arg.name not in [self._err_num_var, self._err_msg_var]
                 ]
                 if isinstance(node, ft.Function):
-                    filtered_ret_val = [
+                    self._filtered_ret_val = [
                         ret_val
-                        for ret_val in filtered_ret_val
+                        for ret_val in self._filtered_ret_val
                         if ret_val.name not in [self._err_num_var, self._err_msg_var]
                     ]
 
             if isinstance(node, ft.Function):
                 dct["result"] = ", ".join(
-                    [ret_val.name for ret_val in filtered_ret_val]
+                    [ret_val.name for ret_val in self._filtered_ret_val]
                 )
-                dct["call"] = ", ".join([ret_val.name for ret_val in filtered_ret_val])
+                dct["call"] = ", ".join([ret_val.name for ret_val in self._filtered_ret_val])
                 if dct["call"]:
                     dct["call"] = dct["call"] + " = "
 
@@ -554,7 +507,7 @@ except ValueError:
                 for arg in self._filtered_arguments:
                     dynamic_dims = [d for d in arg.dims_list() if not ArrayDimensionConverter.valid_dim_re.match(d.strip())]
                     offset += len(dynamic_dims)
-                for retval in filtered_ret_val:
+                for retval in self._filtered_ret_val:
                     dynamic_dims = [d for d in retval.dims_list() if not ArrayDimensionConverter.valid_dim_re.match(d.strip())]
                     for dim_str in dynamic_dims:
                         # remove unnecessary '1:' prefix, e.g. 1:n or 1:size(x)
@@ -607,7 +560,7 @@ except ValueError:
 
             if isinstance(node, ft.Function):
                 # convert any derived type return values to Python objects
-                for ret_val in filtered_ret_val:
+                for ret_val in self._filtered_ret_val:
                     if ret_val.type.startswith("type") or ret_val.type.startswith("class"):
                         cls_name = normalise_class_name(
                             ft.strip_type(ret_val.type), self.class_names
@@ -1291,14 +1244,14 @@ return %(el_name)s"""
                 doc.append("")
         except IndexError:
             pass
-        doc.append(format_call_signature(node))
+        doc.append(self._format_call_signature(node))
         doc.append("Defined at %s %s" % (node.filename, _format_line_no(node.lineno)))
 
         if isinstance(node, ft.Procedure):
             # For procedures, write parameters and return values in numpydoc format
             doc.append("")
             # Input parameters
-            for i, arg in enumerate(node.arguments):
+            for i, arg in enumerate(self._filtered_arguments):
                 pytype = _format_pytype(self, arg)
                 if i == 0:
                     doc.append("Parameters")
@@ -1316,7 +1269,7 @@ return %(el_name)s"""
                     doc.append("")
 
             if isinstance(node, ft.Function):
-                for i, arg in enumerate(node.ret_val):
+                for i, arg in enumerate(self._filtered_ret_val):
                     pytype = _format_pytype(self, arg)
                     if i == 0:
                         if doc[-1] != "":
@@ -1347,3 +1300,51 @@ return %(el_name)s"""
         # Escape backslashes in docstrings to avoid SyntaxWarnings
         doc = [line.replace('\\', '\\\\') for line in doc]
         return "\n".join(['"""'] + doc + ['"""'])
+
+
+    def _format_call_signature(self, node):
+        if isinstance(node, ft.Procedure):
+            sig = ""
+            if isinstance(node, ft.Function):
+                sig += ", ".join(ret_val.py_name for ret_val in self._filtered_ret_val)
+                sig += " = "
+            if "constructor" in node.attributes:
+                sig += node.type_name.title()
+            elif "destructor" in node.attributes:
+                return "Destructor for class %s" % node.type_name.title()
+            else:
+                if hasattr(node, "method_name"):
+                    sig += node.method_name
+                else:
+                    sig += node.name
+            sig += "("
+            had_optional = False
+            for i, arg in enumerate(self._filtered_arguments):
+                if not had_optional and "optional" in arg.attributes:
+                    sig += "["
+                    had_optional = True
+                if i != 0:
+                    sig += ", "
+                sig += arg.py_name
+            if had_optional:
+                sig += "]"
+            sig += ")"
+            rex = re.compile(r"\s+")  # collapse multiple whitespace
+            sig = rex.sub(" ", sig)
+            return sig
+        elif isinstance(node, ft.Module):
+            return "Module %s" % node.name
+        elif isinstance(node, ft.Element):
+            return "Element %s ftype=%s pytype=%s" % (
+                node.name,
+                node.type,
+                ft.f2py_type(node.type),
+            )
+        elif isinstance(node, ft.Interface):
+            if hasattr(node, "method_name"):
+                name = node.method_name
+            else:
+                name = node.name
+            return "%s(*args, **kwargs)" % name
+        else:
+            return str(node)
