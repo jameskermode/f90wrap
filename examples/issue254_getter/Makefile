@@ -1,37 +1,23 @@
-.PHONY: all clean
+FC = gfortran
+FCFLAGS = -fPIC
+PYTHON = python
 
-NAME=example
-FILES_TO_WRAP=KIMDispersionEquation.f90 KIMDispersion_Horton.f90
-F2PY_F2CMAP=.f2py_f2cmap
-F90WRAP_OUTPUT=f90wrap_KIMDispersionEquation.f90 f90wrap_KIMDispersion_Horton.f90
-F2PY_FORTRAN_OUTPUT=_$(NAME)-f2pywrappers.f
-F2PY_C_OUTPUT=_$(NAME)module.c
-OBJECT_FILES=KIMDispersionEquation.o KIMDispersion_Horton.o _$(NAME)-f2pywrappers.o _$(NAME)module.o
-CC?=gcc
+%.o : %.f90
+	${FC} ${FCFLAGS} -c $< -o $@
 
-all: _$(NAME).so
+all: 
+	f90wrap -m itest -k .f2py_f2cmap -P KIMDispersionEquation.f90 KIMDispersion_Horton.f90 -v
+	f2py-f90wrap --build-dir . -c -m _itest --f2cmap .f2py_f2cmap f90wrap_KIMDispersionEquation.o f90wrap_KIMDispersion_Horton.o
 
-$(F90WRAP_OUTPUT): $(FILES_TO_WRAP)
-	f90wrap -m $(NAME) -k $(F2PY_F2CMAP) $(FILES_TO_WRAP)
-
-$(F2PY_FORTRAN_OUTPUT): $(F90WRAP_OUTPUT)
-	f2py-f90wrap -m _$(NAME) --f2cmap $(F2PY_F2CMAP) --lower $(F90WRAP_OUTPUT)
-
-KIMDispersionEquation.o: KIMDispersionEquation.f90
-	gfortran -fPIC -c KIMDispersionEquation.f90
-
-KIMDispersion_Horton.o: KIMDispersion_Horton.f90
-	gfortran -fPIC -c KIMDispersion_Horton.f90
-
-_$(NAME)-f2pywrappers.o: $(F2PY_FORTRAN_OUTPUT) $(F2PY_C_OUTPUT)
-	gfortran -fPIC -c $(F2PY_FORTRAN_OUTPUT) $(F90WRAP_OUTPUT)
-	$(CC) -fPIC -c $(F2PY_C_OUTPUT)
-
-_$(NAME)module.o: _$(NAME)module.c
-	$(CC) -fPIC -c _$(NAME)module.c
-
-_$(NAME).so: $(OBJECT_FILES)
-	$(CC) -shared -o _$(NAME).so $(OBJECT_FILES)
+test: all
+	$(PYTHON) run.py
 
 clean:
-	rm -f $(OBJECT_FILES) $(F90WRAP_OUTPUT) $(F2PY_FORTRAN_OUTPUT) $(F2PY_C_OUTPUT) _$(NAME).so *.mod *.o
+	rm -f *.o f90wrap*.f90 *.so *.mod
+	rm -rf src.*/
+	rm -rf itest/
+	-rm -rf src.*/ .libs/ __pycache__/
+
+
+.PHONY: all clean
+
