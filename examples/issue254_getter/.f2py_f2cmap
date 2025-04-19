@@ -1,0 +1,13 @@
+{'complex': {'4': 'complex_float',
+             '8': 'complex_double',
+             'complex_kind': 'complex_double',
+             'dp': 'complex_double',
+             'kind1.d0': 'complex_double',
+             'kind1d0': 'complex_double'},
+ 'real': {'4': 'float',
+          '8': 'double',
+          'dp': 'double',
+          'kind1.d0': 'double',
+          'kind1d0': 'double',
+          'real_kind': 'double',
+          'sp': 'float'}}
