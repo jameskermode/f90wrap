@@ -1043,7 +1043,7 @@ end type %(typename)s%(suffix)s"""
                 if isinstance(t, ft.Type):
                     if (self.is_class(t.orig_name)):
                         self.write(
-                            "%s_ptr%%p%%obj = this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
+                            "%s_ptr%%p => this_ptr%%p%%obj%%%s" % (el.orig_name, el.orig_name)
                         )
                     else:
                         self.write(
