@@ -107,9 +107,9 @@ USAGE
                             default='f90wrap_')
         parser.add_argument('-c', '--callback', nargs="*", default=[],
                             help="""Names of permitted callback routines.""")
-        parser.add_argument('-C', '--constructors', nargs="*", default=('initialise_ptr', 'initialise', 'allocate'),
+        parser.add_argument('-C', '--constructors', nargs="*", default=['initialise_ptr', 'initialise', 'allocate'],
                             help="""Names of constructor routines.""")
-        parser.add_argument('-D', '--destructors', nargs="*", default=('finalise', 'deallocate'),
+        parser.add_argument('-D', '--destructors', nargs="*", default=['finalise', 'deallocate'],
                             help="""Names of destructor routines.""")
         parser.add_argument('-k', '--kind-map',
                             help="""File containting Python dictionary in f2py_f2cmap format""")
