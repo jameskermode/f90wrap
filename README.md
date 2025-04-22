@@ -67,9 +67,9 @@ Citing f90wrap
 If you find `f90wrap` useful in academic work, please cite the following
 (open access) publication:
 
-> J. R. Kermode, f90wrap: an automated tool for constructing 
-> deep Python interfaces to modern Fortran codes. 
-> J. Phys. Condens. Matter (2020) 
+> J. R. Kermode, f90wrap: an automated tool for constructing
+> deep Python interfaces to modern Fortran codes.
+> J. Phys. Condens. Matter (2020)
 >[doi:10.1088/1361-648X/ab82d2](https://dx.doi.org/10.1088/1361-648X/ab82d2)
 
 BibTeX entry:
@@ -103,7 +103,7 @@ applications:
  - [CASTEP](http://www.castep.org) - CasPyTep wrappers for electronic structure code
  - [QEpy](http://qepy.rutgers.edu/index.html) - Python wrapper for Quantum Espresso electronic structure code
 
-See this [Jupyter notebook](https://github.com/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo.ipynb) 
+See this [Jupyter notebook](https://github.com/jameskermode/f90wrap/blob/master/docs/tutorials/f90wrap-demo.ipynb)
 from a recent seminar for more details.
 
 Usage
@@ -252,6 +252,8 @@ some of the options are used:
       -a ABORT_FUNC, --abort-func ABORT_FUNC
                             Name of Fortran subroutine to invoke if a fatal error
                             occurs
+      --auto-raise-error AUTO_RAISE_ERROR
+                            Generate calls to abort subroutine in f90wrap fortran wrappers: 'err_num_variable,err_msg_variable'
       --only [ONLY [ONLY ...]]
                             Subroutines to include in wrapper
       --skip [SKIP [SKIP ...]]
@@ -276,7 +278,7 @@ some of the options are used:
                             Maximum length of lines in fortan files written.
                             Default: 120
       --type-check          Check for type/shape matching of Python argument with the wrapped Fortran subroutine
-         
+
 
 Author
 ------
@@ -306,7 +308,7 @@ Developer Notes
 Wheels are built on push and pull requests to `master` using cibuildwheel
 with [this workflow](.github/workflows/build-wheels.yml).
 
-To make a release candidate create a tag with a suffix such as `-rc1` for the first attempt, 
+To make a release candidate create a tag with a suffix such as `-rc1` for the first attempt,
 push to trigger the build:
 
 ```bash
