@@ -82,6 +82,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         types,
         default_to_inout,
         max_length=None,
+        auto_raise=None,
+        default_string_length=None,
     ):
         if max_length is None:
             max_length = 120
@@ -97,6 +99,11 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.types = types
         self.default_to_inout = default_to_inout
         self.routines = []
+        try:
+            self._err_num_var, self._err_msg_var = auto_raise.split(',')
+        except ValueError:
+            self._err_num_var, self._err_msg_var = None, None
+        self.default_string_length = default_string_length
 
     def visit_Root(self, node):
         """
@@ -326,6 +333,13 @@ end type %(typename)s%(suffix)s"""
                 arg_dict["arg_type"] = arg.wrapper_type
                 attributes.append("dimension(%d)" % arg.wrapper_dim)
 
+            if (
+                self._err_num_var and self._err_msg_var
+                and arg_dict["arg_name"] in [self._err_num_var, self._err_msg_var]
+            ):
+                attributes = []
+                if arg_dict["arg_name"] == "errmsg":
+                    arg_dict["arg_type"] = "character*(%s)" % self.default_string_length
             arg_dict["arg_attribs"] = ", ".join(attributes)
             arg_dict["comma"] = len(attributes) != 0 and ", " or ""
 
@@ -467,6 +481,14 @@ end type %(typename)s%(suffix)s"""
             else:
                 func_name = "%s%%p%%%s" % (call_name, bound_name)
 
+        if (
+            self._err_num_var is not None and self._err_msg_var is not None
+            and f"{self._err_num_var}={self._err_num_var}" in arg_names
+            and f"{self._err_msg_var}={self._err_msg_var}" in arg_names
+        ):
+            self.write(f"{self._err_num_var}=0")
+            self.write(f"{self._err_msg_var}=''")
+
         if isinstance(orig_node, ft.Function):
             self.write(
                 "%(ret_val)s = %(func_name)s(%(arg_names)s)"
@@ -491,6 +513,17 @@ end type %(typename)s%(suffix)s"""
                     "call %(sub_name)s(%(arg_names)s)"
                     % {"sub_name": func_name, "arg_names": ", ".join(arg_names)}
                 )
+
+        if (
+            self._err_num_var is not None and self._err_msg_var is not None
+            and f"{self._err_num_var}={self._err_num_var}" in arg_names
+            and f"{self._err_msg_var}={self._err_msg_var}" in arg_names
+        ):
+            self.write(f"if ({self._err_num_var}.ne.0) then")
+            self.indent()
+            self.write(f"call {self.abort_func}({self._err_msg_var})")
+            self.dedent()
+            self.write("end if")
 
     def write_transfer_out_lines(self, node):
         """
@@ -530,8 +563,19 @@ end type %(typename)s%(suffix)s"""
             "F90WrapperGenerator visiting routine %s call_name %s mod_name %r"
             % (node.name, call_name, node.mod_name)
         )
+
+        filtered_arguments = node.arguments
+        if self._err_num_var is not None and self._err_msg_var is not None:
+            filtered_arguments = [
+                arg for arg in filtered_arguments if arg.name not in [self._err_num_var, self._err_msg_var]
+            ]
+
         sub_name = self.prefix + node.name
-        arg_names = '(' + ', '.join([arg.name for arg in node.arguments]) + ')' if node.arguments else ''
+        arg_names = (
+            "(" + ", ".join([arg.name for arg in filtered_arguments]) + ")"
+            if filtered_arguments
+            else ""
+        )
         if node.mod_name is not None:
             sub_name = self.prefix + node.mod_name + '__' + node.name
         sub_name = shorten_long_name(sub_name)
