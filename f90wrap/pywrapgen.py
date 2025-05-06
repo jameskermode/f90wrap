@@ -1096,7 +1096,8 @@ return %(el_name)s"""
                     )
                 )
                 self.indent()
-                self.write("raise TypeError")
+                self.write(f"msg = f\"Expecting '{{{cls_mod_name}.{cls_name}}}' but got '{{type({arg.py_name})}}'\"")
+                self.write(f"raise TypeError(msg)")
                 self.dedent()
 
                 if self.make_package:
