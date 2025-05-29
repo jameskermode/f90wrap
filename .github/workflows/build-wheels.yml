@@ -46,7 +46,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.11'
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.16.5
@@ -97,7 +97,7 @@ jobs:
         shell: bash
 
       - name: Deploy sdist to PyPI
-        if: ${{ steps.check-tag.outputs.match == 'true' && startsWith(matrix.buildplat[0], 'ubuntu') && matrix.python == 'cp313' }}
+        if: ${{ steps.check-tag.outputs.match == 'true' && startsWith(matrix.buildplat[0], 'ubuntu') && matrix.python == 'cp311' }}
         run: |
           pip install build
           python -m build
