@@ -22,7 +22,7 @@ please contact James Kermode <james.kermode@gmail.com>
 Dependencies
 ------------
 
- 1.  [Python](http://www.python.org) 3.8+ (Python 2.7 no longer supported)
+ 1.  [Python](http://www.python.org) 3.10+ (Python 2.7 no longer supported)
  2.  Recent version of [numpy](http://www.numpy.org) which includes `f2py`
  3.  Fortran compiler - tested with `gfortran` 4.6+ and recent `ifort` 12+
 
