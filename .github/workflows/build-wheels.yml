@@ -53,6 +53,7 @@ jobs:
         env:
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}*
           CIBW_ARCHS: ${{ matrix.buildplat[2] }}
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=13.0
           CIBW_ENVIRONMENT_PASS_LINUX: RUNNER_OS
           CIBW_TEST_REQUIRES: meson-python>=0.12.0 ninja
           CIBW_BEFORE_ALL_MACOS: "brew install gfortran gnu-sed && brew unlink gfortran && brew link gfortran"
