@@ -10,9 +10,9 @@ build-backend = 'mesonpy'
 name = "f90wrap"
 description = "Fortran to Python interface generator with derived type support"
 authors = [{name = "James Kermode", email = "james.kermode@gmail.com"}]
-python-requires = ">=3.10"
+python-requires = ">=3.9"
 urls = {Homepage = "https://github.com/jameskermode/f90wrap"}
-dependencies = ["numpy>=2.0.0", "packaging"]
+dependencies = ["numpy>=1.13", "packaging"]
 dynamic = ["version"]
 
 [project.readme]

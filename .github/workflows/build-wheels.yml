@@ -29,7 +29,10 @@ jobs:
         - [windows-latest, win, AMD64]
         - [macos-latest, macosx, arm64]
 
-        python: ["cp310", "cp311", "cp312", "cp313"]
+        python: ["cp39", "cp310", "cp311", "cp312", "cp313"]
+        exclude:
+        - buildplat: [macos-latest, macosx, arm64]
+          python: "cp39"
 
       fail-fast: false
 
@@ -52,7 +55,8 @@ jobs:
           CIBW_ARCHS: ${{ matrix.buildplat[2] }}
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=13.0
           CIBW_ENVIRONMENT_PASS_LINUX: RUNNER_OS
-          CIBW_TEST_REQUIRES: meson-python>=0.12.0 numpy>=2.0.0 ninja
+          CIBW_TEST_REQUIRES: meson-python>=0.12.0 ninja
+          CIBW_TEST_SKIP: "cp39-*"
           CIBW_BEFORE_ALL_MACOS: "brew install gfortran gnu-sed && brew unlink gfortran && brew link gfortran"
           CIBW_TEST_COMMAND_MACOS: "cd {project}/examples; make clean_meson; make test_meson"
           CIBW_TEST_COMMAND_LINUX: "cd {project}/examples; make clean_meson; make test_meson"
