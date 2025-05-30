@@ -2,7 +2,7 @@
 # Minimum requirements for the build system to execute.
 requires = [
     "meson-python>=0.12.0",
-    "numpy>=2.0.0; python_version>='3.10'",
+    "numpy>=2.0.0",
 ]
 build-backend = 'mesonpy'
 
