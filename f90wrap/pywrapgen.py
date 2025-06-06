@@ -106,6 +106,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             py_mod_names=None,
             class_names=None,
             max_length=None,
+            auto_raise=None,
             type_check=False,
             relative=False):
         if max_length is None:
@@ -130,6 +131,10 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.init_file = init_file
         self.type_check = type_check
         self.relative = relative
+        try:
+            self._err_num_var, self._err_msg_var = auto_raise.split(',')
+        except ValueError:
+            self._err_num_var, self._err_msg_var = None, None
 
         if version.parse(np.version.version) < version.parse("2.0"):
             self.numpy_complexwarning = "numpy.ComplexWarning"
@@ -370,21 +375,6 @@ except ValueError:
             call="",
         )
 
-    def write_classmethod(self, node):
-        dct = dict(
-            func_name=node.name,
-            method_name=hasattr(node, "method_name") and node.method_name or node.name,
-            prefix=self.prefix,
-            mod_name=self.f90_mod_name,
-            py_arg_names=", ".join(
-                [arg.py_name + py_arg_value(arg) for arg in node.arguments]
-            ),
-            f90_arg_names=", ".join(
-                ["%s=%s" % (arg.name, arg.py_value) for arg in node.arguments]
-            ),
-            call="",
-        )
-
         dct["call"] = "result = "
         for arg in node.arguments:
             if 'optional' in arg.attributes and '._handle' in arg.py_value:
@@ -478,20 +468,37 @@ except ValueError:
                 dct['func_name'] = node.mod_name + '__' + node.name
             dct['subroutine_name'] = shorten_long_name('%(prefix)s%(func_name)s' % dct)
 
+            self._filtered_arguments = node.arguments
+            if isinstance(node, ft.Function):
+                filtered_ret_val = node.ret_val
+
+            if self._err_num_var is not None and self._err_msg_var is not None:
+                self._filtered_arguments = [
+                    arg
+                    for arg in self._filtered_arguments
+                    if arg.name not in [self._err_num_var, self._err_msg_var]
+                ]
+                if isinstance(node, ft.Function):
+                    filtered_ret_val = [
+                        ret_val
+                        for ret_val in filtered_ret_val
+                        if ret_val.name not in [self._err_num_var, self._err_msg_var]
+                    ]
+
             if isinstance(node, ft.Function):
                 dct["result"] = ", ".join(
-                    [ret_val.name for ret_val in node.ret_val]
+                    [ret_val.name for ret_val in filtered_ret_val]
                 )
-                dct["call"] = ", ".join([ret_val.name for ret_val in node.ret_val])
+                dct["call"] = ", ".join([ret_val.name for ret_val in filtered_ret_val])
                 if dct["call"]:
                     dct["call"] = dct["call"] + " = "
 
             py_sign_names = [
-                arg.py_name + py_arg_value(arg) for arg in node.arguments
+                arg.py_name + py_arg_value(arg) for arg in self._filtered_arguments
             ]
             f90_call_names = [
                 "%s=%s" % (arg.name, arg.py_value) if arg.py_value else "%s" % arg.name
-                for arg in node.arguments
+                for arg in self._filtered_arguments
             ]
 
             # Add optional argument to specify if function is called from interface
@@ -515,7 +522,7 @@ except ValueError:
             if self.type_check:
                 self.write_type_checks(node)
 
-            for arg in node.arguments:
+            for arg in self._filtered_arguments:
                 if "optional" in arg.attributes and "._handle" in arg.py_value:
                     dct["f90_arg_names"] = dct["f90_arg_names"].replace(
                         arg.py_value,
@@ -526,17 +533,17 @@ except ValueError:
             if isinstance(node, ft.Function):
 
                 def f902py_name(node, f90_name):
-                    for arg in node.arguments:
+                    for arg in self._filtered_arguments:
                         if arg.name == f90_name:
                             return arg.py_name
                     return ""
 
-                args_py_names = [arg.py_name for arg in node.arguments]
+                args_py_names = [arg.py_name for arg in self._filtered_arguments]
                 offset = 0
                 # Regular arguments are first, compute the index offset
-                for arg in node.arguments:
+                for arg in self._filtered_arguments:
                     offset += len(arg.dims_list())
-                for retval in node.ret_val:
+                for retval in filtered_ret_val:
                     the_dim = ""
                     try:
                         the_dim = retval.dims_list()[0]
@@ -585,7 +592,7 @@ except ValueError:
 
             if isinstance(node, ft.Function):
                 # convert any derived type return values to Python objects
-                for ret_val in node.ret_val:
+                for ret_val in filtered_ret_val:
                     if ret_val.type.startswith("type") or ret_val.type.startswith("class"):
                         cls_name = normalise_class_name(
                             ft.strip_type(ret_val.type), self.class_names
@@ -1053,7 +1060,7 @@ return %(el_name)s"""
         # This adds tests that checks data types and dimensions
         # to ensure either the correct version of an interface is used
         # either an exception is returned
-        for arg in node.arguments:
+        for arg in self._filtered_arguments:
             # Check if optional argument is being passed
             if "optional" in arg.attributes:
                 self.write("if {0} is not None:".format(arg.py_name))
