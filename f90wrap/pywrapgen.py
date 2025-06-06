@@ -1251,7 +1251,7 @@ return %(el_name)s"""
         doc = node.doc[:]  # incoming docstring from Fortran source
         if (
             doc and doc[-1][-1] != "\n"
-        ):  # Short sumary and extended sumary have a trailing newline
+        ):  # Short summary and extended summary have a trailing newline
             doc.append("")
         doc.append(format_call_signature(node))
         doc.append("Defined at %s %s" % (node.filename, _format_line_no(node.lineno)))
