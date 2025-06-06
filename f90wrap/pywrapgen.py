@@ -728,7 +728,11 @@ except ValueError:
             if node.parent.mod_name != node.mod_name:
                 cls_parent = "%s.%s" % (node.parent.mod_name, cls_parent)
                 if self.make_package:
-                    self.imports.add((self.py_mod_name, node.parent.mod_name))
+                    if self.relative:
+                        py_mod_name = '.'
+                    else:
+                        py_mod_name = self.py_mod_name
+                    self.imports.add((py_mod_name, node.parent.mod_name))
         self.write(
             '@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name)
         )
