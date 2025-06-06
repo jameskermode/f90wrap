@@ -590,7 +590,9 @@ def check_module(cl, file):
                 check = check_decl(cl, file)
                 if check[0] != None:
                     for el in check[0]:
-                        out.elements.append(el)
+                        # Some module variable have multiple declaration in different #ifdef scopes
+                        if el.name not in [elem.name for elem in out.elements]:
+                          out.elements.append(el)
                         cl = check[1]
                     continue
 
