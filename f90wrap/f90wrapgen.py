@@ -1085,14 +1085,16 @@ end type %(typename)s%(suffix)s"""
                 self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    if (self.is_class(t.orig_name)):
-                        self.write(
-                            "%s_ptr%%p => this_ptr%%p%%obj%%%s" % (el.orig_name, el.orig_name)
-                        )
+                    if (self.is_class(el.type)):
+                        self.write("allocate(%s_ptr%%p)" % el.orig_name)
+                        source = "%s_ptr%%p%%obj =" % el.orig_name
                     else:
-                        self.write(
-                            "%s_ptr%%p => this_ptr%%p%%%s" % (el.orig_name, el.orig_name)
-                        )
+                        source = "%s_ptr%%p =>" % el.orig_name
+                    if (self.is_class(t.orig_name)):
+                        target = "this_ptr%%p%%obj%%%s" % el.orig_name
+                    else:
+                        target = "this_ptr%%p%%%s" % el.orig_name
+                    self.write("%s %s" % (source, target))
                 else:
                     self.write(
                         "%s_ptr%%p => %s_%s" % (el.orig_name, t.name, el.orig_name)
@@ -1106,14 +1108,16 @@ end type %(typename)s%(suffix)s"""
                     % (el.orig_name, localvar, el.orig_name)
                 )
                 if isinstance(t, ft.Type):
-                    if (self.is_class(t.orig_name)):
-                        self.write(
-                            "this_ptr%%p%%obj%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
-                        )
+                    if (self.is_class(el.type)):
+                        target = "%s_ptr%%p%%obj" % el.orig_name
                     else:
-                        self.write(
-                            "this_ptr%%p%%%s = %s_ptr%%p" % (el.orig_name, el.orig_name)
-                        )
+                        log.warning("oh no")
+                        target = "%s_ptr%%p" % el.orig_name
+                    if (self.is_class(t.orig_name)):
+                        source = "this_ptr%%p%%obj%%%s" % el.orig_name
+                    else:
+                        source = "this_ptr%%p%%%s" % el.orig_name
+                    self.write("%s = %s" % (source, target))
                 else:
                     self.write(
                         "%s_%s = %s_ptr%%p" % (t.name, el.orig_name, el.orig_name)
