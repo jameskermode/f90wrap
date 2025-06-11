@@ -27,7 +27,7 @@ import re
 import numpy as np
 from packaging import version
 
-from f90wrap.transform import shorten_long_name
+from f90wrap.transform import shorten_long_name, ArrayDimensionConverter
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
@@ -542,7 +542,8 @@ except ValueError:
                 offset = 0
                 # Regular arguments are first, compute the index offset
                 for arg in self._filtered_arguments:
-                    offset += len(arg.dims_list())
+                    dynamic_dims = [d for d in arg.dims_list() if not ArrayDimensionConverter.valid_dim_re.match(d)]
+                    offset += len(dynamic_dims)
                 for retval in filtered_ret_val:
                     the_dim = ""
                     try:
