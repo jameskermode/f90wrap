@@ -1,8 +1,8 @@
-PYTHON = python
+include ../make.inc
 
 all:
 	f90wrap -m elmod elemental_module.f90 -v -k kind_map
-	f2py-f90wrap --fcompiler=gfortran -I. --build-dir build -c -m _elmod elemental_module.f90 f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -I. -c -m _elmod elemental_module.f90 f90wrap*.f90
 
 clean:
 	-rm *.o *.mod elmod.py* _elmod*.so f90wrap_elemental_module.*

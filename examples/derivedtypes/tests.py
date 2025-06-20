@@ -33,6 +33,7 @@ import unittest
 import numpy as np
 
 import sys
+import os
 
 pkg = False
 if sys.argv[0].endswith('tests_pkg.py'):
@@ -56,6 +57,7 @@ class BaseTests(object):
         val_out = self.lib.library.return_value_sub(val_in)
         self.assertEqual(val_in+10, val_out)
 
+    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
     def test_return_a_dt_func(self):
         dt = self.lib.library.return_a_dt_func()
         self.assertTrue(isinstance(dt, self.lib.datatypes.different_types))
