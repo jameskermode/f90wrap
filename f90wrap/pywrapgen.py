@@ -1096,7 +1096,8 @@ return %(el_name)s"""
                     )
                 )
                 self.indent()
-                self.write("raise TypeError")
+                self.write(f"msg = f\"Expecting '{{{cls_mod_name}.{cls_name}}}' but got '{{type({arg.py_name})}}'\"")
+                self.write(f"raise TypeError(msg)")
                 self.dedent()
 
                 if self.make_package:
@@ -1250,7 +1251,7 @@ return %(el_name)s"""
         doc = node.doc[:]  # incoming docstring from Fortran source
         if (
             doc and doc[-1][-1] != "\n"
-        ):  # Short sumary and extended sumary have a trailing newline
+        ):  # Short summary and extended summary have a trailing newline
             doc.append("")
         doc.append(format_call_signature(node))
         doc.append("Defined at %s %s" % (node.filename, _format_line_no(node.lineno)))
