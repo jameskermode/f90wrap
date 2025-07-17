@@ -27,7 +27,7 @@ import re
 import numpy as np
 from packaging import version
 
-from f90wrap.transform import shorten_long_name
+from f90wrap.transform import shorten_long_name, ArrayDimensionConverter
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
@@ -542,14 +542,17 @@ except ValueError:
                 offset = 0
                 # Regular arguments are first, compute the index offset
                 for arg in self._filtered_arguments:
-                    offset += len(arg.dims_list())
+                    dynamic_dims = [d for d in arg.dims_list() if not ArrayDimensionConverter.valid_dim_re.match(d.strip())]
+                    offset += len(dynamic_dims)
                 for retval in filtered_ret_val:
-                    the_dim = ""
-                    try:
-                        the_dim = retval.dims_list()[0]
-                    except IndexError:
-                        pass
-                    for dim_str in retval.dims_list():
+                    dynamic_dims = [d for d in retval.dims_list() if not ArrayDimensionConverter.valid_dim_re.match(d.strip())]
+                    for dim_str in dynamic_dims:
+                        # remove unnecessary '1:' prefix, e.g. 1:n or 1:size(x)
+                        if dim_str.startswith("1:"):
+                            dim_str = dim_str[2:]
+                        elif ":" in dim_str:
+                            log.error("Cannot wrap ranges for dimension arguments: %s" % dim_str)
+
                         # "size" is replaced by "size_bn" ("badname") by numpy.f2py
                         keyword = "size"
                         try:
@@ -578,11 +581,13 @@ except ValueError:
                                 out_dim = "%s" % (py_name)
 
                         if py_name in args_py_names:
-                            log.info("Adding dimension argument to '%s'" % node.name)
+                            log.info("Adding dimension argument to '%s' ('%s' -> '%s')" % (node.name, dim_str, out_dim))
                             dct["f90_arg_names"] = "%s, %s" % (
                                 dct["f90_arg_names"],
                                 "f90wrap_n%d=%s" % (offset, out_dim),
                             )
+                        else:
+                            log.error("Failed adding dimension argument to '%s' ('%s' -> '%s')" % (node.name, dim_str, out_dim))
                         offset += 1
 
             call_line = (
