@@ -6,12 +6,20 @@ sizeof_source = custom_target(
     command: f2py + ['-m', 'sizeof_fortran_t']
 )
 
+fortran_compiler = meson.get_compiler('fortran')
+link_args = []
+
+if fortran_compiler.get_id() == 'nvidia_hpc'
+    link_args = ['-lnvf', '-lrt']
+endif
+
 py3.extension_module(
     'sizeof_fortran_t',
     'sizeoffortran.f90', sizeof_source,
     dependencies: fortranobject_dep,
     install: true,
     subdir: 'f90wrap',
+    link_args: link_args,
 )
 
 py3.extension_module(
@@ -20,6 +28,7 @@ py3.extension_module(
     dependencies: fortranobject_dep,
     install: true,
     subdir: 'f90wrap',
+    link_args: link_args,
 )
 
 py3.install_sources(

@@ -32,6 +32,7 @@ fortranobject_lib = static_library('_fortranobject',
   fortranobject_c,
   dependencies: py3_dep,
   include_directories: [inc_np, inc_f2py],
+  pic: true,
 )
 fortranobject_dep = declare_dependency(
   link_with: fortranobject_lib,
