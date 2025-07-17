@@ -13,6 +13,7 @@ def clean_str(in_str):
   for i,line in enumerate(docstring_lines):
     docstring_lines[i] = line.strip(' \n\t')
     docstring_lines[i] = re.sub('Defined at main\\.f90 lines \\d+-\\d+', '', docstring_lines[i])
+    docstring_lines[i] = re.sub(' +', ' ', docstring_lines[i])
   return '\n'.join(docstring_lines)
 
 class TestDocstring(unittest.TestCase):
@@ -159,6 +160,93 @@ class TestDocstring(unittest.TestCase):
     Those are very informative details
 
     details_doc(self, radius)
+    Defined at main.f90 lines 80-82
+
+    Parameters
+    ----------
+    circle : T_Circle
+        t_circle to initialize [in,out]
+    radius : float32
+        radius of the circle [in]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
+  def test_details_with_parenthesis(self):
+    circle = m_circle.t_circle()
+    docstring = m_circle.details_with_parenthesis.__doc__
+    ref_docstring = """
+    Initialize circle
+
+    Those are very informative details (with parenthesis)
+
+    details_with_parenthesis(self, radius)
+    Defined at main.f90 lines 80-82
+
+    Parameters
+    ----------
+    circle : T_Circle
+        t_circle to initialize [in,out]
+    radius : float32
+        radius of the circle [in]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
+  def test_multiline_details(self):
+    circle = m_circle.t_circle()
+    docstring = m_circle.multiline_details.__doc__
+    ref_docstring = """
+    Initialize circle
+
+    First details line
+    Second details line
+
+    multiline_details(self, radius)
+    Defined at main.f90 lines 80-82
+
+    Parameters
+    ----------
+    circle : T_Circle
+        t_circle to initialize [in,out]
+    radius : float32
+        radius of the circle [in]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
+  def test_empty_lines_details(self):
+    circle = m_circle.t_circle()
+    docstring = m_circle.empty_lines_details.__doc__
+    ref_docstring = """
+    Initialize circle
+
+    First details line
+
+    Second details line after a empty line
+
+    empty_lines_details(self, radius)
+    Defined at main.f90 lines 80-82
+
+    Parameters
+    ----------
+    circle : T_Circle
+        t_circle to initialize [in,out]
+    radius : float32
+        radius of the circle [in]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
+  def test_long_line_brief(self):
+    circle = m_circle.t_circle()
+    docstring = m_circle.long_line_brief.__doc__
+    ref_docstring = """
+    This is a very long brief that takes up a lot of space and contains lots of information, it should probably be wrapped to the next line, but we will continue regardless
+
+    Those are very informative details
+
+    long_line_brief(self, radius)
     Defined at main.f90 lines 80-82
 
     Parameters

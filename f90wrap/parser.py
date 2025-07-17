@@ -147,6 +147,7 @@ doxygen_main = re.compile('_COMMENT.*\\\\(brief|details)')
 doxygen_others = re.compile('_COMMENT.*\\\\(file|author|copyright)')
 doxygen_param = re.compile('_COMMENT.*\\\\(param|returns)')
 doxygen_param_group = re.compile('_COMMENT.*\\\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
+comment_pattern = re.compile('_COMMENT[<>]?')
 
 result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
 
@@ -335,7 +336,7 @@ class F90File(object):
                     self.lines = [self.lines[0]] + ['_FD' + self.lines[1][2:]] + self.lines[2:]
                     self._lineno_offset = 1
                 else:
-                    self.lines = [self.lines[0]] + ['_COMMENT' + self.lines[1][1:]] + self.lines[2:]
+                    self.lines[1] = re.sub(r'^!+', '_COMMENT', self.lines[1])
                     self._lineno_offset = 1
             else:
                 self._lineno_offset = 0
@@ -343,7 +344,8 @@ class F90File(object):
 
             self.lines = self.lines[1:]
 
-        cline = rmspace.sub(r'\1(', cline)
+        if not cline.startswith('_COMMENT'):
+            cline = rmspace.sub(r'\1(', cline)
         if cline == '':
             return None
         else:
@@ -369,18 +371,41 @@ def check_doc(cline, file):
         for pattern in [fdoc_mark, doxygen_main, doxygen_others, doxygen_param]:
             match = re.search(pattern, cline)
             if match != None:
-                if pattern == doxygen_param:
-                    # Leave pattern for later parsing in check_arg
-                    out = cline.strip()
-                elif pattern == doxygen_main:
-                    key = match.group(1)
-                    out = pattern.sub('', cline).strip(' ') + '\n'
-                elif pattern == doxygen_others:
-                    key = match.group(1)
-                    out = key.capitalize() + ': ' + pattern.sub('', cline).strip(' ')
+                # Init out, only doxygen_other tags need a prefix
+                if pattern == doxygen_others:
+                    out = match.group(1).capitalize() + ': '
                 else:
-                    out = pattern.sub('', cline).strip(' ')
-                cline = file.next()
+                    out = ""
+                stop = False
+                # Ensure that the whole comment is captured even if it is multiline
+                # Only parse 100 lines maximum to be sure not to enter a infinite loop
+                for _ in range(100):
+                    cleaned_line = pattern.sub('', cline)
+                    cleaned_line = comment_pattern.sub('', cleaned_line)
+                    cleaned_line = cleaned_line.strip(' ')
+                    if pattern == doxygen_param:
+                        # Leave pattern for later parsing in check_arg
+                        out = cline.strip()
+                        stop = True
+                    elif pattern == doxygen_main:
+                        out += cleaned_line + '\n'
+                    elif pattern == doxygen_others:
+                        out += cleaned_line
+                    else:
+                        out += cleaned_line
+                    # Get next line and check if it is a multiline comment
+                    cline = file.next()
+
+                    # If the next line is not a comment, stop
+                    if not re.search(comment_pattern, cline):
+                        stop = True
+                    # If the next line contains a doxygen tag, stop
+                    for next_pattern in [fdoc_mark, doxygen_main, doxygen_others, doxygen_param]:
+                        if re.search(next_pattern, cline):
+                            stop = True
+                            break
+                    if stop:
+                        break
                 return [out, cline]
     return [out, cline]
 
