@@ -13,6 +13,11 @@ if ff.has_argument('-Wno-conversion')
   add_project_arguments('-Wno-conversion', language: 'fortran')
 endif
 
+link_args = []
+if ff.get_id() == 'nvidia_hpc'
+    link_args = ['-lnvf', '-lrt']
+endif
+
 py = import('python').find_installation(pure: false)
 py_dep = py.dependency()
 
@@ -41,5 +46,6 @@ py.extension_module(name,
   source,
   include_directories: inc_np,
   dependencies : [py_dep, quadmath_dep],
-  install : true
+  install : true,
+  link_args: link_args,
   )
