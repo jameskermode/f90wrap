@@ -98,7 +98,7 @@ USAGE
     try:
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
-        parser.add_argument("-v", "--verbose", dest="verbose", action="count",
+        parser.add_argument("-v", "--verbose", dest="verbose", action="count", default=0,
                             help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
@@ -168,10 +168,14 @@ USAGE
 
         args = parser.parse_args()
 
-        if args.verbose:
-            logging.getLogger().setLevel(logging.DEBUG)
-        else:
-            logging.getLogger().setLevel(logging.INFO)
+        log_levels = {
+            0: logging.ERROR,
+            1: logging.WARNING,
+            2: logging.INFO,
+            3: logging.DEBUG
+        }
+
+        logging.getLogger().setLevel(log_levels.get(min(args.verbose, max(log_levels.keys())), logging.INFO))
 
         # set defaults, to be overridden by command line args and config file
         kind_map = {}
