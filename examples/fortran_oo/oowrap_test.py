@@ -255,9 +255,128 @@ class TestsAbstractType(unittest.TestCase):
         new_size = 3.6
         self.square.length = new_size
         self.square.width = new_size
-        self.assertAlmostEqual(self.square.length, new_size, delta=precision)
-        self.assertAlmostEqual(self.square.width, new_size, delta=precision)
+        self.assertAlmostEqual(self.square.length, new_size, delta=precision_8*new_size)
+        self.assertAlmostEqual(self.square.width, new_size, delta=precision_8*new_size)
 
+    def test_compare(self):
+        square1 = m_geometry.Square(square_size)
+        square2 = m_geometry.Square(square_size)
+        self.assertTrue(square1.is_equal(square2))
+
+    def test_return_class(self):
+        square1 = m_geometry.Square(square_size)
+        diamond = square1.create_diamond()
+        self.assertEqual(diamond.width, square_size)
+        self.assertEqual(diamond.length, square_size)
+
+class TestsListClass(unittest.TestCase):
+    def test_list_square(self):
+        n_square = 5
+        width=10.
+        list_square = m_geometry.List_square()
+        list_square.init(n_square)
+        for i in range(n_square):
+            list_square.alloc_class[i].init(width+i)
+            list_square.ptr_class[i].init(width+i)
+            list_square.alloc_type[i].init(width+i)
+            list_square.ptr_type[i].init(width+i)
+        list_square.scalar_type.init(width)
+        list_square.scalar_class.init(width)
+
+        # Test getter of list of derived types elements
+        for i in range(n_square):
+            ref = m_geometry.Square(width+i)
+            self.assertTrue(list_square.alloc_class[i].is_equal(ref))
+            self.assertTrue(list_square.ptr_class[i].is_equal(ref))
+            self.assertTrue(list_square.alloc_type[i].is_equal(ref))
+            self.assertTrue(list_square.ptr_type[i].is_equal(ref))
+        ref = m_geometry.Square(width)
+        self.assertTrue(list_square.scalar_type.is_equal(ref))
+        self.assertTrue(list_square.scalar_class.is_equal(ref))
+
+        # Test setter of list of derived types elements
+        for i in range(n_square):
+            ref = m_geometry.Square(width-i)
+            list_square.alloc_class[i] = ref
+            list_square.ptr_class[i] = ref
+            list_square.alloc_type[i] = ref
+            list_square.ptr_type[i] = ref
+            self.assertTrue(list_square.alloc_class[i].is_equal(ref))
+            self.assertTrue(list_square.ptr_class[i].is_equal(ref))
+            self.assertTrue(list_square.alloc_type[i].is_equal(ref))
+            self.assertTrue(list_square.ptr_type[i].is_equal(ref))
+        ref = m_geometry.Square(100.)
+        list_square.scalar_type = ref
+        list_square.scalar_class = ref
+        self.assertTrue(list_square.scalar_type.is_equal(ref))
+        self.assertTrue(list_square.scalar_class.is_equal(ref))
+
+    def test_list_circle(self):
+        n_circle = 5
+        width=10.
+        list_circle = m_geometry.List_circle()
+        list_circle.init(n_circle)
+        for i in range(n_circle):
+            list_circle.alloc_class[i].init(width+i)
+            list_circle.ptr_class[i].init(width+i)
+            list_circle.alloc_type[i].init(width+i)
+            list_circle.ptr_type[i].init(width+i)
+        list_circle.scalar_type.init(width)
+        list_circle.scalar_class.init(width)
+
+        # Test getter of list of derived types elements
+        for i in range(n_circle):
+            ref = m_geometry.Circle(width+i, width+i)
+            self.assertEqual(list_circle.alloc_class[i].radius, ref.radius)
+            self.assertEqual(list_circle.ptr_class[i].radius, ref.radius)
+            self.assertEqual(list_circle.alloc_type[i].radius, ref.radius)
+            self.assertEqual(list_circle.ptr_type[i].radius, ref.radius)
+        ref = m_geometry.Circle(width, width)
+        self.assertEqual(list_circle.scalar_type.radius, ref.radius)
+        self.assertEqual(list_circle.scalar_class.radius, ref.radius)
+
+        # Test setter of list of derived types elements
+        for i in range(n_circle):
+            ref = m_geometry.Circle(width-i, width-i)
+            # Class Circle has no assignment(=) method thus
+            # we expect setitem setter to be undefined
+            with self.assertRaises(TypeError):
+                list_circle.alloc_class[i] = ref
+            with self.assertRaises(TypeError):
+                list_circle.ptr_class[i] = ref
+            list_circle.alloc_type[i] = ref
+            list_circle.ptr_type[i] = ref
+            self.assertEqual(list_circle.alloc_type[i].radius, ref.radius)
+            self.assertEqual(list_circle.ptr_type[i].radius, ref.radius)
+        ref = m_geometry.Circle(100., 100.)
+        list_circle.scalar_type = ref
+        with self.assertRaises(AttributeError):
+            list_circle.scalar_class = ref
+        self.assertEqual(list_circle.scalar_type.radius, ref.radius)
+
+    def test_array(self):
+        a = m_geometry.Array_3d()
+        n1=10
+        n2=2
+        n3=3
+        a.init_3d(n1,n2,n3)
+        shape = a.values_3d.shape
+        self.assertEqual(shape[0], n1)
+        self.assertEqual(shape[1], n2)
+        self.assertEqual(shape[2], n3)
+        shape = a.values.shape
+        print(shape)
+        self.assertEqual(shape[0], n1*n2*n3)
+        shape = a.buf.shape
+        self.assertEqual(shape[0], n1*n2*n3)
+        shape = a.values_3d.shape
+        self.assertEqual(shape[0], n1)
+        self.assertEqual(shape[1], n2)
+        self.assertEqual(shape[2], n3)
+        shape = a.buf.shape
+        self.assertEqual(shape[0], n1*n2*n3)
+        shape = a.values.shape
+        self.assertEqual(shape[0], n1*n2*n3)
 
 if __name__ == '__main__':
     unittest.main()

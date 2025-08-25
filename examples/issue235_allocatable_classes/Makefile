@@ -1,6 +1,4 @@
-FC = gfortran
-FCFLAGS = -fPIC
-PYTHON = python
+include ../make.inc
 
 all: test
 
