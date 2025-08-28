@@ -36,10 +36,11 @@ list(APPEND tests
     output_kind
     remove_pointer_arg
     fortran_oo
-	issue206_subroutine_oldstyle
-	issue227_allocatable
-	issue235_allocatable_classes
+    issue206_subroutine_oldstyle
+    issue227_allocatable
+    issue235_allocatable_classes
     auto_raise_error
+    method_optional
 )
 
 foreach(test ${tests})
