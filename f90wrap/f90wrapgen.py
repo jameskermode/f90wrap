@@ -382,7 +382,12 @@ end type %(typename)s%(suffix)s"""
                     self.dedent()
                     self.write("else")
                     self.indent()
-                    self.write("%(arg_name)s_ptr%%p => null()" % arg_dict)
+                    if self.is_class(arg.type):
+                        node.deallocate.append(arg.name)
+                        self.write("allocate(%(arg_name)s_ptr%%p)" % arg_dict)
+                        self.write("%(arg_name)s_ptr%%p%%obj => null()" % arg_dict)
+                    else:
+                        self.write("%(arg_name)s_ptr%%p => null()" % arg_dict)
                     self.dedent()
                     self.write("end if")
 
@@ -540,7 +545,17 @@ end type %(typename)s%(suffix)s"""
         Deallocate the opaque reference to clean up.
         """
         for dealloc in node.deallocate:
-            self.write("deallocate(%s_ptr%%p)" % dealloc)  # (self.prefix, dealloc))
+            is_optional = False
+            for arg in node.arguments:
+                if ft.strip_type(arg.name) == dealloc and "optional" in arg.attributes:
+                    is_optional = True
+            if is_optional:
+                self.write(f"if (.not. present({dealloc})) then")
+                self.indent()
+            self.write(f"deallocate({dealloc}_ptr%p)")
+            if is_optional:
+                self.dedent()
+                self.write("end if")
 
     def visit_Procedure(self, node):
         """
@@ -592,7 +607,11 @@ end type %(typename)s%(suffix)s"""
         for tname in node.types:
             if tname in self.types and "super-type" in self.types[tname].doc:
                 self.write_super_type_lines(self.types[tname])
-            self.write_type_or_class_lines(tname)
+            pointer = False
+            for arg in node.arguments:
+                if ft.strip_type(arg.type) == tname and "optional" in arg.attributes:
+                    pointer = True
+            self.write_type_or_class_lines(tname, pointer=pointer)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
