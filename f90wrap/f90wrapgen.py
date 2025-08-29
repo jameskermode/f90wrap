@@ -546,12 +546,17 @@ end type %(typename)s%(suffix)s"""
         """
         for dealloc in node.deallocate:
             is_optional = False
+            is_class = False
             for arg in node.arguments:
                 if ft.strip_type(arg.name) == dealloc and "optional" in arg.attributes:
                     is_optional = True
+                if self.is_class(arg.type):
+                    is_class = True
             if is_optional:
                 self.write(f"if (.not. present({dealloc})) then")
                 self.indent()
+            if is_class and not is_optional:
+                self.write(f"deallocate({dealloc}_ptr%p%obj)")
             self.write(f"deallocate({dealloc}_ptr%p)")
             if is_optional:
                 self.dedent()
