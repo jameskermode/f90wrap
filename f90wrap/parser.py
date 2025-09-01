@@ -148,7 +148,7 @@ fdoc_rv_mark = re.compile(r'_FDRV\s*')
 doxygen_main = re.compile(r'_COMMENT.*\\(brief|details)')
 doxygen_others = re.compile(r'_COMMENT.*\\(file|author|copyright)')
 doxygen_param = re.compile(r'_COMMENT.*\\(param|returns)')
-doxygen_param_group = re.compile(r'_COMMENT.*\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
+doxygen_param_group = re.compile(r'_COMMENT.*\\(param|returns)\s*(\[.+?\]|)\s+(\S+?)[\s:]+(.*)')
 comment_pattern = re.compile(r'_COMMENT[<>]?')
 
 result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
