@@ -51,6 +51,26 @@ class TestDocstring(unittest.TestCase):
 
     assert clean_str(ref_docstring) == clean_str(docstring)
 
+  def test_subroutine_docstring_more_args(self):
+    docstring = m_circle.construct_circle_with_more_args.__doc__
+    ref_docstring = """
+    Initialize circle with more args
+
+    construct_circle_with_more_args(self, radius1, radius2)
+    Defined at main.f90 lines 17-20
+
+    Parameters
+    ----------
+    circle : T_Circle
+        t_circle to initialize [in,out]
+    radius1 : float32
+        radius of the circle [in]
+    radius2 : float32
+        radius of the circle [in]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
   def test_subroutine_docstring_more_doc(self):
     docstring = m_circle.construct_circle_more_doc.__doc__
     ref_docstring = """
