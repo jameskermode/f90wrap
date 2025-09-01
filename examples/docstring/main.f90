@@ -12,7 +12,8 @@ module m_circle
      real :: radius
   end type t_circle
 
-  public :: construct_circle,construct_circle_more_doc
+  public :: construct_circle
+  public :: construct_circle_with_more_args,construct_circle_more_doc
   public :: incomplete_doc_sub
   public :: no_direction,doc_inside
   public :: output_1,function_2
@@ -33,6 +34,18 @@ contains
     real, intent(in) :: radius
     circle%radius = radius
   end subroutine construct_circle
+
+    !===========================================================================
+    !>
+    !! \brief Initialize circle with more args
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius1,radius2      radius of the circle
+    !<
+  subroutine construct_circle_with_more_args(circle,radius1,radius2)
+    type(t_circle) :: circle
+    real, intent(in) :: radius1,radius2
+    circle%radius = radius1 + radius2
+  end subroutine construct_circle_with_more_args
 
     !===========================================================================
     !>

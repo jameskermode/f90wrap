@@ -1616,9 +1616,14 @@ def check_arg(cl, file):
                         direction = match.group(2)
                         name = match.group(3)
                         comm = match.group(4)
-                        if name in nl:
-                            hold_doc.remove(line)
-                            doxygen_map[name] = ' '.join([comm, direction]).strip(' ')
+                        # Check if all names in name_list are present in nl
+                        for single_name in name.split(','):
+                            if single_name in nl:
+                                try:
+                                    hold_doc.remove(line)
+                                except ValueError:
+                                    pass
+                                doxygen_map[single_name] = ' '.join([comm, direction]).strip(' ')
 
         dc = []
 
