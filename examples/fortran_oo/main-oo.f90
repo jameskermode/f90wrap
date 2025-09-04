@@ -1,4 +1,5 @@
 module m_geometry
+  use iso_c_binding
   use m_base_poly, only : Polygone
   implicit none
   private
@@ -15,9 +16,24 @@ module m_geometry
 
   type, public, extends(Rectangle) :: Square
     contains
+      procedure :: init => square_init
       procedure :: is_square => square_is_square
       procedure :: area => square_area
+      procedure :: is_equal => square_is_equal
+      procedure :: copy => square_copy
+      procedure :: create_diamond => square_create_diamond
+      generic   :: assignment(=) => copy
   end type Square
+
+  type, public, extends(Polygone) :: Diamond
+      real(kind=8) :: length
+      real(kind=8) :: width
+    contains
+      procedure :: init => diamond_init
+      procedure :: info => diamond_info
+      procedure :: copy => diamond_copy
+      generic   :: assignment(=) => copy
+  end type Diamond
 
   abstract interface
     function abstract_area(this) result(area)
@@ -31,6 +47,18 @@ module m_geometry
     module procedure :: construct_square
   end interface Square
 
+  type,public :: List_square
+     type(square), allocatable :: alloc_type(:)
+     type(square), pointer     :: ptr_type(:)
+     class(square),allocatable :: alloc_class(:)
+     class(square),pointer     :: ptr_class(:)
+     class(square),pointer     :: scalar_class
+     type(square)              :: scalar_type
+     integer :: n
+   contains
+     procedure :: init => list_square_init
+  end type List_square
+
   type, public :: Circle
      real(kind=8) :: radius
    contains
@@ -38,10 +66,11 @@ module m_geometry
      procedure :: print => circle_print
      procedure :: obj_name => circle_obj_name
      procedure :: copy => circle_copy
+     procedure :: init => circle_init
      procedure :: private_method => circle_private
      procedure :: perimeter_4 => circle_perimeter_4
      procedure :: perimeter_8 => circle_perimeter_8
-     generic :: perimeter => perimeter_8, perimeter_4
+     generic   :: perimeter => perimeter_8, perimeter_4
      final     :: circle_free
   end type Circle
 
@@ -60,6 +89,31 @@ module m_geometry
     module procedure :: construct_ball
   end interface Ball
 
+  type,public :: List_circle
+     type(Circle), allocatable :: alloc_type(:)
+     type(Circle), pointer     :: ptr_type(:)
+     class(Circle),allocatable :: alloc_class(:)
+     class(Circle),pointer     :: ptr_class(:)
+     class(Circle),pointer     :: scalar_class
+     type(Circle)              :: scalar_type
+     integer :: n
+   contains
+     procedure :: init => list_circle_init
+  end type List_circle
+
+  type, public :: Array
+     real,allocatable :: buf(:)
+     real,pointer     :: values(:) => null()
+   contains
+     procedure :: init => array_init
+  end type Array
+
+  type, public, extends(Array) :: Array_3d
+     real,pointer :: values_3d(:,:,:) => null()
+   contains
+     procedure :: init_3d => array_3d_init
+  end type Array_3d
+
   public:: pi
   public:: circle_area,circle_print,circle_obj_name
   public:: ball_area,ball_volume
@@ -68,12 +122,54 @@ module m_geometry
   public:: get_circle_radius,get_ball_radius
 contains
 
+  subroutine array_init(this,n)
+     class(Array),target,intent(inout) :: this
+     integer,              intent(in)    :: n
+     allocate(this%buf(n))
+     this%values => this%buf
+  end subroutine array_init
+
+  subroutine array_3d_init(this,n1,n2,n3)
+     class(Array_3d),target,intent(inout) :: this
+     integer,                 intent(in)    :: n1,n2,n3
+
+     type(c_ptr) :: cptr
+
+     call this%Array%init(n1*n2*n3)
+
+     cptr=c_loc(this%values)
+     call c_f_pointer(cptr,this%values_3d,shape=(/n1,n2,n3/))
+
+  end subroutine array_3d_init
+
   function construct_square(length)
-    type(Square) :: construct_square
+    type(Square)     :: construct_square
     real, intent(in) :: length
     construct_square%length = length
     construct_square%width = length
   end function construct_square
+
+  subroutine list_square_init(this,n)
+    class(List_square),intent(inout) :: this
+    integer,          intent(in) :: n
+    this%n = n
+    allocate(square :: this%alloc_class(n))
+    allocate(square :: this%ptr_class(n))
+    allocate(this%alloc_type(n))
+    allocate(this%ptr_type(n))
+    allocate(square :: this%scalar_class)
+  end subroutine list_square_init
+
+  subroutine list_circle_init(this,n)
+    class(List_circle),intent(inout) :: this
+    integer,          intent(in) :: n
+    this%n = n
+    allocate(Circle :: this%alloc_class(n))
+    allocate(Circle :: this%ptr_class(n))
+    allocate(this%alloc_type(n))
+    allocate(this%ptr_type(n))
+    allocate(Circle :: this%scalar_class)
+  end subroutine list_circle_init
 
   function construct_circle(rc,rb)
     type(Circle) :: construct_circle
@@ -122,6 +218,12 @@ contains
     class(Circle), intent(in) :: from
     this%radius = from%radius
   end subroutine circle_copy
+
+  subroutine circle_init(this, radius)
+    class(Circle), intent(inout) :: this
+    real,          intent(in) :: radius
+    this%radius = radius
+  end subroutine circle_init
 
   subroutine circle_private(this)
     class(Circle), intent(in) :: this
@@ -179,10 +281,65 @@ contains
     is_square = 0
   end function rectangle_is_square
 
+  subroutine square_copy(this, from)
+    class(Square), intent(inout) :: this
+    class(Square), intent(in) :: from
+    this%length = from%length
+    this%width = from%width
+  end subroutine square_copy
+
+  subroutine square_init(this, length)
+    class(Square), intent(inout) :: this
+    real,          intent(in) :: length
+    this%length = length
+    this%width = length
+  end subroutine square_init
+
   function square_is_square(this) result(is_square)
     class(Square), intent(in) :: this
     integer :: is_square
     is_square = 1
   end function square_is_square
+
+  function square_is_equal(this,other) result(is_equal)
+    class(Square),          intent(in) :: this
+    class(Rectangle),target,intent(in) :: other
+    integer :: is_equal
+
+    is_equal = 0
+
+    if (other%is_square() .eq. 1) then
+      if (other%length == this%length) then
+         is_equal = 1
+      endif
+    endif
+  end function square_is_equal
+
+  subroutine diamond_init(this,width,length)
+    class(Diamond), intent(inout) :: this
+    real(kind=8),   intent(in)    :: width,length
+    this%width=width
+    this%length=length
+  end subroutine diamond_init
+
+  subroutine diamond_copy(this,other)
+    class(Diamond), intent(inout) :: this
+    type(Diamond),  intent(in)    :: other
+    call this%init(other%width,other%length)
+  end subroutine diamond_copy
+
+  subroutine diamond_info(this)
+    class(Diamond), intent(in) :: this
+    print *,'Diamong width =',this%width
+    print *,'Diamong length =',this%length
+  end subroutine diamond_info
+
+  function square_create_diamond(this)
+    class(Square), intent(in) :: this
+    type(diamond)             :: square_create_diamond
+
+    call square_create_diamond%init(this%width,this%width)
+  end function square_create_diamond
+
 
 end module m_geometry
