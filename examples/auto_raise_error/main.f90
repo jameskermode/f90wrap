@@ -5,8 +5,16 @@ module m_error
   public :: auto_raise,auto_no_raise
   public :: auto_raise_optional,auto_no_raise_optional
   public :: no_error_var
+  public :: str_input
 
 contains
+
+  subroutine str_input(keyword)
+
+    implicit none
+    character(len=*),   optional, intent(in)    :: keyword
+
+  end subroutine
 
   subroutine auto_raise(ierr,errmsg)
 
