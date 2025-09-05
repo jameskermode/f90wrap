@@ -17,9 +17,9 @@ module m_circle
   public :: incomplete_doc_sub
   public :: no_direction,doc_inside
   public :: output_1,function_2
+  public :: ierr_errmsg
   public :: details_doc,details_with_parenthesis
   public :: multiline_details,empty_lines_details,long_line_brief
-  public :: ierr_errmsg
 
 
 contains
