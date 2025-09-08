@@ -1057,7 +1057,7 @@ end type %(typename)s%(suffix)s"""
         if isinstance(t, ft.Type):
             self.write_type_or_class_lines(t.orig_name)
 
-        if el.type.startswith("type") and not (el.type == "type(" + t.orig_name + ")"):
+        if el.type.startswith("type") and not (el.type == "type(" + t.name + ")"):
             self.write_type_or_class_lines(el.type)
 
         if isinstance(t, ft.Type):
