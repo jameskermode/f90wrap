@@ -40,7 +40,8 @@ EXAMPLES = arrayderivedtypes \
 	auto_raise_error \
 	dump_package \
 	method_optional \
-	relative_import
+	relative_import \
+	keep_single_interface
 
 PYTHON = python
 

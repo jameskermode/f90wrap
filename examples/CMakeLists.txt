@@ -45,6 +45,7 @@ list(APPEND tests
 	  dump_package
     method_optional
     relative_import
+    keep_single_interface
 )
 
 foreach(test ${tests})

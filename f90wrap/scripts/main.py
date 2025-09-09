@@ -161,6 +161,8 @@ USAGE
         parser.add_argument("--py-max-line-length", help="Maximum length of lines in python files written. Default: 80")
         parser.add_argument("--f90-max-line-length", help="Maximum length of lines in fortan files written. "
                                                           "Default: 120")
+        parser.add_argument('--keep-single-interfaces', action='store_true', default=False,
+                            help="Keep interfaces that contain a single procedure")
         parser.add_argument('--type-check', action='store_true', default=False,
                             help="Check for type/shape matching of Python argument with the wrapped Fortran subroutine")
         parser.add_argument('--relative', action='store_true', default=False,
@@ -374,7 +376,8 @@ USAGE
                                                shorten_routine_names,
                                                modules_for_type,
                                                remove_optional_arguments,
-                                               force_public=force_public)
+                                               force_public=force_public,
+                                               keep_single_interfaces=keep_single_interfaces)
 
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
