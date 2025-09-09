@@ -45,6 +45,7 @@ list(APPEND tests
 	  dump_package
     method_optional
     relative_import
+    return_bool
 )
 
 foreach(test ${tests})
