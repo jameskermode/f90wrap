@@ -164,6 +164,8 @@ USAGE
                             help="Check for type/shape matching of Python argument with the wrapped Fortran subroutine")
         parser.add_argument('--relative', action='store_true', default=False,
                             help="Using relative import instead of package name in the package")
+        parser.add_argument('--return-bool', action='store_true', default=False,
+                            help="Python functions return bool (instead of integer) when associated Fortran type is a logical")
 
         args = parser.parse_args()
 
@@ -393,8 +395,8 @@ USAGE
                                       max_length=py_max_line_length,
                                       auto_raise=auto_raise_error,
                                       type_check=type_check,
-                                      relative = relative,
-                                      ).visit(py_tree)
+                                      relative=relative,
+                                      return_bool=return_bool).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
                                   abort_func, kind_map, types, default_to_inout,
                                   max_length=f90_max_line_length,
