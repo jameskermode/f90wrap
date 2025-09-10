@@ -164,6 +164,8 @@ USAGE
                             help="Check for type/shape matching of Python argument with the wrapped Fortran subroutine")
         parser.add_argument('--relative', action='store_true', default=False,
                             help="Using relative import instead of package name in the package")
+        parser.add_argument('--return-decoded', action='store_true', default=False,
+                            help="Return decoded strings instead of raw bytes")
 
         args = parser.parse_args()
 
@@ -393,7 +395,8 @@ USAGE
                                       max_length=py_max_line_length,
                                       auto_raise=auto_raise_error,
                                       type_check=type_check,
-                                      relative = relative,
+                                      relative=relative,
+                                      return_decoded=return_decoded,
                                       ).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
                                   abort_func, kind_map, types, default_to_inout,
