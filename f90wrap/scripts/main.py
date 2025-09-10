@@ -169,6 +169,8 @@ USAGE
                             help="List of json files listing modules/types coming from external f90wrap")
         parser.add_argument('--dump-package', default="",
                             help="Output json file where to dump package description, can be reused in another package later via --external-packages option")
+        parser.add_argument('--return-decoded', action='store_true', default=False,
+                            help="Return decoded strings instead of raw bytes")
 
         args = parser.parse_args()
 
@@ -402,7 +404,8 @@ USAGE
                                       max_length=py_max_line_length,
                                       auto_raise=auto_raise_error,
                                       type_check=type_check,
-                                      relative = relative,
+                                      relative=relative,
+                                      return_decoded=return_decoded,
                                       ).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
                                   abort_func, kind_map, types, default_to_inout,
