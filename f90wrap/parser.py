@@ -145,10 +145,10 @@ fdoc_comm_mid = re.compile(r'!\s*\*FD')
 fdoc_mark = re.compile('_FD\s*')
 fdoc_rv_mark = re.compile('_FDRV\s*')
 
-doxygen_main = re.compile('_COMMENT.*\\\\(brief|details)')
-doxygen_others = re.compile('_COMMENT.*\\\\(file|author|copyright)')
-doxygen_param = re.compile('_COMMENT.*\\\\(param|returns)')
-doxygen_param_group = re.compile('_COMMENT.*\\\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
+doxygen_main = re.compile(r'_COMMENT.*\\(brief|details)')
+doxygen_others = re.compile(r'_COMMENT.*\\(file|author|copyright)')
+doxygen_param = re.compile(r'_COMMENT.*\\(param|returns)')
+doxygen_param_group = re.compile(r'_COMMENT.*\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
 comment_pattern = re.compile('_COMMENT[<>]?')
 
 result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
@@ -162,8 +162,8 @@ alnum = string.ascii_letters + string.digits + '_'
 
 valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/]*\))|(len\(.*\)))$', re.IGNORECASE)
 
-public = re.compile('(^public$)|(^public\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
-private = re.compile('(^private$)|(^private\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
+public = re.compile(r'(^public$)|(^public\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
+private = re.compile(r'(^private$)|(^private\s*(::)?\s*(\w+)(\s*,\s*\w+)*$)', re.IGNORECASE)
 
 rmspace = re.compile(r'(\w+)\s+\(', re.IGNORECASE)
 def remove_delimited(line, d1, d2):
@@ -455,7 +455,7 @@ def check_program(cl, file):
         # Get program name
 
         cl = program.sub('', cl)
-        out.name = re.search(re.compile('\w+'), cl).group().strip()
+        out.name = re.search(re.compile(r'\w+'), cl).group().strip()
         if out.name == '':
             out.name = '<Unnamed>'
         out.filename = file.filename
@@ -541,7 +541,7 @@ def check_module(cl, list_modules, file):
 
         # Get (sub)module name
         cl = module.sub('', cl)
-        name = re.search(re.compile('\w+'), cl).group()
+        name = re.search(re.compile(r'\w+'), cl).group()
 
         # If module already registered, just append new informations
         # This can happen with submodules, different files are associated to the same module
@@ -729,7 +729,7 @@ def check_subt(cl, file, grab_hold_doc=True):
 
         # Get subt name
         cl = subt.sub('', cl)
-        out.name = re.search(re.compile('\w+'), cl).group()
+        out.name = re.search(re.compile(r'\w+'), cl).group()
         log.debug('    module subroutine checking ' + out.name)
 
         # Test in principle whether we can have a 'do not wrap' list
@@ -749,8 +749,8 @@ def check_subt(cl, file, grab_hold_doc=True):
 
         if has_args and ')' in cl:
             cl = cl[:cl.find(')', 0)+1]
-            cl = re.sub('\w+', '', cl, count=1)
-            argl = re.split('[\W]+', cl)
+            cl = re.sub(r'\w+', '', cl, count=1)
+            argl = re.split(r'[\W]+', cl)
 
             del (argl[0])
             del (argl[len(argl) - 1])
@@ -760,7 +760,7 @@ def check_subt(cl, file, grab_hold_doc=True):
                 if cl.startswith('_COMMENT'):
                     cl = file.next()
                 if cl.strip() == '': continue
-                arglt = re.split('[\W]+', cl)
+                arglt = re.split(r'[\W]+', cl)
                 del (arglt[len(arglt) - 1])
                 for a in arglt:
                     argl.append(a)
@@ -960,7 +960,7 @@ def check_funct(cl, file, grab_hold_doc=True):
         # Get func name
 
         cl = funct.sub('', cl)
-        out.name = re.search(re.compile('\w+'), cl).group()
+        out.name = re.search(re.compile(r'\w+'), cl).group()
         log.debug('    module function checking ' + out.name)
 
         # Default name of return value is function name
@@ -981,8 +981,8 @@ def check_funct(cl, file, grab_hold_doc=True):
             # get argument list
 
             # substitue 'consecutive words' by '' in cl, at most 1 time
-            cl = re.sub('\w+', '', cl, count=1)
-            argl = re.split('[\W]+', cl)
+            cl = re.sub(r'\w+', '', cl, count=1)
+            argl = re.split(r'[\W]+', cl)
 
             del (argl[0])
             del (argl[len(argl) - 1])
@@ -993,7 +993,7 @@ def check_funct(cl, file, grab_hold_doc=True):
                     cl = file.next()
                 if cl.strip() == '':
                     continue
-                arglt = re.split('[\W]+', cl)
+                arglt = re.split(r'[\W]+', cl)
                 del (arglt[len(arglt) - 1])
                 for a in arglt:
                     argl.append(a.lower())
@@ -1188,7 +1188,7 @@ def check_type(cl, file):
         if m.group(1):
             out.attributes = split_attribs(m.group(1))
 
-        out.name = re.search(re.compile('\w+'), cl).group()
+        out.name = re.search(re.compile(r'\w+'), cl).group()
         log.info('parser reading type %s' % out.name)
 
         # Get next line, and check each possibility in turn

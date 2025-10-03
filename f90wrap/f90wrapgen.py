@@ -30,7 +30,6 @@ import numpy as np
 
 from f90wrap import codegen as cg
 from f90wrap import fortran as ft
-from f90wrap.six import string_types  # Python 2/3 compatibility library
 from f90wrap.transform import shorten_long_name
 
 log = logging.getLogger(__name__)
@@ -180,7 +179,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         node_uses = []
         if hasattr(node, "uses"):
             for use in node.uses:
-                if isinstance(use, string_types):
+                if isinstance(use, str):
                     node_uses.append((use, None))
                 else:
                     node_uses.append(use)
