@@ -287,40 +287,29 @@ def main():
 
                     if fortran_obj_files:
                         import re
-                        print(f"DEBUG: Found .o files in command line: {fortran_obj_files}")
-                        print(f"DEBUG: Current directory: {os.getcwd()}")
-                        print(f"DEBUG: meson.build content:\n{content}\n")
-                        # Find where fortran_sources is defined
-                        pattern = r"(fortran_sources = \[)([^\]]*)(])"
-                        match = re.search(pattern, content, re.DOTALL)
-                        print(f"DEBUG: Regex pattern matched: {match is not None}")
-                        if match:
-                            print(f"DEBUG: Match groups: {match.groups()}")
-                            existing_sources = match.group(2)
-                            # Convert .o files to .f90 files and add them
-                            additional_sources = []
-                            for obj_file in fortran_obj_files:
-                                # Try both .f90 and .F90 extensions
-                                for ext in ['.f90', '.F90']:
-                                    f90_file = obj_file.replace('.o', ext)
-                                    print(f"DEBUG: Checking for {f90_file}, exists: {os.path.exists(f90_file)}")
-                                    if os.path.exists(f90_file):
-                                        # Get relative path from build directory to source
-                                        rel_path = os.path.join('..', os.path.basename(f90_file))
-                                        additional_sources.append(f"  '{rel_path}'")
-                                        print(f"DEBUG: Added source: {rel_path}")
-                                        break
+                        # Convert .o files to .f90 files and add them to py.extension_module sources
+                        additional_sources = []
+                        for obj_file in fortran_obj_files:
+                            # Try both .f90 and .F90 extensions
+                            for ext in ['.f90', '.F90']:
+                                f90_file = obj_file.replace('.o', ext)
+                                if os.path.exists(f90_file):
+                                    # Get relative path from build directory to source
+                                    rel_path = os.path.join('..', os.path.basename(f90_file))
+                                    additional_sources.append(f"                     '''{rel_path}''',")
+                                    break
 
-                            if additional_sources:
-                                new_sources = existing_sources.rstrip() + ',\n' + ',\n'.join(additional_sources) + '\n'
-                                content = content.replace(
-                                    f"fortran_sources = [{existing_sources}]",
-                                    f"fortran_sources = [{new_sources}]"
-                                )
+                        if additional_sources:
+                            # Find the sources list in py.extension_module and add our files
+                            # Look for the pattern: py.extension_module('name', [ ... fortranobject_c ], ...)
+                            # We want to insert before fortranobject_c
+                            pattern = r'(py\.extension_module\([^,]+,\s*\[[^\]]*)(fortranobject_c)'
+                            match = re.search(pattern, content, re.DOTALL)
+                            if match:
+                                # Insert additional sources before fortranobject_c
+                                new_content = match.group(1) + '\n'.join(additional_sources) + '\n                     ' + match.group(2)
+                                content = content[:match.start()] + new_content + content[match.end():]
                                 modified = True
-                                print(f"DEBUG: Modified fortran_sources in meson.build")
-                            else:
-                                print(f"DEBUG: No additional sources found")
 
                     if modified:
                         meson_build.write_text(content)
