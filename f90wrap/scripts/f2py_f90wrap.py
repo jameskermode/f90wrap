@@ -287,6 +287,8 @@ def main():
 
                     if fortran_obj_files:
                         import re
+                        print(f"DEBUG: Found .o files in command line: {fortran_obj_files}")
+                        print(f"DEBUG: Current directory: {os.getcwd()}")
                         # Find where fortran_sources is defined
                         pattern = r"(fortran_sources = \[)([^\]]*)(])"
                         match = re.search(pattern, content, re.DOTALL)
@@ -298,10 +300,12 @@ def main():
                                 # Try both .f90 and .F90 extensions
                                 for ext in ['.f90', '.F90']:
                                     f90_file = obj_file.replace('.o', ext)
+                                    print(f"DEBUG: Checking for {f90_file}, exists: {os.path.exists(f90_file)}")
                                     if os.path.exists(f90_file):
                                         # Get relative path from build directory to source
                                         rel_path = os.path.join('..', os.path.basename(f90_file))
                                         additional_sources.append(f"  '{rel_path}'")
+                                        print(f"DEBUG: Added source: {rel_path}")
                                         break
 
                             if additional_sources:
@@ -311,6 +315,9 @@ def main():
                                     f"fortran_sources = [{new_sources}]"
                                 )
                                 modified = True
+                                print(f"DEBUG: Modified fortran_sources in meson.build")
+                            else:
+                                print(f"DEBUG: No additional sources found")
 
                     if modified:
                         meson_build.write_text(content)
