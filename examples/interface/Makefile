@@ -27,5 +27,5 @@ clean:
 	-rm example.py
 	-rm f90wrap*.f90 *.o *.pyc *.mod
 	-rm _example*.so _examplepkg*.so
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 

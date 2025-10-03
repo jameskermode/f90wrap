@@ -15,5 +15,5 @@ test: all
 
 clean:
 	-rm -f *.o f90wrap*.f90 *.so *.mod testextends.py
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 

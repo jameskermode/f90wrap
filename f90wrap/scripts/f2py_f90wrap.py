@@ -216,7 +216,55 @@ def main():
 
     # now call the main function
     print('\n!! f90wrap patched version of f2py - James Kermode <james.kermode@gmail.com> !!\n')
-    numpy.f2py.main()
+
+    # Patch meson.build if --build-dir was used with a subdirectory
+    # to fix include and library paths for separate build directories
+    # This must be done BEFORE calling numpy.f2py.main() because numpy generates the file
+    import os
+    from pathlib import Path
+    build_dir_to_patch = None
+    if '--build-dir' in sys.argv:
+        build_dir_idx = sys.argv.index('--build-dir') + 1
+        if build_dir_idx < len(sys.argv):
+            build_dir = sys.argv[build_dir_idx]
+            # Only patch if build_dir is not '.' (separate directory)
+            if build_dir != '.':
+                build_dir_to_patch = build_dir
+
+    try:
+        numpy.f2py.main()
+    finally:
+        # Patch after numpy generates the meson.build file
+        if build_dir_to_patch:
+            meson_build = Path(build_dir_to_patch) / 'meson.build'
+            if meson_build.exists():
+                content = meson_build.read_text()
+                modified = False
+
+                # Add include path for parent directory (for .mod files)
+                if 'inc_parent = include_directories' not in content:
+                    content = content.replace(
+                        "inc_np = include_directories(incdir_numpy, incdir_f2py)",
+                        "inc_np = include_directories(incdir_numpy, incdir_f2py)\ninc_parent = include_directories('..')"
+                    )
+                    modified = True
+
+                # Replace '''.''' with inc_parent in include_directories list
+                if "'''.'''," in content:
+                    content = content.replace("'''.''',", "inc_parent,")
+                    modified = True
+
+                # Fix library search path to point to parent directory
+                if "lib_dir_0 = declare_dependency(link_args : ['''-L.'''])" in content:
+                    content = content.replace(
+                        "lib_dir_0 = declare_dependency(link_args : ['''-L.'''])",
+                        "lib_dir_0 = declare_dependency(link_args : ['''-L../..'''])"
+                    )
+                    modified = True
+
+                if modified:
+                    meson_build.write_text(content)
+                    print(f"\nPatched {meson_build} for separate build directory")
 
 
 if __name__ == "__main__":

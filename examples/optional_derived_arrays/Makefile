@@ -13,7 +13,7 @@ all: test.o
 clean:
 	-rm *.o f90wrap*.f90 *.so *.mod
 	-rm -r test/
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 
 test: all
 	$(PYTHON) -c 'import test'

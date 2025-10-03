@@ -21,5 +21,5 @@ clean:
 	-rm test.py
 	-rm f90wrap*.f90 *.o *.pyc *.mod
 	-rm _test*.so _testpkg*.so
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 
