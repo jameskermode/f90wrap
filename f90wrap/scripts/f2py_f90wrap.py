@@ -237,12 +237,12 @@ def main():
             from numpy.f2py._backends import _meson
             original_write_meson_build = _meson.MesonBackend.write_meson_build
 
-            def patched_write_meson_build(self):
+            def patched_write_meson_build(self, build_dir):
                 # Call original method to generate meson.build
-                original_write_meson_build(self)
+                original_write_meson_build(self, build_dir)
 
                 # Now patch the generated file
-                meson_build = Path(self.build_dir) / 'meson.build'
+                meson_build = Path(build_dir) / 'meson.build'
                 if meson_build.exists():
                     content = meson_build.read_text()
                     modified = False
@@ -255,7 +255,16 @@ def main():
                         )
                         modified = True
 
-                    # Replace '''.''' with inc_parent in include_directories list
+                        # Also add inc_parent to the include_directories list in py.extension_module
+                        # Look for the include_directories list and add inc_parent if not already there
+                        import re
+                        # Find the include_directories section in extension_module
+                        pattern = r'(include_directories:\s*\[\s*inc_np,)'
+                        if re.search(pattern, content):
+                            content = re.sub(pattern, r'\1\n                     inc_parent,', content)
+                            modified = True
+
+                    # Replace '''.''' with inc_parent in include_directories list (for -I. flag)
                     if "'''.'''," in content:
                         content = content.replace("'''.''',", "inc_parent,")
                         modified = True
