@@ -61,20 +61,20 @@ log = logging.getLogger(__name__)
 
 # Define some regular expressions
 
-module = re.compile('^module|^submodule', re.IGNORECASE)
-module_end = re.compile('^end\s*module|^end\s*submodule|end$', re.IGNORECASE)
+module = re.compile(r'^module|^submodule', re.IGNORECASE)
+module_end = re.compile(r'^end\s*module|^end\s*submodule|end$', re.IGNORECASE)
 
-submodule = re.compile('^submodule', re.IGNORECASE)
+submodule = re.compile(r'^submodule', re.IGNORECASE)
 
-program = re.compile('^program', re.IGNORECASE)
-program_end = re.compile('^end\s*program|end$', re.IGNORECASE)
+program = re.compile(r'^program', re.IGNORECASE)
+program_end = re.compile(r'^end\s*program|end$', re.IGNORECASE)
 
 attribs = r'allocatable|pointer|save|contiguous|dimension *\(.*?\)|parameter|target|public|private|abstract|extends *\(.*?\)|bind\(C\)'  # jrk33 added target
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
-type_end = re.compile('^end\s*type|end$', re.IGNORECASE)
+type_end = re.compile(r'^end\s*type|end$', re.IGNORECASE)
 
-dummy_types_re = re.compile('recursive|pure|elemental', re.IGNORECASE)
+dummy_types_re = re.compile(r'recursive|pure|elemental', re.IGNORECASE)
 
 prefixes = r'elemental|impure|module|non_recursive|pure|recursive'
 types = r'double precision|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
@@ -82,21 +82,21 @@ a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|t
 
 types_re = re.compile(types, re.IGNORECASE)
 
-quoted = re.compile('(\".*?\")|(\'.*?\')')  # A quoted expression
-comment = re.compile('!.*')  # A comment
+quoted = re.compile(r'(\".*?\")|(\'.*?\')')  # A quoted expression
+comment = re.compile(r'!.*')  # A comment
 whitespace = re.compile(r'^\s*')  # Initial whitespace
 c_ret = re.compile(r'\r')
 
-iface = re.compile('^interface', re.IGNORECASE)
-abstract_iface = re.compile('^abstract\s*interface', re.IGNORECASE)
-iface_end = re.compile('^end\s*interface|end$', re.IGNORECASE)
+iface = re.compile(r'^interface', re.IGNORECASE)
+abstract_iface = re.compile(r'^abstract\s*interface', re.IGNORECASE)
+iface_end = re.compile(r'^end\s*interface|end$', re.IGNORECASE)
 
 subt = re.compile(r'^((' + prefixes + r')\s+)*subroutine', re.IGNORECASE)
 subt_end = re.compile(r'^end\s*subroutine\s*(\w*)|end$', re.IGNORECASE)
 
 funct = re.compile(r'^((' + types + '|' + prefixes + r')\s+)*function', re.IGNORECASE)
-# funct       = re.compile('^function',re.IGNORECASE)
-funct_end = re.compile('^end\s*function\s*(\w*)|end$', re.IGNORECASE)
+# funct       = re.compile(r'^function', re.IGNORECASE)
+funct_end = re.compile(r'^end\s*function\s*(\w*)|end$', re.IGNORECASE)
 
 prototype = re.compile(r'^module procedure\s*(::)?\s*([a-zA-Z0-9_,\s]*)', re.IGNORECASE)
 
@@ -123,33 +123,33 @@ deferred_binding = re.compile(
     re.IGNORECASE
 )
 
-contains = re.compile('^contains', re.IGNORECASE)
+contains = re.compile(r'^contains', re.IGNORECASE)
 
-uses = re.compile('^use\s+', re.IGNORECASE)
-only = re.compile('only\s*:\s*', re.IGNORECASE)
+uses = re.compile(r'^use\s+', re.IGNORECASE)
+only = re.compile(r'only\s*:\s*', re.IGNORECASE)
 
-decl = re.compile('^(' + types + r')\s*(,\s*(' + attribs + r')\s*)*(::)?\s*\w+(\s*,\s*\w+)*', re.IGNORECASE)
-d_colon = re.compile('::')
+decl = re.compile(r'^(' + types + r')\s*(,\s*(' + attribs + r')\s*)*(::)?\s*\w+(\s*,\s*\w+)*', re.IGNORECASE)
+d_colon = re.compile(r'::')
 
-attr_re = re.compile('(,\s*(' + attribs + r')\s*)+', re.IGNORECASE)
+attr_re = re.compile(r'(,\s*(' + attribs + r')\s*)+', re.IGNORECASE)
 s_attrib_re = re.compile(attribs, re.IGNORECASE)
 
-decl_a = re.compile('^(' + types + r')\s*(,\s*(' + a_attribs + r')\s*)*(::)?\s*\w+(\s*,\s*\w+)*', re.IGNORECASE)
-attr_re_a = re.compile('(,\s*(' + a_attribs + r')\s*)+', re.IGNORECASE)
+decl_a = re.compile(r'^(' + types + r')\s*(,\s*(' + a_attribs + r')\s*)*(::)?\s*\w+(\s*,\s*\w+)*', re.IGNORECASE)
+attr_re_a = re.compile(r'(,\s*(' + a_attribs + r')\s*)+', re.IGNORECASE)
 s_attrib_re_a = re.compile(a_attribs, re.IGNORECASE)
 
-cont_line = re.compile('&')
+cont_line = re.compile(r'&')
 
 fdoc_comm = re.compile(r'^!\s*\*FD')
 fdoc_comm_mid = re.compile(r'!\s*\*FD')
-fdoc_mark = re.compile('_FD\s*')
-fdoc_rv_mark = re.compile('_FDRV\s*')
+fdoc_mark = re.compile(r'_FD\s*')
+fdoc_rv_mark = re.compile(r'_FDRV\s*')
 
 doxygen_main = re.compile(r'_COMMENT.*\\(brief|details)')
 doxygen_others = re.compile(r'_COMMENT.*\\(file|author|copyright)')
 doxygen_param = re.compile(r'_COMMENT.*\\(param|returns)')
 doxygen_param_group = re.compile(r'_COMMENT.*\\(param|returns)\s*(\[.*?\]|)\s*(\S*)\s*(.*)')
-comment_pattern = re.compile('_COMMENT[<>]?')
+comment_pattern = re.compile(r'_COMMENT[<>]?')
 
 result_re = re.compile(r'result\s*\((.*?)\)', re.IGNORECASE)
 
@@ -211,7 +211,7 @@ def recover_delimited(line, d1, d2, delimited):
 
 def split_attribs(atr):
     atr = atr.strip()
-    if re.match('[,]', atr) != None:
+    if re.match(r'[,]', atr) != None:
         atr = atr[1:]
         atr = atr.strip()
 
@@ -229,10 +229,10 @@ def split_attribs(atr):
         if bk > 0:
             atrc = atrc[:i] + '0' + atrc[i + 1:]
 
-    while re.search('[,]', atrc) != None:
-        atrl.append(atr[:re.search('[,]', atrc).start()])  # jrk33 changed [\s,] to [,]
-        atr = atr[re.search('[,]', atrc).end():]
-        atrc = atrc[re.search('[,]', atrc).end():]
+    while re.search(r'[,]', atrc) != None:
+        atrl.append(atr[:re.search(r'[,]', atrc).start()])  # jrk33 changed [\s,] to [,]
+        atr = atr[re.search(r'[,]', atrc).end():]
+        atrc = atrc[re.search(r'[,]', atrc).end():]
 
     if atr != '':
         atrl.append(atr)
@@ -755,7 +755,7 @@ def check_subt(cl, file, grab_hold_doc=True):
             del (argl[0])
             del (argl[len(argl) - 1])
 
-            while cl.strip() == '' or re.search('&', cl) != None:
+            while cl.strip() == '' or re.search(r'&', cl) != None:
                 cl = file.next()
                 if cl.startswith('_COMMENT'):
                     cl = file.next()
@@ -987,7 +987,7 @@ def check_funct(cl, file, grab_hold_doc=True):
             del (argl[0])
             del (argl[len(argl) - 1])
 
-            while cl.strip() == '' or re.search('&', cl) != None:
+            while cl.strip() == '' or re.search(r'&', cl) != None:
                 cl = file.next()
                 if cl.startswith('_COMMENT'):
                     cl = file.next()
