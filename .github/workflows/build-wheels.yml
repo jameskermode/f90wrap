@@ -62,10 +62,11 @@ jobs:
           CIBW_TEST_COMMAND_LINUX: "cd {project}/examples; make clean_meson; make test_meson"
           CIBW_TEST_COMMAND_WINDOWS: "python -m f90wrap --version"
 
-      - name: Setup tmate session
-        if: failure()
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
+      # Disabled for faster CI failure feedback
+      # - name: Setup tmate session
+      #   if: failure()
+      #   uses: mxschmitt/action-tmate@v3
+      #   timeout-minutes: 15
 
       - uses: actions/upload-artifact@v4
         with:
