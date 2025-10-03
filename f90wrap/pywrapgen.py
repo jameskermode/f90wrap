@@ -559,7 +559,7 @@ except ValueError:
                             keyword = np.f2py.crackfortran.badnames[keyword]
                         except KeyError:
                             pass
-                        match = re.search("%s\((.*)\)" % keyword, dim_str)
+                        match = re.search(r"%s\((.*)\)" % keyword, dim_str)
 
                         if match:
                             # Case where return size is size of input
