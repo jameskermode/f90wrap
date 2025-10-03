@@ -112,10 +112,9 @@ libsrc.a: ${LIBSRC_OBJECTS}
 
 _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	mkdir -p f90wrap
-	mkdir -p modules
 	cd $(wrap_dir) ; f90wrap -m mockdt ${SRC2_FILES} -k $(kmap_file) -v
 	cp $(wrap_dir)/*.py .
-	f2py-f90wrap --fcompiler=$(FCOMP) -I$(moddir) --build-dir build -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90
 
 #=======================================================================
 #a "package", denoted by the -P option (subdirectory with multiple files)
@@ -123,7 +122,7 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 
 _mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P
-	f2py-f90wrap --fcompiler=$(FCOMP) -I$(moddir) --build-dir build -c -m _mockdtpkg -L. -lsrc $(wrap_dir)/f90wrap*.f90
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mockdtpkg -L. -lsrc $(wrap_dir)/f90wrap*.f90
 	rm -rf mockdtpkg
 	mv $(wrap_dir)/mockdtpkg .
 	#mv _mockdtpkg.so mockdtpkg/
