@@ -462,7 +462,7 @@ end type %(typename)s%(suffix)s"""
         # If procedure is bound make the call via type%bound_name syntax
         bound_name = None
         for attr in node.attributes:
-            match = re.match("bound\((.*?)\)", attr)
+            match = re.match(r"bound\((.*?)\)", attr)
             if match:
                 bound_name = match.group(1)
         if bound_name:
