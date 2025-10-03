@@ -12,7 +12,7 @@ test.o: test.f90
 
 mod: test.o
 	f90wrap -m test ./test.f90
-	f2py-f90wrap -c -m _test f90wrap_toplevel.f90 test.o
+	f2py-f90wrap --build-dir build -c -m _test f90wrap_toplevel.f90 test.o
 
 test: mod
 	$(PYTHON) -c 'import test; test.foo(1.0, 2)'

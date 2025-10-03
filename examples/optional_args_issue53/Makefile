@@ -8,7 +8,7 @@ PYTHON = python
 
 all: main.o
 	f90wrap -m test -P main.f90
-	f2py-f90wrap -c -m _test f90wrap_toplevel.f90 main.o
+	f2py-f90wrap --build-dir build -c -m _test f90wrap_toplevel.f90 main.o
 
 test: all
 	$(PYTHON) run.py
