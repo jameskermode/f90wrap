@@ -289,10 +289,13 @@ def main():
                         import re
                         print(f"DEBUG: Found .o files in command line: {fortran_obj_files}")
                         print(f"DEBUG: Current directory: {os.getcwd()}")
+                        print(f"DEBUG: meson.build content:\n{content}\n")
                         # Find where fortran_sources is defined
                         pattern = r"(fortran_sources = \[)([^\]]*)(])"
                         match = re.search(pattern, content, re.DOTALL)
+                        print(f"DEBUG: Regex pattern matched: {match is not None}")
                         if match:
+                            print(f"DEBUG: Match groups: {match.groups()}")
                             existing_sources = match.group(2)
                             # Convert .o files to .f90 files and add them
                             additional_sources = []
