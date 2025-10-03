@@ -290,8 +290,8 @@ def main():
                         # Convert .o files to .f90 files and add them to py.extension_module sources
                         additional_sources = []
                         for obj_file in fortran_obj_files:
-                            # Try both .f90 and .F90 extensions
-                            for ext in ['.f90', '.F90']:
+                            # Try .f90, .F90, and .f extensions
+                            for ext in ['.f90', '.F90', '.f']:
                                 f90_file = obj_file.replace('.o', ext)
                                 if os.path.exists(f90_file):
                                     # Get relative path from build directory to source
