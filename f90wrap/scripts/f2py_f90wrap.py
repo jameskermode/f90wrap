@@ -223,6 +223,7 @@ def main():
     from pathlib import Path
 
     build_dir_to_patch = None
+    fortran_obj_files = []
     if '--build-dir' in sys.argv:
         build_dir_idx = sys.argv.index('--build-dir') + 1
         if build_dir_idx < len(sys.argv):
@@ -230,6 +231,11 @@ def main():
             # Only patch if build_dir is not '.' (separate directory)
             if build_dir != '.':
                 build_dir_to_patch = build_dir
+
+    # Collect .o files from command line (they need corresponding .f90 files added to meson.build)
+    for arg in sys.argv:
+        if arg.endswith('.o') and os.path.exists(arg):
+            fortran_obj_files.append(arg)
 
     if build_dir_to_patch:
         # Monkey-patch the meson backend's write_meson_build method
@@ -276,6 +282,35 @@ def main():
                             "lib_dir_0 = declare_dependency(link_args : ['''-L../..'''])"
                         )
                         modified = True
+
+                    # Add Fortran source files corresponding to .o files
+                    # Meson doesn't handle .o files properly, need to compile from source
+                    if fortran_obj_files:
+                        import re
+                        # Find where fortran_sources is defined
+                        pattern = r"(fortran_sources = \[)([^\]]*)(])"
+                        match = re.search(pattern, content, re.DOTALL)
+                        if match:
+                            existing_sources = match.group(2)
+                            # Convert .o files to .f90 files and add them
+                            additional_sources = []
+                            for obj_file in fortran_obj_files:
+                                # Try both .f90 and .F90 extensions
+                                for ext in ['.f90', '.F90']:
+                                    f90_file = obj_file.replace('.o', ext)
+                                    if os.path.exists(f90_file):
+                                        # Get relative path from build directory to source
+                                        rel_path = os.path.join('..', os.path.basename(f90_file))
+                                        additional_sources.append(f"  '{rel_path}'")
+                                        break
+
+                            if additional_sources:
+                                new_sources = existing_sources.rstrip() + ',\n' + ',\n'.join(additional_sources) + '\n'
+                                content = content.replace(
+                                    f"fortran_sources = [{existing_sources}]",
+                                    f"fortran_sources = [{new_sources}]"
+                                )
+                                modified = True
 
                     if modified:
                         meson_build.write_text(content)
