@@ -1,0 +1,95 @@
+#=======================================================================
+#                   define the compiler names
+#=======================================================================
+
+CC       = gcc
+#F90      = gfortran
+F90      = ifort
+PYTHON = python
+
+#=======================================================================
+#                     additional flags
+#=======================================================================
+
+ifeq ($(F90),gfortran)
+	FPP      = gfortran -E
+	F90FLAGS = #-x f95-cpp-input ==> preprocess NOT NEEDED WITH .F90 EXTENSION
+      FCOMP    = gfortran
+endif
+
+ifeq ($(F90),ifort)
+	FPP      = gfortran -E        # f90wrap temp files only. not compilation
+	F90FLAGS = -fpscomp logicals  # use 1 and 0 for True and False
+      FCOMP    = intelem            # for f2py
+endif
+
+SOFLAGS  = -fPIC       #     ==> universal for ifort, gfortran, pgi
+
+#=======================================================================
+#=======================================================================
+
+UNAME = $(shell uname)
+
+ifeq (${UNAME}, Darwin)
+  LIBTOOL = libtool -static -o
+else
+  LIBTOOL = ar src
+endif
+
+#=======================================================================
+#                 List all source files
+#=======================================================================
+
+#names (without suffix)
+LIBSRC_SOURCES   = leveltwomod define fwrap           
+
+#file names
+LIBSRC_FILES     = $(addsuffix .F90,${LIBSRC_SOURCES})
+
+#object files
+LIBSRC_OBJECTS   = $(addsuffix .o,${LIBSRC_SOURCES})
+
+#same files, except with fpp extension
+LIBSRC_FPP_FILES = $(addsuffix .fpp,${LIBSRC_SOURCES})
+
+#=======================================================================
+#                 Relevant suffixes
+#=======================================================================
+
+.SUFFIXES: .F90 .fpp
+
+#=======================================================================
+#                 Makefile default
+#=======================================================================
+
+.PHONY: all clean test
+
+all: test
+
+clean:
+	-rm ${LIBSRC_OBJECTS} libsrc.a _mockdt*.so _mockdtpkg*.so *.mod f90wrap*.f90 *.fpp
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+
+.F90.o:
+	${F90} ${F90FLAGS} ${SOFLAGS} -c $< -o $@
+
+.c.o:
+	${CC} ${SOFLAGS} -c $< -o $@
+
+.F90.fpp:
+	${FPP} ${SOFLAGS} $<  -o $@
+
+libsrc.a: ${LIBSRC_OBJECTS}
+	${LIBTOOL} $@ $?
+
+_mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
+	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -k kind_map -v 
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _mockdt -L. -lsrc f90wrap*.f90
+
+_mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
+	f90wrap -m mockdtpkg ${LIBSRC_FPP_FILES} -k kind_map -v -P
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _mockdtpkg -L. -lsrc f90wrap*.f90
+
+test: _mockdt.so _mockdtpkg.so
+	$(PYTHON) test.py
+

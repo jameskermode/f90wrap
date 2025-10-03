@@ -223,7 +223,6 @@ def main():
     from pathlib import Path
 
     build_dir_to_patch = None
-    fortran_obj_files = []
     if '--build-dir' in sys.argv:
         build_dir_idx = sys.argv.index('--build-dir') + 1
         if build_dir_idx < len(sys.argv):
@@ -231,11 +230,6 @@ def main():
             # Only patch if build_dir is not '.' (separate directory)
             if build_dir != '.':
                 build_dir_to_patch = build_dir
-
-    # Collect .o files from command line (they need corresponding .f90 files added to meson.build)
-    for arg in sys.argv:
-        if arg.endswith('.o') and os.path.exists(arg):
-            fortran_obj_files.append(arg)
 
     if build_dir_to_patch:
         # Monkey-patch the meson backend's write_meson_build method
@@ -285,6 +279,12 @@ def main():
 
                     # Add Fortran source files corresponding to .o files
                     # Meson doesn't handle .o files properly, need to compile from source
+                    # Collect .o files from command line
+                    fortran_obj_files = []
+                    for arg in sys.argv:
+                        if arg.endswith('.o'):
+                            fortran_obj_files.append(arg)
+
                     if fortran_obj_files:
                         import re
                         # Find where fortran_sources is defined
