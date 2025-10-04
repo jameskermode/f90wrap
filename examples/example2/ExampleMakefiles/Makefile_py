@@ -98,11 +98,11 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	cd $(wrap_dir) ; f90wrap -m mockdt ${SRC2_FILES} -k $(kmap_file) -v 
 	cp $(wrap_dir)/*.py .
 	f2py-f90wrap -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90 \
-	--fcompiler=$(FCOMP) --f90flags=$(PAR_FLAG) $(OMP_LINK) -I$(moddir) --build-dir . 
+	--fcompiler=$(FCOMP) --f90flags=$(PAR_FLAG) $(OMP_LINK) -I$(moddir) --build-dir build 
 	
 #original command: works without openmp - probably because of -lgomp placement
 #	f2py-f90wrap --fcompiler=$(FCOMP) --f90flags=-fopenmp $(MOD_FLAG) \
-#     --build-dir . -c -m _mockdt -lgomp -L. -lsrc $(wrap_dir)/f90wrap*.f90
+#     --build-dir build -c -m _mockdt -lgomp -L. -lsrc $(wrap_dir)/f90wrap*.f90
 
 #=======================================================================
 #a "package", denoted by the -P option (subdirectory with multiple files)
@@ -112,7 +112,7 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 #_mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 #	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P 
 #	f2py-f90wrap --fcompiler=$(FCOMP) $(MOD_FLAG) --f90flags=$(PAR_FLAG) \
-#     --build-dir . -c -m _mockdtpkg -L. -lgomp -lsrc $(wrap_dir)/f90wrap*.f90
+#     --build-dir build -c -m _mockdtpkg -L. -lgomp -lsrc $(wrap_dir)/f90wrap*.f90
 #	rm -rf mockdtpkg
 #	mv $(wrap_dir)/mockdtpkg .
 #	mv _mockdtpkg.so mockdtpkg/

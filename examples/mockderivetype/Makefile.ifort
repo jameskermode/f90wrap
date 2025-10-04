@@ -84,11 +84,11 @@ libsrc.a: ${LIBSRC_OBJECTS}
 
 _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m mockdt ${LIBSRC_FPP_FILES} -k kind_map -v 
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _mockdt -L. -lsrc f90wrap*.f90
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mockdt -L. -lsrc f90wrap*.f90
 
 _mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m mockdtpkg ${LIBSRC_FPP_FILES} -k kind_map -v -P
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _mockdtpkg -L. -lsrc f90wrap*.f90
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mockdtpkg -L. -lsrc f90wrap*.f90
 
 test: _mockdt.so _mockdtpkg.so
 	$(PYTHON) test.py

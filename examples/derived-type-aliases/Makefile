@@ -129,11 +129,11 @@ libothertype_mod.a: othertype_mod.o
 
 _mytype.so: libmytype_mod.a mytype_mod.f90
 	f90wrap -m mytype mytype_mod.f90 -k ${KIND_MAP} -v
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _mytype -L. -lmytype_mod f90wrap_mytype_mod.f90
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mytype -L. -lmytype_mod f90wrap_mytype_mod.f90
 
 _othertype.so: libothertype_mod.a othertype_mod.f90
 	f90wrap -m othertype othertype_mod.f90 -k ${KIND_MAP} -v
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _othertype -L. -lothertype_mod f90wrap_othertype_mod.f90
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _othertype -L. -lothertype_mod f90wrap_othertype_mod.f90
 
 
 test: _mytype.so _othertype.so
