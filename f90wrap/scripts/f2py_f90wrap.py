@@ -125,7 +125,13 @@ def main():
     setjmpvalue = setjmp(environment_buffer);
     if (setjmpvalue != 0) {
       PyOS_setsig(SIGINT, _npy_sig_save);
-      PyErr_SetString(PyExc_RuntimeError, abort_message);
+      PyObject *err_msg = PyUnicode_DecodeUTF8(abort_message, strlen(abort_message), "replace");
+      if (err_msg != NULL) {
+        PyErr_SetObject(PyExc_RuntimeError, err_msg);
+        Py_DECREF(err_msg);
+      } else {
+        PyErr_SetString(PyExc_RuntimeError, "Error decoding abort message");
+      }
     } else {
      #callfortranroutine#
      PyOS_setsig(SIGINT, _npy_sig_save);
