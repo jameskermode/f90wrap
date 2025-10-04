@@ -364,6 +364,7 @@ except ValueError:
         self.write(
             "self._handle = result[0] if isinstance(result, tuple) else result"
         )
+        self.write("self._alloc = True")
         self.dedent()
         self.dedent()
         self.write()
@@ -407,6 +408,7 @@ except ValueError:
         self.write(
             "bare_class._handle = result[0] if isinstance(result, tuple) else result"
         )
+        self.write("bare_class._alloc = True")
         self.write("return bare_class")
 
         self.dedent()
@@ -438,7 +440,7 @@ except ValueError:
         self.write("def __del__(%(py_arg_names)s):" % dct)
         self.indent()
         self.write(self._format_doc_string(node))
-        self.write("if self._alloc:")
+        self.write("if getattr(self, '_alloc', False):")
         self.indent()
         self.write("%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct)
         self.dedent()
@@ -707,18 +709,42 @@ except ValueError:
             cls_name = normalise_class_name(
                 ft.strip_type(node.type_name), self.class_names
             )
-        proc_names = []
+        # Check if any procedure has the same name as the interface (will be shadowed)
+        shadowed_methods = set()
+        log.info(f"PythonWrapperGenerator: Interface {node.name} has {len(node.procedures)} procedures")
         for proc in node.procedures:
+            method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
+            log.info(f"  Procedure: {proc.name}, method_name: {method_name}, interface method_name: {node.method_name}")
+            if method_name == node.method_name:
+                log.info(f"    -> Will be shadowed!")
+                shadowed_methods.add(method_name)
+
+        proc_names = []
+        for i, proc in enumerate(node.procedures):
             proc_name = ""
             if not self.make_package and hasattr(proc, "mod_name"):
                 proc_name += normalise_class_name(proc.mod_name, self.class_names) + "."
             elif cls_name is not None:
                 proc_name += cls_name + "."
-            if hasattr(proc, "method_name"):
-                proc_name += proc.method_name
+
+            method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
+
+            # Use saved reference name if this method will be shadowed
+            if method_name in shadowed_methods:
+                proc_name += f"_{method_name}_{i}"
             else:
-                proc_name += proc.name
+                proc_name += method_name
             proc_names.append(proc_name)
+
+        # Write code to save references before the overloaded method is defined
+        if shadowed_methods:
+            self.write()
+            self.write("# Save references to the original methods before overloading")
+            for i, proc in enumerate(node.procedures):
+                method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
+                if method_name in shadowed_methods:
+                    self.write(f"_{method_name}_{i} = {method_name}")
+            self.write()
 
         dct = dict(
             intf_name=node.method_name, proc_names="[" + ", ".join(proc_names) + "]"
