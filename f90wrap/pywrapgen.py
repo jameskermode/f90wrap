@@ -351,12 +351,19 @@ except ValueError:
                 )
         self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
 
+        self.write("if handle is not None:")
+        self.indent()
+        self.write("self._handle = handle")
+        self.dedent()
+        self.write("else:")
+        self.indent()
         self.write(
             "result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
         )
         self.write(
             "self._handle = result[0] if isinstance(result, tuple) else result"
         )
+        self.dedent()
         self.dedent()
         self.write()
 
