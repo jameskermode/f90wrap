@@ -1318,4 +1318,6 @@ return %(el_name)s"""
                     % (hasattr(proc, "method_name") and proc.method_name or proc.name)
                 )
 
+        # Escape backslashes in docstrings to avoid SyntaxWarnings
+        doc = [line.replace('\\', '\\\\') for line in doc]
         return "\n".join(['"""'] + doc + ['"""'])
