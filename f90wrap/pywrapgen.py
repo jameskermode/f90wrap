@@ -354,6 +354,7 @@ except ValueError:
         self.write("if handle is not None:")
         self.indent()
         self.write("self._handle = handle")
+        self.write("self._alloc = True")
         self.dedent()
         self.write("else:")
         self.indent()
