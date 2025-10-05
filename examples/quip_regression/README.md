@@ -14,10 +14,13 @@ QUIP (QUantum mechanics and Interatomic Potentials) is a large Fortran codebase 
 ## Requirements
 
 - Python 3.9+
+- OpenBLAS library (must be discoverable via pkg-config)
 - meson and ninja build tools
 - gfortran compiler
 - git
 - Required Python packages: numpy, ase, f90wrap
+
+**Note**: The test will automatically skip if OpenBLAS is not available via pkg-config.
 
 ## Running the Test
 
