@@ -59,7 +59,7 @@ jobs:
 
     - name: Upload build logs on failure
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quip-build-logs
         path: /tmp/f90wrap_quip_test_*/
