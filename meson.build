@@ -24,7 +24,12 @@ incdir_numpy = run_command(
 
 inc_np = include_directories(incdir_numpy)
 
-incdir_f2py = incdir_numpy / '..' / '..' / 'f2py' / 'src'
+# Find f2py source directory properly
+incdir_f2py = run_command(
+    py3, '-c',
+    'import os, numpy.f2py; print(os.path.join(os.path.dirname(numpy.f2py.__file__), "src"))',
+    check: true,
+).stdout().strip()
 inc_f2py = include_directories(incdir_f2py)
 fortranobject_c = incdir_f2py / 'fortranobject.c'
 
