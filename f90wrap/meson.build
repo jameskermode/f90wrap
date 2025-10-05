@@ -7,8 +7,10 @@ sizeof_source = custom_target(
 )
 
 # Only build Fortran extensions if Fortran compiler is available
+# Fortran language was optionally added in root meson.build
 link_args = []
-if meson.get_compiler('fortran', required: false).found()
+# Try to add fortran again (will succeed if already added, or if available)
+if add_languages('fortran', native: false, required: false)
     fortran_compiler = meson.get_compiler('fortran')
     if fortran_compiler.get_id() == 'nvidia_hpc'
         link_args = ['-lnvf', '-lrt']
