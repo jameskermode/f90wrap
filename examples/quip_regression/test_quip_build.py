@@ -64,18 +64,23 @@ class TestQUIPBuild(unittest.TestCase):
         )
 
         print("Building QUIP libraries...")
-        subprocess.run(
+        result = subprocess.run(
             ["meson", "setup", "builddir"],
             cwd=cls.quip_dir,
-            check=True,
-            capture_output=True
+            capture_output=True,
+            text=True
         )
-        subprocess.run(
+        if result.returncode != 0:
+            raise RuntimeError(f"Meson setup failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
+
+        result = subprocess.run(
             ["meson", "compile", "-C", "builddir"],
             cwd=cls.quip_dir,
-            check=True,
-            capture_output=True
+            capture_output=True,
+            text=True
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"Meson compile failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
 
     @classmethod
     def tearDownClass(cls):
