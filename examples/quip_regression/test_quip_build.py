@@ -5,6 +5,10 @@ QUIP Regression Test for f90wrap
 This test checks that f90wrap can successfully build QUIP/quippy,
 a real-world project that uses f90wrap extensively. This helps
 prevent regressions in f90wrap that would break QUIP.
+
+NOTE: This test requires OpenBLAS to be installed and pkg-config
+to be able to find it. The test will be skipped if these dependencies
+are not available.
 """
 
 import os
@@ -22,8 +26,32 @@ class TestQUIPBuild(unittest.TestCase):
     QUIP_BRANCH = "mesonify"
 
     @classmethod
+    def _check_dependencies(cls):
+        """Check if required dependencies are available"""
+        # Check for pkg-config
+        try:
+            subprocess.run(["pkg-config", "--version"], check=True,
+                         capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False, "pkg-config not found"
+
+        # Check for openblas via pkg-config
+        try:
+            subprocess.run(["pkg-config", "--exists", "openblas"],
+                         check=True, capture_output=True)
+        except subprocess.CalledProcessError:
+            return False, "OpenBLAS not found via pkg-config"
+
+        return True, None
+
+    @classmethod
     def setUpClass(cls):
         """Clone and build QUIP once for all tests"""
+        # Check dependencies first
+        deps_ok, reason = cls._check_dependencies()
+        if not deps_ok:
+            raise unittest.SkipTest(f"QUIP regression test skipped: {reason}")
+
         cls.test_dir = tempfile.mkdtemp(prefix="f90wrap_quip_test_")
         cls.quip_dir = os.path.join(cls.test_dir, "QUIP")
 
