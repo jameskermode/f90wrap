@@ -63,24 +63,9 @@ class TestQUIPBuild(unittest.TestCase):
             capture_output=True
         )
 
-        print("Building QUIP libraries...")
-        result = subprocess.run(
-            ["meson", "setup", "builddir"],
-            cwd=cls.quip_dir,
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Meson setup failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
-
-        result = subprocess.run(
-            ["meson", "compile", "-C", "builddir"],
-            cwd=cls.quip_dir,
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Meson compile failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
+        # Note: We don't build QUIP libraries separately because they have a
+        # dependency on f90wrap symbols (f90wrap_abort_). Instead, we go directly
+        # to building quippy which handles the complete build including QUIP libs.
 
     @classmethod
     def tearDownClass(cls):
