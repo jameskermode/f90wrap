@@ -1,0 +1,18 @@
+include ../make.meson.inc
+
+NAME     := pywrapper
+WRAPFLAGS += --type-check
+JSON_FILE   = dump_package.json
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+test: build1
+	$(PYTHON) tests.py
+
+build1:
+	$(MAKE) -f $(MAKEFILE) build NAME=${NAME}_array_type LIBSRC_WRAP_FPP_FILES=array_type.f90 WRAPFLAGS="$(WRAPFLAGS) --dump-package ${JSON_FILE}"
+	rm -f f90wrap_array_type.f90
+	$(MAKE) -f $(MAKEFILE) build NAME=${NAME}_main LIBSRC_WRAP_FPP_FILES=main.f90 WRAPFLAGS="$(WRAPFLAGS) --external-packages ${JSON_FILE}"
+
+clean:
+	$(MAKE) -f $(MAKEFILE) clean
+	rm -f ${NAME}_* ${JSON_FILE}
