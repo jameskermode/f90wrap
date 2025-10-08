@@ -32,6 +32,8 @@ EXAMPLES = arrayderivedtypes \
 	output_kind \
 	remove_pointer_arg \
 	fortran_oo \
+	issue254_getter \
+	issue258_derived_type_attributes \
 	issue206_subroutine_oldstyle \
 	issue227_allocatable \
 	issue235_allocatable_classes \
