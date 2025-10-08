@@ -108,7 +108,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             max_length=None,
             auto_raise=None,
             type_check=False,
-            relative=False):
+            relative=False,
+            return_bool=False,
+            ):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(
@@ -131,6 +133,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.init_file = init_file
         self.type_check = type_check
         self.relative = relative
+        self.return_bool = return_bool
         try:
             self._err_num_var, self._err_msg_var = auto_raise.split(',')
         except ValueError:
@@ -615,7 +618,14 @@ except ValueError:
                             "%s = %s.from_handle(%s, alloc=True)"
                             % (ret_val.name, cls_name, ret_val.name)
                         )
-                self.write("return %(result)s" % dct)
+                    # convert back Fortran logical to Python bool
+                    if self.return_bool and ret_val.type == "logical":
+                        dct["result"] = dct["result"].replace(
+                            ret_val.name, 'bool(%s)' % ret_val.name
+                        )
+
+                if dct["result"]:
+                    self.write("return %(result)s" % dct)
 
             self.dedent()
             self.write()
