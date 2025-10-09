@@ -42,7 +42,6 @@ py3.install_sources(
     'parser.py',
     'pywrapgen.py',
     'runtime.py',
-    'six.py',
     'transform.py',
     'scripts/f2py_f90wrap.py',
     'scripts/f90doc.py',

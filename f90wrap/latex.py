@@ -63,8 +63,8 @@ latex_special_chars = re.compile(r'([%#])')
 
 def escape_code_sample(matchobj):
     s = matchobj.group(0).replace('$', r'\$')
-    s = s.replace('{', '\{')
-    s = s.replace('}', '\}')
+    s = s.replace('{', r'\{')
+    s = s.replace('}', r'\}')
     return s
 
 class LatexOutput(object):
@@ -72,7 +72,7 @@ class LatexOutput(object):
     def __init__(self):
         self.verbatim = False
         self.displaymath = False
-        self.sections = ['\section', '\subsection*', '\subparagraph']
+        self.sections = [r'\section', r'\subsection*', r'\subparagraph']
 
     def print_line(self, str):
 
@@ -581,10 +581,10 @@ class LatexGenerator(ft.FortranVisitor, LatexOutput):
                 d_ent = d_ent[:-2]  # remove trailing ','
 
             if (sum([len(t) for t in node.type]) + len(node.attributes) < 30):
-                self.print_line(r"\item[" + d_ent + ' \emph{or} '.join(node.type) + r"]\mbox{} \par\noindent")
+                self.print_line(r"\item[" + d_ent + r' \emph{or} '.join(node.type) + r"]\mbox{} \par\noindent")
             else:
                 self.print_line(r"\item[" + d_ent + r"]\mbox{} \par\noindent")
-                self.print_line(r'\bfseries{' + ' \emph{or} '.join(node.type) + r'} \par\noindent')
+                self.print_line(r'\bfseries{' + r' \emph{or} '.join(node.type) + r'} \par\noindent')
 
         else:
             if (type(node.type) == type([])):
@@ -783,7 +783,7 @@ class LatexGenerator(ft.FortranVisitor, LatexOutput):
 
 
                 if (len(dims) != 0):
-                    attributes.append(' \emph{or} '.join(dims))
+                    attributes.append(r' \emph{or} '.join(dims))
 
                 a = arg_dict[name][0][0]
                 a.type = types  # r' \emph{or} '.join(types)
