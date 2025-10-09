@@ -12,10 +12,12 @@ module m_circle
      real :: radius
   end type t_circle
 
-  public :: construct_circle,construct_circle_more_doc
+  public :: construct_circle
+  public :: construct_circle_with_more_args,construct_circle_more_doc
   public :: incomplete_doc_sub
   public :: no_direction,doc_inside
   public :: output_1,function_2
+  public :: ierr_errmsg
   public :: details_doc,details_with_parenthesis
   public :: multiline_details,empty_lines_details,long_line_brief
 
@@ -33,6 +35,18 @@ contains
     real, intent(in) :: radius
     circle%radius = radius
   end subroutine construct_circle
+
+    !===========================================================================
+    !>
+    !! \brief Initialize circle with more args
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius1,radius2      radius of the circle
+    !<
+  subroutine construct_circle_with_more_args(circle,radius1,radius2)
+    type(t_circle) :: circle
+    real, intent(in) :: radius1,radius2
+    circle%radius = radius1 + radius2
+  end subroutine construct_circle_with_more_args
 
     !===========================================================================
     !>
@@ -93,6 +107,20 @@ contains
     real, intent(out) :: output
     output = 1
   end subroutine output_1
+
+    !===========================================================================
+    !>
+    !! \brief subroutine is able to raise error
+    !! \param[out]     output       this is 1
+    !! \param[out]     ierr         error code
+    !! \param[out]     errmsg       error message
+    !<
+  subroutine ierr_errmsg(output,ierr,errmsg)
+    real,                 intent(out) :: output
+    integer,              intent(out) :: ierr
+    character(len=*),     intent(out) :: errmsg
+    output = 1
+  end subroutine ierr_errmsg
 
   !===========================================================================
   !>
