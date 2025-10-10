@@ -1,0 +1,10 @@
+NAME := array_shapes
+WRAP_SOURCES := array_shapes.f90
+PYTHON := python
+
+include ../make.meson.inc
+
+test: build
+	$(PYTHON) test.py
+
+.PHONY: test

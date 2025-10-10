@@ -37,7 +37,10 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install gfortran
         pip install .
-    - name: Run tests
+    - name: Run unit tests
+      run: |
+        python -m pytest test
+    - name: Run example tests
       run: |
         cd examples
         make test

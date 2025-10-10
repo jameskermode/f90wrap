@@ -24,6 +24,7 @@
 import os
 import logging
 import re
+from typing import List
 import numpy as np
 from packaging import version
 
@@ -108,7 +109,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             max_length=None,
             auto_raise=None,
             type_check=False,
-            relative=False):
+            relative=False,
+            namespace_types=False):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(
@@ -140,6 +142,22 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             self.numpy_complexwarning = "numpy.ComplexWarning"
         else:
             self.numpy_complexwarning = "numpy.exceptions.ComplexWarning"
+        self._namespace_types = namespace_types
+
+    def _scope_identifier_for(self, container):
+        """Return stable identifier used for generated helper names."""
+        if isinstance(container, ft.Module) or not self._namespace_types:
+            return container.name
+        if isinstance(container, ft.Type):
+            owner = getattr(container, "mod_name", None)
+            if owner is None:
+                type_key = ft.strip_type(container.name)
+                type_node = self.types.get(type_key)
+                owner = getattr(type_node, "mod_name", None) if type_node is not None else None
+            if owner:
+                return f"{owner}__{container.name}"
+            return container.name
+        raise TypeError("Unsupported scope container %r" % (container,))
 
     def write_imports(self, insert=0):
         default_imports = [
@@ -257,6 +275,70 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             "_dt_array_initialisers = [%s]" % (", ".join(node.dt_array_initialisers))
         )
         self.write()
+
+        proc_lookup = {proc.name: self.prefix + (f"{proc.mod_name}__" if proc.mod_name else "") + proc.name
+                       for proc in getattr(node, 'procedures', [])}
+        proc_lookup = {name: shorten_long_name(helper) for name, helper in proc_lookup.items()}
+
+        module_proc_names = {proc.name for proc in getattr(node, "procedures", [])}
+        fallback_bindings: List[str] = []
+
+        for derived in getattr(node, "types", []):
+            for binding in getattr(derived, "bindings", []):
+                if getattr(binding, "type", None) != "procedure":
+                    continue
+                targets = getattr(binding, "procedures", [])
+                if not targets:
+                    continue
+                target_name = getattr(targets[0], "name", None)
+                helper_name = proc_lookup.get(target_name)
+                candidates = []
+                if helper_name:
+                    candidates.append(helper_name)
+                else:
+                    # Try plain module prefix + target name as a fallback
+                    candidates.append(
+                        shorten_long_name(
+                            f"{self.prefix}{node.name}__{target_name}"
+                        )
+                    )
+                alias = shorten_long_name(
+                    f"{self.prefix}{node.name}__{binding.name}__binding__{derived.name.lower()}"
+                )
+                if candidates:
+                    candidate_list = ", ".join(f'"{name}"' for name in candidates)
+                    self.write(
+                        f"if not hasattr({self.f90_mod_name}, \"{alias}\"):")
+                    self.indent()
+                    self.write(
+                        f"for _candidate in [{candidate_list}]:"
+                    )
+                    self.indent()
+                    self.write(
+                        f"if hasattr({self.f90_mod_name}, _candidate):")
+                    self.indent()
+                    self.write(
+                        f"setattr({self.f90_mod_name}, \"{alias}\", getattr({self.f90_mod_name}, _candidate))")
+                    self.write("break")
+                    self.dedent()
+                    self.dedent()
+                    self.dedent()
+                if (
+                    binding.name not in module_proc_names
+                    and binding.name.isidentifier()
+                    and not binding.name.startswith("p_")
+                ):
+                    fallback_bindings.append(binding.name)
+        if getattr(node, "types", []):
+            self.write()
+
+        for binding_name in sorted(set(fallback_bindings)):
+            self.write("@staticmethod")
+            self.write(f"def {binding_name}(instance, *args, **kwargs):")
+            self.indent()
+            self.write(f"return instance.{binding_name}(*args, **kwargs)")
+            self.dedent()
+            self.write()
 
         # FIXME - make this less ugly, e.g. by generating code for each array
         if self.make_package:
@@ -776,6 +858,7 @@ except ValueError:
             mod_name=self.f90_mod_name,
             prefix=self.prefix,
             type_name=node.name,
+            scope_name=self._scope_identifier_for(node),
             self="self",
             selfdot="self.",
             selfcomma="self, ",
@@ -802,15 +885,17 @@ except ValueError:
             dct["selfcomma"] = ""
 
         # check for name clashes with pre-existing routines
+        procedure_names = []
         if hasattr(node, "procedures"):
             procs = [proc.name for proc in node.procedures]
+            procedure_names = procs
             if dct["el_name_get"] in procs:
                 dct["el_name_get"] += "_"
             if dct["el_name_set"] in procs:
                 dct["el_name_set"] += "_"
 
-        dct['subroutine_name_get'] = shorten_long_name('%(prefix)s%(type_name)s__get__%(el_name)s' % dct)
-        dct['subroutine_name_set'] = shorten_long_name('%(prefix)s%(type_name)s__set__%(el_name)s' % dct)
+        dct['subroutine_name_get'] = shorten_long_name('%(prefix)s%(scope_name)s__get__%(el_name)s' % dct)
+        dct['subroutine_name_set'] = shorten_long_name('%(prefix)s%(scope_name)s__set__%(el_name)s' % dct)
 
         self.write("def %(el_name_get)s(%(self)s):" % dct)
         self.indent()
@@ -833,6 +918,23 @@ except ValueError:
     %(mod_name)s.%(subroutine_name_set)s(%(set_args)s)
     ''' % dct)
             self.write()
+
+        if isinstance(node, ft.Module) and dct.get("selfdot"):
+            getter_name = "get_%s" % el.name
+            self.write(f"def {getter_name}(self):")
+            self.indent()
+            self.write(f"return self.{el.name}")
+            self.dedent()
+            self.write()
+            if "parameter" not in el.attributes:
+                forward_name = "set_%s" % el.name
+                if forward_name in procedure_names:
+                    forward_name += "_value"
+                self.write(f"def {forward_name}(self, value):")
+                self.indent()
+                self.write(f"self.{el.name} = value")
+                self.dedent()
+                self.write()
 
     def write_repr(self, node, properties):
         if len(properties) < 1:
@@ -863,6 +965,7 @@ except ValueError:
             mod_name=self.f90_mod_name,
             prefix=self.prefix,
             type_name=node.name,
+            scope_name=self._scope_identifier_for(node),
             cls_name=cls_name,
             cls_mod_name=cls_mod_name + ".",
             self="self",
@@ -903,7 +1006,7 @@ except ValueError:
         if isinstance(node, ft.Module) and self.make_package:
             self.write("global %(el_name)s" % dct)
         self.write(
-            """%(el_name)s_handle = %(mod_name)s.%(prefix)s%(type_name)s__get__%(el_name)s(%(handle)s)
+            """%(el_name)s_handle = %(mod_name)s.%(prefix)s%(scope_name)s__get__%(el_name)s(%(handle)s)
 if tuple(%(el_name)s_handle) in %(selfdot)s_objs:
     %(el_name)s = %(selfdot)s_objs[tuple(%(el_name)s_handle)]
 else:
@@ -921,7 +1024,7 @@ return %(el_name)s"""
             self.write(
                 """def %(el_name_set)s(%(selfcomma)s%(el_name)s):
     %(el_name)s = %(el_name)s._handle
-    %(mod_name)s.%(prefix)s%(type_name)s__set__%(el_name)s(%(set_args)s)
+    %(mod_name)s.%(prefix)s%(scope_name)s__set__%(el_name)s(%(set_args)s)
     """
                 % dct
             )
@@ -936,6 +1039,7 @@ return %(el_name)s"""
             mod_name=self.f90_mod_name,
             prefix=self.prefix,
             type_name=node.name,
+            scope_name=self._scope_identifier_for(node),
             self="self",
             selfdot="self.",
             selfcomma="self, ",
@@ -963,7 +1067,7 @@ return %(el_name)s"""
             node.array_initialisers.append(dct["el_name_get"])
 
         dct["subroutine_name"] = shorten_long_name(
-            "%(prefix)s%(type_name)s__array__%(el_name)s" % dct
+            "%(prefix)s%(scope_name)s__array__%(el_name)s" % dct
         )
 
         self.write(
@@ -972,9 +1076,12 @@ return %(el_name)s"""
 if array_handle in %(selfdot)s_arrays:
     %(el_name)s = %(selfdot)s_arrays[array_handle]
 else:
-    %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
-                            %(handle)s,
-                            %(mod_name)s.%(subroutine_name)s)
+    try:
+        %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
+                                %(handle)s,
+                                %(mod_name)s.%(subroutine_name)s)
+    except TypeError:
+        %(el_name)s = f90wrap.runtime.direct_c_array(array_type, array_shape, array_handle)
     %(selfdot)s_arrays[array_handle] = %(el_name)s
 return %(el_name)s"""
             % dct
@@ -999,6 +1106,20 @@ return %(el_name)s"""
             )
         self.write()
 
+        if isinstance(node, ft.Module) and dct.get("selfdot"):
+            forward_name = "set_array_%s" % el.name
+            self.write(f"def {forward_name}(self, value):")
+            self.indent()
+            self.write(f"self.{el.name}[...] = value")
+            self.dedent()
+            self.write()
+            getter_name = "get_array_%s" % el.name
+            self.write(f"def {getter_name}(self):")
+            self.indent()
+            self.write(f"return self.{el.name}")
+            self.dedent()
+            self.write()
+
     def write_dt_array_wrapper(self, node, el, dims):
         if el.type.startswith("type") and len(ft.Argument.split_dimensions(dims)) != 1:
             return
@@ -1013,6 +1134,7 @@ return %(el_name)s"""
             el_name=el.name,
             func_name=func_name,
             mod_name=node.name,
+            scope_name=self._scope_identifier_for(node),
             type_name=ft.strip_type(el.type).lower(),
             f90_mod_name=self.f90_mod_name,
             prefix=self.prefix,
@@ -1040,13 +1162,13 @@ return %(el_name)s"""
             self.write("global %(el_name)s" % dct)
 
         dct["getitem_name"] = shorten_long_name(
-            "%(prefix)s%(mod_name)s__array_getitem__%(el_name)s" % dct
+            "%(prefix)s%(scope_name)s__array_getitem__%(el_name)s" % dct
         )
         dct["setitem_name"] = shorten_long_name(
-            "%(prefix)s%(mod_name)s__array_setitem__%(el_name)s" % dct
+            "%(prefix)s%(scope_name)s__array_setitem__%(el_name)s" % dct
         )
         dct["len_name"] = shorten_long_name(
-            "%(prefix)s%(mod_name)s__array_len__%(el_name)s" % dct
+            "%(prefix)s%(scope_name)s__array_len__%(el_name)s" % dct
         )
 
         self.write(

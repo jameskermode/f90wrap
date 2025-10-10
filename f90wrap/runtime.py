@@ -27,6 +27,10 @@ f90wrap.runtime
 Contains everything needed by f90wrap generated Python modules at runtime
 """
 
+import ctypes
+
+import numpy as np
+
 from f90wrap.fortrantype import (FortranDerivedType,
                                 FortranDerivedTypeArray,
                                 FortranModule)
@@ -38,6 +42,80 @@ empty_handle = [0]*sizeof_fortran_t
 empty_type = FortranDerivedType.from_handle(empty_handle)
 
 _f90wrap_classes = {}
+
+_DIRECT_C_CTYPES = {}
+
+
+def _register_scalar_dtype(dtype_name: str, ctype) -> None:
+    try:
+        code = np.dtype(dtype_name).num
+    except TypeError:
+        return
+    _DIRECT_C_CTYPES[code] = ctype
+
+
+_register_scalar_dtype('bool_', ctypes.c_bool)
+_register_scalar_dtype('int8', ctypes.c_int8)
+_register_scalar_dtype('int16', ctypes.c_int16)
+_register_scalar_dtype('int32', ctypes.c_int32)
+_register_scalar_dtype('int64', ctypes.c_int64)
+_register_scalar_dtype('float32', ctypes.c_float)
+_register_scalar_dtype('float64', ctypes.c_double)
+try:
+    _register_scalar_dtype('longdouble', ctypes.c_longdouble)
+except AttributeError:
+    pass
+
+_COMPLEX_HANDLERS = {}
+
+
+def _register_complex_dtype(dtype_name: str, scalar_ctype, np_dtype_name: str) -> None:
+    try:
+        code = np.dtype(dtype_name).num
+    except TypeError:
+        return
+    _COMPLEX_HANDLERS[code] = (scalar_ctype, np.dtype(np_dtype_name))
+
+
+_register_complex_dtype('complex64', ctypes.c_float, 'complex64')
+_register_complex_dtype('complex128', ctypes.c_double, 'complex128')
+try:
+    _register_complex_dtype('complex256', ctypes.c_longdouble, 'complex256')
+except AttributeError:
+    pass
+
+
+def direct_c_array(dtype_code, shape, handle):
+    """Construct a NumPy view over Fortran memory using Direct-C metadata."""
+
+    if shape is None:
+        raise ValueError("Shape metadata is required for Direct-C arrays")
+
+    dims = tuple(int(dim) for dim in shape)
+    total = 1
+    for dim in dims:
+        total *= dim
+
+    try:
+        addr = int(handle)
+    except (TypeError, ValueError):
+        raise TypeError("Direct-C handle must be an integer address") from None
+    if addr <= 0:
+        raise ValueError("Direct-C handle must reference a valid memory address")
+
+    if dtype_code in _COMPLEX_HANDLERS:
+        scalar_ctype, np_dtype = _COMPLEX_HANDLERS[dtype_code]
+        buffer = (scalar_ctype * (total * 2)).from_address(addr)
+        complex_view = np.ctypeslib.as_array(buffer).view(np_dtype)
+        return np.reshape(complex_view, dims, order='F')
+
+    ctype = _DIRECT_C_CTYPES.get(dtype_code)
+    if ctype is None:
+        raise TypeError(f"Unsupported Direct-C dtype code {dtype_code}")
+
+    buffer = (ctype * total).from_address(addr)
+    array = np.ctypeslib.as_array(buffer)
+    return np.reshape(array, dims, order='F')
 
 class register_class(object):
     def __init__(self, cls_name):

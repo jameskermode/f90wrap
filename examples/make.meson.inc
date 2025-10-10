@@ -7,7 +7,7 @@ PYTHON    = python
 WRAPFLAGS := -v
 F2PYFLAGS := --lower
 
-.SUFFIXES: .f90 .fpp .f
+.SUFFIXES: .f90 .fpp .f .F90 .F
 
 .PHONY: all clean
 
@@ -21,13 +21,21 @@ else
 endif
 SEDA := "/additional_flags/a add_project_arguments('$$item', language: 'fortran')"
 
-LIBSRC_WRAP_FILES := $(filter-out f90wrap_%.f90, $(wildcard *.f90 *.f *.F90))
-LIBSRC_WRAP_FPP_FILES := $(LIBSRC_WRAP_FILES:%.f90=%.fpp)
+LIBSRC_WRAP_FILES := $(if $(WRAP_SOURCES),$(WRAP_SOURCES),$(filter-out f90wrap_%.f90, $(wildcard *.f90 *.f *.F90)))
+define _to_fpp
+$(if $(filter %.fpp %.FPP,$1),$1,$(patsubst %.F90,%.fpp,$(patsubst %.f90,%.fpp,$(patsubst %.F,%.fpp,$(patsubst %.f,%.fpp,$1)))))
+endef
+
+LIBSRC_WRAP_FPP_FILES := $(foreach src,$(LIBSRC_WRAP_FILES),$(call _to_fpp,$(src)))
 
 
 .f90.fpp:
 	${FPP} ${F90FLAGS} $<  -o $@
+.F90.fpp:
+	${FPP} ${F90FLAGS} $<  -o $@
 .f.fpp:
+	${FPP} ${F90FLAGS} $<  -o $@
+.F.fpp:
 	${FPP} ${F90FLAGS} $<  -o $@
 
 

@@ -1,0 +1,21 @@
+PYTHON := python
+
+MODULES := dta_tt dta_tc dta_ct dta_cc
+
+.PHONY: all build test clean $(MODULES:%=build-% ) $(MODULES:%=clean-% )
+
+all: test
+
+build: $(MODULES:%=build-% )
+
+$(MODULES:%=build-%):
+	$(MAKE) -f ../make.meson.inc PYTHON=$(PYTHON) NAME=$(@:build-%=%) WRAP_SOURCES="$(@:build-%=%).f90" build
+
+test: build
+	$(PYTHON) test.py
+
+clean: $(MODULES:%=clean-% )
+	@rm -rf meson.build _build_dir f90wrap_*.f90 __pycache__
+
+$(MODULES:%=clean-%):
+	$(MAKE) -f ../make.meson.inc NAME=$(@:clean-%=%) WRAP_SOURCES="$(@:clean-%=%).f90" clean
