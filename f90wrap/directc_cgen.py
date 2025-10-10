@@ -1543,7 +1543,10 @@ class DirectCGenerator(cg.CodeGenerator):
             self.write(
                 "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"O\", kwlist, &py_value)) {"
             )
-        self.write("\n        return NULL;\n    }")
+        self.indent()
+        self.write("return NULL;")
+        self.dedent()
+        self.write("}")
         self.write("")
 
         if helper.is_type_member:

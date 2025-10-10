@@ -137,6 +137,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
     def _direct_c_info(self, proc):
         if not self.direct_c_interop:
             return None
+        if not hasattr(proc, "mod_name") or not hasattr(proc, "name"):
+            return None
         key = directc.ProcedureKey(proc.mod_name, getattr(proc, 'type_name', None), proc.name)
         return self.direct_c_interop.get(key)
 

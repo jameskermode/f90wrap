@@ -96,9 +96,16 @@ def direct_c_array(dtype_code, shape, handle):
     for dim in dims:
         total *= dim
 
+    try:
+        addr = int(handle)
+    except (TypeError, ValueError):
+        raise TypeError("Direct-C handle must be an integer address") from None
+    if addr <= 0:
+        raise ValueError("Direct-C handle must reference a valid memory address")
+
     if dtype_code in _COMPLEX_HANDLERS:
         scalar_ctype, np_dtype = _COMPLEX_HANDLERS[dtype_code]
-        buffer = (scalar_ctype * (total * 2)).from_address(int(handle))
+        buffer = (scalar_ctype * (total * 2)).from_address(addr)
         complex_view = np.ctypeslib.as_array(buffer).view(np_dtype)
         return np.reshape(complex_view, dims, order='F')
 
@@ -106,7 +113,7 @@ def direct_c_array(dtype_code, shape, handle):
     if ctype is None:
         raise TypeError(f"Unsupported Direct-C dtype code {dtype_code}")
 
-    buffer = (ctype * total).from_address(int(handle))
+    buffer = (ctype * total).from_address(addr)
     array = np.ctypeslib.as_array(buffer)
     return np.reshape(array, dims, order='F')
 
