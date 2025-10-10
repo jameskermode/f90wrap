@@ -265,10 +265,14 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
                     base_symbol = symbol_str.strip()
                     owner = self._type_owner(base_symbol)
                     if owner and owner != mod:
-                        continue
+                        if symbol_sources.get(base_symbol) is not None:
+                            continue
                     prev = symbol_sources.get(base_symbol)
                     if prev and prev != mod:
-                        continue
+                        if owner and prev == owner:
+                            continue
+                        if owner and mod != owner:
+                            continue
                     symbol_sources[base_symbol] = mod
                     cleaned.append(base_symbol)
                 if cleaned:
