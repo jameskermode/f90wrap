@@ -82,12 +82,24 @@ def numpy_type_from_fortran(ftype: str, kind_map: Dict[str, Dict[str, str]]) -> 
         return "NPY_BOOL"
 
     elif base == "complex":
+        complex_map = {
+            "complex_float": "NPY_COMPLEX64",
+            "float_complex": "NPY_COMPLEX64",
+            "complex_double": "NPY_COMPLEX128",
+            "double_complex": "NPY_COMPLEX128",
+            "complex_long_double": "NPY_CLONGDOUBLE",
+            "long_double_complex": "NPY_CLONGDOUBLE",
+        }
         if kind_str and base in kind_map and kind_str in kind_map[base]:
-            c_type = kind_map[base][kind_str]
-            if c_type == "float_complex":
-                return "NPY_COMPLEX64"
-            elif c_type == "double_complex":
-                return "NPY_COMPLEX128"
+            c_type = kind_map[base][kind_str].lower()
+            if c_type in complex_map:
+                return complex_map[c_type]
+        if kind_str and kind_str.isdigit():
+            bits = int(kind_str)
+            if bits >= 16:
+                return "NPY_CLONGDOUBLE"
+            if bits >= 8:
+                return "NPY_CDOUBLE"
         return "NPY_CDOUBLE"
 
     elif base == "character":
@@ -139,11 +151,23 @@ def c_type_from_fortran(ftype: str, kind_map: Dict[str, Dict[str, str]]) -> str:
         return "int"  # Fortran logical maps to int in C
 
     elif base == "complex":
+        complex_map = {
+            "complex_float": "float _Complex",
+            "float_complex": "float _Complex",
+            "complex_double": "double _Complex",
+            "double_complex": "double _Complex",
+            "complex_long_double": "long double _Complex",
+            "long_double_complex": "long double _Complex",
+        }
         if kind_str and base in kind_map and kind_str in kind_map[base]:
-            c_type = kind_map[base][kind_str]
-            if c_type == "float_complex":
-                return "float _Complex"
-            elif c_type == "double_complex":
+            c_type = kind_map[base][kind_str].lower()
+            if c_type in complex_map:
+                return complex_map[c_type]
+        if kind_str and kind_str.isdigit():
+            bits = int(kind_str)
+            if bits >= 16:
+                return "long double _Complex"
+            if bits >= 8:
                 return "double _Complex"
         return "double _Complex"
 

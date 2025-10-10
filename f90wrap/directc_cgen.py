@@ -86,7 +86,9 @@ class DirectCGenerator(cg.CodeGenerator):
         binding_aliases = self._collect_binding_aliases(module_label)
 
         if not selected and not module_helpers and not binding_aliases:
-            return ""
+            has_candidates = bool(procedures)
+            if not has_candidates:
+                return ""
 
         self._write_external_declarations(selected, module_helpers, binding_aliases)
 
@@ -157,7 +159,7 @@ class DirectCGenerator(cg.CodeGenerator):
                 proc.name,
             )
             info = self.interop_info.get(key)
-            if info:
+            if info and info.requires_helper:
                 selected.append(proc)
 
         return selected
