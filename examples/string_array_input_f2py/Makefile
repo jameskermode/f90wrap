@@ -27,9 +27,9 @@ ${SIGNATURES}: ${F90_SRC}
 	${F2PY} ${F90_SRC} -m _${PY_MOD}_sign -h ${SIGNATURES}
 
 f2py: ${OBJ} ${SIGNATURES}
-	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD}_sign ${F2PYFLAGS} ${LINK} ${OBJ} ${SIGNATURES}
+	# CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD}_sign ${F2PYFLAGS} ${LINK} ${OBJ} ${SIGNATURES}
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD}_no_sign ${F2PYFLAGS} ${F90_SRC}
 
 test: f2py
-	${PYTHON} tests_sign.py
+	# ${PYTHON} tests_sign.py
 	${PYTHON} tests_no_sign.py

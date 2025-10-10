@@ -11,7 +11,7 @@ library.o: library.f90
 
 tests.py: library.o
 	python -m f90wrap -m library library.f90 -v
-	python -m f90wrap --f2py-f90wrap -c -m _library f90wrap_*.f90 library.o
+	python -m f90wrap --f2py-f90wrap --build-dir build -c -m _library f90wrap_*.f90 library.o
 
 test: tests.py
 	$(PYTHON) tests.py
