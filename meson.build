@@ -10,8 +10,7 @@ project('f90wrap',
 import('fs').read('f90wrap/__init__.py')
 
 # Adding at project level causes many spurious -lgfortran flags.
-# Make Fortran optional since f90wrap itself doesn't need it (only projects using f90wrap do)
-add_languages('fortran', native: false, required: false)
+add_languages('fortran', native: false)
 
 py3 = import('python').find_installation(pure: false)
 py3_dep = py3.dependency()
