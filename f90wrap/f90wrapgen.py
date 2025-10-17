@@ -1110,7 +1110,6 @@ end type %(typename)s%(suffix)s"""
                     if (self.is_class(el.type)):
                         target = "%s_ptr%%p%%obj" % el.orig_name
                     else:
-                        log.warning("oh no")
                         target = "%s_ptr%%p" % el.orig_name
                     if (self.is_class(t.orig_name)):
                         source = "this_ptr%%p%%obj%%%s" % el.orig_name
