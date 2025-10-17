@@ -1092,6 +1092,9 @@ class DuplicateAbstractImplementation(ft.FortranVisitor):
         parent = node.parent
         if parent and 'abstract' in parent.attributes:
             for binding in parent.bindings:
+                # Do not copy deferred binding, they should be implemented in child class
+                if 'deferred' in binding.attributes:
+                    continue
                 procedures = []
                 # Copy bindings from parent class replacing parent class with child class were needed
                 for proc in binding.procedures:
@@ -1130,11 +1133,11 @@ class LinkBoundDType(ft.FortranVisitor):
     def visit_Type(self, node):
         for binding in node.bindings:
             binding.dtype = node
-            if binding.type == 'procedure':
+            if binding.type == 'procedure' and 'deferred' not in binding.attributes:
                 for proc in binding.procedures:
                     proc.attributes.append('bound(%s)'%binding.name)
-                if 'abstract' in node.attributes:
-                    proc.attributes.append('abstract')
+                    if 'abstract' in node.attributes:
+                        proc.attributes.append('abstract')
         return self.generic_visit(node)
 
 class RenameInterfacesBindingsPython(ft.FortranVisitor):
@@ -1290,6 +1293,9 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
             # Pass 1: Associate module procedures with specific bindings
             for ib, binding in enumerate(type.bindings):
                 if binding.type == 'generic':
+                    continue
+                # Deferred bindings do not have associated procedures
+                if 'deferred' in binding.attributes:
                     continue
                 proto = binding.procedures[0]  # Only generics have multiple procedures
                 proc = proc_interf_map[proto.name]
