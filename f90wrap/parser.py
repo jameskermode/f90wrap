@@ -1764,6 +1764,7 @@ def add_external_packages(root, class_names, external_packages):
                 new_type = Type(name=typ["name"])
                 new_type.attributes = []
                 new_type.py_mod_name = mod["package"]
+                new_type.is_external = True
                 module.types.append(new_type)
                 if "class_name" in typ:
                     class_names[typ["name"]] = typ["class_name"]

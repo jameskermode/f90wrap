@@ -381,6 +381,7 @@ class Type(Fortran):
         self.super_types_dimensions = set()
         self.parent = parent
         self.has_assignment = has_assignment
+        self.is_external = False
 
     # Needed to reorder types in genereted code
     def __lt__(self, other):

@@ -856,6 +856,8 @@ def add_missing_constructors(tree):
     for node in ft.walk(tree):
         if not isinstance(node, ft.Type):
             continue
+        if node.is_external:
+            continue
         for child in ft.iter_child_nodes(node):
             if 'constructor' in child.attributes:
                 log.info('found constructor %s', child.name)
@@ -887,6 +889,8 @@ def add_missing_constructors(tree):
 def add_missing_destructors(tree):
     for node in ft.walk(tree):
         if not isinstance(node, ft.Type):
+            continue
+        if node.is_external:
             continue
         for child in ft.iter_child_nodes(node):
             if 'destructor' in child.attributes:
