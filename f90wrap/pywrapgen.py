@@ -210,11 +210,10 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
     def visit_Module(self, node):
         log.info("PythonWrapperGenerator visiting module %s %s" % (node.name, type(node)))
-        if hasattr(node, "is_external"):
-            if node.is_external:
-                log.info("PythonWrapperGenerator skip external module %s" % node.name)
-                self.current_module = None
-                return
+        if node.is_external:
+            log.info("PythonWrapperGenerator skip external module %s" % node.name)
+            self.current_module = None
+            return
         cls_name = normalise_class_name(node.name, self.class_names)
         node.array_initialisers = []
         node.dt_array_initialisers = []

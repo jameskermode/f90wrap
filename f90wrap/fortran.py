@@ -213,6 +213,7 @@ class Module(Fortran):
         if mod_depends is None:
             mod_depends = set()
         self.mod_depends = mod_depends
+        self.is_external = False
 
     # Required for the Module object to be hashable so one can create sets of Modules
     # So this function should return a unique imprint of the object
