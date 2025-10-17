@@ -1136,8 +1136,8 @@ class LinkBoundDType(ft.FortranVisitor):
             if binding.type == 'procedure' and 'deferred' not in binding.attributes:
                 for proc in binding.procedures:
                     proc.attributes.append('bound(%s)'%binding.name)
-                if 'abstract' in node.attributes:
-                    proc.attributes.append('abstract')
+                    if 'abstract' in node.attributes:
+                        proc.attributes.append('abstract')
         return self.generic_visit(node)
 
 class RenameInterfacesBindingsPython(ft.FortranVisitor):
