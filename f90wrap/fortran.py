@@ -75,6 +75,9 @@ class Fortran(object):
         self.doxygen = doxygen
         self.lineno = lineno
 
+        if filename == '':
+            log.warning(f"Fortran node '{name}' has no filename")
+
     def __repr__(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
 
