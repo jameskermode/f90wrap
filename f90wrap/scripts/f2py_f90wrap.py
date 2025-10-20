@@ -226,6 +226,13 @@ def main():
     # now call the main function
     print('\n!! f90wrap patched version of f2py - James Kermode <james.kermode@gmail.com> !!\n')
 
+    # Force meson backend for NumPy >= 2.0 (distutils was removed)
+    if numpy_version >= (2, 0):
+        if '--backend' not in sys.argv:
+            print('\nNumPy 2.0+ detected, using meson backend (distutils was removed).')
+            sys.argv.insert(1, '--backend')
+            sys.argv.insert(2, 'meson')
+
     # Monkey-patch numpy's meson backend to fix include and library paths
     # for separate build directories when using --build-dir
     import os
