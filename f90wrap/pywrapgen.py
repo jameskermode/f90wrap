@@ -238,11 +238,11 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
-                if el.type.startswith("type"):
+                if el.type.startswith(("type", "class")):
                     self.write_dt_wrappers(node, el, properties)
                 else:
                     self.write_scalar_wrappers(node, el, properties)
-            elif el.type.startswith("type"):  # array of derived types
+            elif el.type.startswith(("type", "class")):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims[0])
             else:
                 self.write_sc_array_wrapper(node, el, dims[0], properties)
@@ -618,7 +618,7 @@ except ValueError:
             if isinstance(node, ft.Function):
                 # convert any derived type return values to Python objects
                 for ret_val in filtered_ret_val:
-                    if ret_val.type.startswith("type") or ret_val.type.startswith("class"):
+                    if ret_val.type.startswith(("type", "class")):
                         cls_name = normalise_class_name(
                             ft.strip_type(ret_val.type), self.class_names
                         )
@@ -801,11 +801,11 @@ except ValueError:
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
-                if el.type.startswith("type"):
+                if el.type.startswith(("type", "class")):
                     self.write_dt_wrappers(node, el, properties)
                 else:
                     self.write_scalar_wrappers(node, el, properties)
-            elif el.type.startswith("type"):  # array of derived types
+            elif el.type.startswith(("type", "class")):  # array of derived types
                 self.write_dt_array_wrapper(node, el, dims[0])
             else:
                 self.write_sc_array_wrapper(node, el, dims, properties)
@@ -1017,13 +1017,14 @@ return %(el_name)s"""
         self.write(
             """array_ndim, array_type, array_shape, array_handle = \
     %(mod_name)s.%(subroutine_name)s(%(handle)s)
-if array_handle in %(selfdot)s_arrays:
-    %(el_name)s = %(selfdot)s_arrays[array_handle]
+array_hash = hash((array_ndim, array_type, tuple(array_shape), array_handle))
+if array_hash in %(selfdot)s_arrays:
+    %(el_name)s = %(selfdot)s_arrays[array_hash]
 else:
     %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
                             %(handle)s,
                             %(mod_name)s.%(subroutine_name)s)
-    %(selfdot)s_arrays[array_handle] = %(el_name)s
+    %(selfdot)s_arrays[array_hash] = %(el_name)s
 return %(el_name)s"""
             % dct
         )
@@ -1048,7 +1049,7 @@ return %(el_name)s"""
         self.write()
 
     def write_dt_array_wrapper(self, node, el, dims):
-        if el.type.startswith("type") and len(ft.Argument.split_dimensions(dims)) != 1:
+        if el.type.startswith(("type", "class")) and len(ft.Argument.split_dimensions(dims)) != 1:
             return
 
         func_name = "init_array_%s" % el.name
@@ -1097,14 +1098,25 @@ return %(el_name)s"""
             "%(prefix)s%(mod_name)s__array_len__%(el_name)s" % dct
         )
 
-        self.write(
-            """%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
-                                %(f90_mod_name)s.%(getitem_name)s,
-                                %(f90_mod_name)s.%(setitem_name)s,
-                                %(f90_mod_name)s.%(len_name)s,
-                                %(doc)s, %(cls_mod_name)s%(cls_name)s)"""
-            % dct
-        )
+        # Polymorphic object (class) without assignment method cannot not have setitem
+        if el.type.startswith("class") and not self.types[ft.strip_type(el.type)].has_assignment:
+            self.write(
+                """%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
+                                    %(f90_mod_name)s.%(getitem_name)s,
+                                    None,
+                                    %(f90_mod_name)s.%(len_name)s,
+                                    %(doc)s, %(cls_mod_name)s%(cls_name)s)"""
+                % dct
+            )
+        else:
+            self.write(
+                """%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
+                                    %(f90_mod_name)s.%(getitem_name)s,
+                                    %(f90_mod_name)s.%(setitem_name)s,
+                                    %(f90_mod_name)s.%(len_name)s,
+                                    %(doc)s, %(cls_mod_name)s%(cls_name)s)"""
+                % dct
+            )
         self.write("return %(selfdot)s%(el_name)s" % dct)
         self.dedent()
         self.write()
@@ -1131,7 +1143,7 @@ return %(el_name)s"""
                 ft_array_dim = 0
 
             # Checks for derived types
-            if arg.type.startswith("type") or arg.type.startswith("class"):
+            if arg.type.startswith(("type", "class")):
                 cls_mod_name = self.types[ft.strip_type(arg.type)].mod_name
                 cls_mod_name = self.py_mod_names.get(cls_mod_name, cls_mod_name)
 

@@ -40,6 +40,7 @@ list(APPEND tests
     issue227_allocatable
     issue235_allocatable_classes
     auto_raise_error
+    method_optional
     relative_import
 )
 

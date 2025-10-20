@@ -17,27 +17,27 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 
 class CodeGenerator(object):
     """
     Simple class to handle code generation.
-    
+
     Handles simple tasks such as indent/dedent and continuation symbols.
-    
+
     Parameters
     ----------
     indent : `str`
         Specification of the indent size/type. Typical choices may be ``" "*4``
         or ``"\t"``.
-        
+
     max_length : `int`
         Maximum length of a code line.
-        
+
     continuation : `str`
-        Symbol to represent continuation in the desired language (eg. '&' in 
+        Symbol to represent continuation in the desired language (eg. '&' in
         Fortran)
 
     comment : `str`
@@ -73,8 +73,8 @@ class CodeGenerator(object):
 
     def writelines(self, items, insert=None, level=None):
         """
-        Write the given code lines to the instance's code. 
-        
+        Write the given code lines to the instance's code.
+
         Parameters
         ----------
         items : list of strings

@@ -539,7 +539,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
                 sub.transfer_out.append(arg.name)
                 if 'pointer' not in arg.attributes:
                     log.debug('allocating arg "%s" in %s' % (arg.name, sub.name))
-                    sub.allocate.append(arg.name)
+                    sub.allocate.append(arg)
             else:
                 arg.attributes = set_intent(arg.attributes, 'intent(in)')
                 sub.transfer_in.append(arg.name)
