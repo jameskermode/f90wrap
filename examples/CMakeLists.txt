@@ -41,6 +41,7 @@ list(APPEND tests
     issue235_allocatable_classes
     auto_raise_error
     method_optional
+    relative_import
 )
 
 foreach(test ${tests})

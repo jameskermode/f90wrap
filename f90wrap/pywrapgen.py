@@ -153,14 +153,24 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         imp_lines = ['from __future__ import print_function, absolute_import, division']
         for (mod, symbol) in default_imports + list(self.imports):
             if symbol is None:
-                if self.relative and mod.startswith(self.py_mod_name + '.'):
-                    imp_lines.append('from . import %s' % mod.partition('.')[2])
+                symbol_str = mod.partition('.')[2]
+                if self.relative and mod.startswith(self.py_mod_name):
+                    imp_lines.append("from . import %s" % (symbol_str))
                 else:
                     imp_lines.append('import %s' % mod)
-            elif isinstance(symbol, tuple):
-                imp_lines.append("from %s import %s" % (mod, ", ".join(symbol)))
             else:
-                imp_lines.append("from %s import %s" % (mod, symbol))
+                submodule = mod.partition('.')[2]
+                if isinstance(symbol, tuple):
+                    symbol_str = ", ".join(symbol)
+                else:
+                    symbol_str = symbol
+
+                if self.relative and mod.startswith(self.py_mod_name):
+                    imp_lines.append("from .%s import %s" % (submodule, symbol_str))
+                else:
+                    imp_lines.append("from %s import %s" % (mod, symbol_str))
+
+
         imp_lines += ["\n"]
         self.imports = set()
         return self.writelines(imp_lines, insert=insert, level=0)
@@ -767,7 +777,11 @@ except ValueError:
             if node.parent.mod_name != node.mod_name:
                 cls_parent = "%s.%s" % (node.parent.mod_name, cls_parent)
                 if self.make_package:
-                    self.imports.add((self.py_mod_name, node.parent.mod_name))
+                    if self.relative:
+                        py_mod_name = '.'
+                    else:
+                        py_mod_name = self.py_mod_name
+                    self.imports.add((py_mod_name, node.parent.mod_name))
         self.write(
             '@f90wrap.runtime.register_class("%s.%s")' % (self.py_mod_name, cls_name)
         )
