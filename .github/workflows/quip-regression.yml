@@ -11,22 +11,18 @@
 name: QUIP Regression Test
 
 on:
-  # Temporarily disabled - QUIP integration is tested in QUIP's own CI
-  # The test has issues with pip build-env and fortranobject.c paths
-  # Re-enable once QUIP has merged the meson-python migration
+  # Run on pushes to master and PRs
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
-  # Allow manual triggering only
+  # Allow manual triggering
   workflow_dispatch:
 
-  # Disabled: Run on pushes to master and PRs
-  # push:
-  #   branches: [ master ]
-  # pull_request:
-  #   branches: [ master ]
-
-  # Disabled: Run weekly to catch upstream QUIP changes
-  # schedule:
-  #   - cron: '0 0 * * 0'  # Sunday at midnight UTC
+  # Run weekly to catch upstream QUIP changes
+  schedule:
+    - cron: '0 0 * * 0'  # Sunday at midnight UTC
 
 jobs:
   quip-regression:
