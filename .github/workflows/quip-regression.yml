@@ -1,0 +1,66 @@
+# QUIP Regression Test Workflow
+#
+# This workflow runs a regression test that builds QUIP/quippy with f90wrap
+# to ensure that changes to f90wrap don't break real-world projects.
+#
+# This runs separately from the main test suite because it:
+# - Takes several minutes (QUIP is a large codebase)
+# - Requires cloning an external repository
+# - Requires more resources than simple unit tests
+
+name: QUIP Regression Test
+
+on:
+  # Run on pushes to master and PRs
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allow manual triggering
+  workflow_dispatch:
+
+  # Run weekly to catch upstream QUIP changes
+  schedule:
+    - cron: '0 0 * * 0'  # Sunday at midnight UTC
+
+jobs:
+  quip-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout f90wrap
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran meson ninja-build libopenblas-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy ase meson-python
+
+    - name: Install f90wrap from source
+      run: |
+        pip install .
+
+    - name: Run QUIP regression test
+      run: |
+        cd examples/quip_regression
+        python test_quip_build.py
+
+    - name: Upload build logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: quip-build-logs
+        path: /tmp/f90wrap_quip_test_*/
+        retention-days: 7

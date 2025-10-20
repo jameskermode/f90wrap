@@ -6,21 +6,25 @@ sizeof_source = custom_target(
     command: f2py + ['-m', 'sizeof_fortran_t']
 )
 
-fortran_compiler = meson.get_compiler('fortran')
+# Only build Fortran extensions if Fortran compiler is available
+# Fortran language was optionally added in root meson.build
 link_args = []
+# Try to add fortran again (will succeed if already added, or if available)
+if add_languages('fortran', native: false, required: false)
+    fortran_compiler = meson.get_compiler('fortran')
+    if fortran_compiler.get_id() == 'nvidia_hpc'
+        link_args = ['-lnvf', '-lrt']
+    endif
 
-if fortran_compiler.get_id() == 'nvidia_hpc'
-    link_args = ['-lnvf', '-lrt']
+    py3.extension_module(
+        'sizeof_fortran_t',
+        'sizeoffortran.f90', sizeof_source,
+        dependencies: fortranobject_dep,
+        install: true,
+        subdir: 'f90wrap',
+        link_args: link_args,
+    )
 endif
-
-py3.extension_module(
-    'sizeof_fortran_t',
-    'sizeoffortran.f90', sizeof_source,
-    dependencies: fortranobject_dep,
-    install: true,
-    subdir: 'f90wrap',
-    link_args: link_args,
-)
 
 py3.extension_module(
     'arraydata',
