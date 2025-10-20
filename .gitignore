@@ -9,6 +9,7 @@ build
 *.x
 f90wrap*.f90
 *.pyc
+__pycache__/
 .pydevproject
 examples/mockderivetype/mockdt.py
 define_a_type.py

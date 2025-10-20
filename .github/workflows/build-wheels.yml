@@ -27,11 +27,11 @@ jobs:
         - [ubuntu-latest, manylinux, x86_64]
         - [macos-13, macosx, x86_64]
         - [windows-latest, win, AMD64]
-        - [macos-latest, macosx, arm64]
+        - [macos-14, macosx, arm64]
 
         python: ["cp39", "cp310", "cp311", "cp312", "cp313"]
         exclude:
-        - buildplat: [macos-latest, macosx, arm64]
+        - buildplat: [macos-14, macosx, arm64]
           python: "cp39"
 
       fail-fast: false
@@ -62,10 +62,11 @@ jobs:
           CIBW_TEST_COMMAND_LINUX: "cd {project}/examples; make clean_meson; make test_meson"
           CIBW_TEST_COMMAND_WINDOWS: "python -m f90wrap --version"
 
-      - name: Setup tmate session
-        if: failure()
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
+      # Disabled for faster CI failure feedback
+      # - name: Setup tmate session
+      #   if: failure()
+      #   uses: mxschmitt/action-tmate@v3
+      #   timeout-minutes: 15
 
       - uses: actions/upload-artifact@v4
         with:
