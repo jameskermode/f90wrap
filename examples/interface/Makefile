@@ -12,11 +12,11 @@ example.o: example.f90
 
 mod: example.o
 	f90wrap -m example ./example.f90
-	f2py-f90wrap -c -m _example f90wrap_example.f90 example.o
+	f2py-f90wrap --build-dir build -c -m _example f90wrap_example.f90 example.o
 
 package: example.o
 	f90wrap -P -m examplepkg ./example.f90
-	f2py-f90wrap -c -m _examplepkg f90wrap_example.f90 example.o
+	f2py-f90wrap --build-dir build -c -m _examplepkg f90wrap_example.f90 example.o
 
 test: mod package
 	$(PYTHON) test.py
@@ -27,5 +27,5 @@ clean:
 	-rm example.py
 	-rm f90wrap*.f90 *.o *.pyc *.mod
 	-rm _example*.so _examplepkg*.so
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 

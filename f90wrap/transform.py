@@ -151,7 +151,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
             return self.generic_visit(node)
 
         for attr in node.attributes:
-            match = re.match('bound\(.*?\)', attr)
+            match = re.match(r'bound\(.*?\)', attr)
             if match:
                 return self.generic_visit(node)
 
@@ -457,7 +457,7 @@ def find_inheritence_relations(tree):
     module_map = { m.name:m for m in tree.modules }
     for node in type_map.values():
         for attr in node.attributes:
-            match = re.match('extends\((.*?)\)', attr)
+            match = re.match(r'extends\((.*?)\)', attr)
             if match:
                 parent = match.group(1)
                 node.parent = type_map[parent]
