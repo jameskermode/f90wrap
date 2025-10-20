@@ -15,7 +15,10 @@ module m_circle
   public :: construct_circle,construct_circle_more_doc
   public :: incomplete_doc_sub
   public :: no_direction,doc_inside
-  public :: output_1,function_2,details_doc
+  public :: output_1,function_2
+  public :: details_doc,details_with_parenthesis
+  public :: multiline_details,empty_lines_details,long_line_brief
+
 
 contains
 
@@ -114,6 +117,55 @@ contains
     real, intent(in) :: radius
   end subroutine details_doc
 
+    !===========================================================================
+    !>
+    !! \brief Initialize circle
+    !! \details Those are very informative details (with parenthesis)
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius      radius of the circle
+    !<
+  subroutine details_with_parenthesis(circle,radius)
+    type(t_circle) :: circle
+    real, intent(in) :: radius
+  end subroutine details_with_parenthesis
+
+    !===========================================================================
+    !>
+    !! \brief Initialize circle
+    !! \details First details line
+    !!        Second details line
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius      radius of the circle
+    !<
+  subroutine multiline_details(circle,radius)
+    type(t_circle) :: circle
+    real, intent(in) :: radius
+  end subroutine multiline_details
+
+    !===========================================================================
+    !>
+    !! \brief Initialize circle
+    !! \details First details line
+    !!
+    !!        Second details line after a empty line
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius      radius of the circle
+    !<
+  subroutine empty_lines_details(circle,radius)
+    type(t_circle) :: circle
+    real, intent(in) :: radius
+  end subroutine empty_lines_details
+
+    !===========================================================================
+    !>
+    !! \brief This is a very long brief that takes up a lot of space and contains lots of information, it should probably be wrapped to the next line, but we will continue regardless
+    !! \details Those are very informative details
+    !! \param[in,out] circle      t_circle to initialize
+    !! \param[in]     radius      radius of the circle
+    !<
+  subroutine long_line_brief(circle,radius)
+    type(t_circle) :: circle
+    real, intent(in) :: radius
+  end subroutine long_line_brief
+
 end module m_circle
-
-

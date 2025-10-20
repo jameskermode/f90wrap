@@ -8,7 +8,7 @@ PYTHON = python
 
 all: test.o
 	f90wrap -m test -P test.f90
-	f2py-f90wrap -c -m _test f90wrap_test.f90 test.o
+	f2py-f90wrap --build-dir build -c -m _test f90wrap_test.f90 test.o
 
 test: all
 	$(PYTHON) tests.py
@@ -16,5 +16,5 @@ test: all
 clean:
 	-rm *.o f90wrap*.f90 *.so *.mod
 	-rm -r test/
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 

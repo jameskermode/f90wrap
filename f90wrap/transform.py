@@ -151,7 +151,7 @@ class PrivateSymbolsRemover(ft.FortranTransformer):
             return self.generic_visit(node)
 
         for attr in node.attributes:
-            match = re.match('bound\(.*?\)', attr)
+            match = re.match(r'bound\(.*?\)', attr)
             if match:
                 return self.generic_visit(node)
 
@@ -457,7 +457,7 @@ def find_inheritence_relations(tree):
     module_map = { m.name:m for m in tree.modules }
     for node in type_map.values():
         for attr in node.attributes:
-            match = re.match('extends\((.*?)\)', attr)
+            match = re.match(r'extends\((.*?)\)', attr)
             if match:
                 parent = match.group(1)
                 node.parent = type_map[parent]
@@ -618,7 +618,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
         end subroutine foo
     """
 
-    valid_dim_re = re.compile(r'^(([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/,]*\))|(len\(.*\)))$')
+    valid_dim_re = re.compile(r'^(((\d+:)?\d+)|([-0-9.e]+)|(size\([_a-zA-Z0-9\+\-\*\/,]*\))|(len\(.*\)))$')
 
     def visit_Procedure(self, node):
 
@@ -636,7 +636,7 @@ class ArrayDimensionConverter(ft.FortranVisitor):
             new_dummy_args = []
             new_ds = []
             for i, d in enumerate(ds):
-                if ArrayDimensionConverter.valid_dim_re.match(d):
+                if ArrayDimensionConverter.valid_dim_re.match(d.strip()):
                     if d.startswith('len'):
                         arg.f2py_line = ('!f2py %s %s, dimension(%s) :: %s' % \
                                          (arg.type,

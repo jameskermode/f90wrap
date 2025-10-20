@@ -39,7 +39,8 @@ assert(np.all(a.vec == 1.0))
 
 a.dtype.rl = 1.0 # calls set()
 
-my_l2 = leveltwomod.leveltwo(4.0) # calls initialise()
+my_l2 = leveltwomod.leveltwo() # calls initialise()
+my_l2.rl = 4.0 # set the field
 a.dtype = my_l2 # calls set()
 assert(a.dtype.rl == my_l2.rl)
 

@@ -27,7 +27,7 @@ import re
 import numpy as np
 from packaging import version
 
-from f90wrap.transform import shorten_long_name
+from f90wrap.transform import shorten_long_name, ArrayDimensionConverter
 from f90wrap import fortran as ft
 from f90wrap import codegen as cg
 
@@ -361,12 +361,21 @@ except ValueError:
                 )
         self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
 
+        self.write("if handle is not None:")
+        self.indent()
+        self.write("self._handle = handle")
+        self.write("self._alloc = True")
+        self.dedent()
+        self.write("else:")
+        self.indent()
         self.write(
             "result = %(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct
         )
         self.write(
             "self._handle = result[0] if isinstance(result, tuple) else result"
         )
+        self.write("self._alloc = True")
+        self.dedent()
         self.dedent()
         self.write()
 
@@ -409,6 +418,7 @@ except ValueError:
         self.write(
             "bare_class._handle = result[0] if isinstance(result, tuple) else result"
         )
+        self.write("bare_class._alloc = True")
         self.write("return bare_class")
 
         self.dedent()
@@ -440,7 +450,7 @@ except ValueError:
         self.write("def __del__(%(py_arg_names)s):" % dct)
         self.indent()
         self.write(self._format_doc_string(node))
-        self.write("if self._alloc:")
+        self.write("if getattr(self, '_alloc', False):")
         self.indent()
         self.write("%(mod_name)s.%(subroutine_name)s(%(f90_arg_names)s)" % dct)
         self.dedent()
@@ -552,21 +562,24 @@ except ValueError:
                 offset = 0
                 # Regular arguments are first, compute the index offset
                 for arg in self._filtered_arguments:
-                    offset += len(arg.dims_list())
+                    dynamic_dims = [d for d in arg.dims_list() if not ArrayDimensionConverter.valid_dim_re.match(d.strip())]
+                    offset += len(dynamic_dims)
                 for retval in filtered_ret_val:
-                    the_dim = ""
-                    try:
-                        the_dim = retval.dims_list()[0]
-                    except IndexError:
-                        pass
-                    for dim_str in retval.dims_list():
+                    dynamic_dims = [d for d in retval.dims_list() if not ArrayDimensionConverter.valid_dim_re.match(d.strip())]
+                    for dim_str in dynamic_dims:
+                        # remove unnecessary '1:' prefix, e.g. 1:n or 1:size(x)
+                        if dim_str.startswith("1:"):
+                            dim_str = dim_str[2:]
+                        elif ":" in dim_str:
+                            log.error("Cannot wrap ranges for dimension arguments: %s" % dim_str)
+
                         # "size" is replaced by "size_bn" ("badname") by numpy.f2py
                         keyword = "size"
                         try:
                             keyword = np.f2py.crackfortran.badnames[keyword]
                         except KeyError:
                             pass
-                        match = re.search("%s\((.*)\)" % keyword, dim_str)
+                        match = re.search(r"%s\((.*)\)" % keyword, dim_str)
 
                         if match:
                             # Case where return size is size of input
@@ -588,11 +601,13 @@ except ValueError:
                                 out_dim = "%s" % (py_name)
 
                         if py_name in args_py_names:
-                            log.info("Adding dimension argument to '%s'" % node.name)
+                            log.info("Adding dimension argument to '%s' ('%s' -> '%s')" % (node.name, dim_str, out_dim))
                             dct["f90_arg_names"] = "%s, %s" % (
                                 dct["f90_arg_names"],
                                 "f90wrap_n%d=%s" % (offset, out_dim),
                             )
+                        else:
+                            log.error("Failed adding dimension argument to '%s' ('%s' -> '%s')" % (node.name, dim_str, out_dim))
                         offset += 1
 
             call_line = (
@@ -704,18 +719,42 @@ except ValueError:
             cls_name = normalise_class_name(
                 ft.strip_type(node.type_name), self.class_names
             )
-        proc_names = []
+        # Check if any procedure has the same name as the interface (will be shadowed)
+        shadowed_methods = set()
+        log.info(f"PythonWrapperGenerator: Interface {node.name} has {len(node.procedures)} procedures")
         for proc in node.procedures:
+            method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
+            log.info(f"  Procedure: {proc.name}, method_name: {method_name}, interface method_name: {node.method_name}")
+            if method_name == node.method_name:
+                log.info(f"    -> Will be shadowed!")
+                shadowed_methods.add(method_name)
+
+        proc_names = []
+        for i, proc in enumerate(node.procedures):
             proc_name = ""
             if not self.make_package and hasattr(proc, "mod_name"):
                 proc_name += normalise_class_name(proc.mod_name, self.class_names) + "."
             elif cls_name is not None:
                 proc_name += cls_name + "."
-            if hasattr(proc, "method_name"):
-                proc_name += proc.method_name
+
+            method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
+
+            # Use saved reference name if this method will be shadowed
+            if method_name in shadowed_methods:
+                proc_name += f"_{method_name}_{i}"
             else:
-                proc_name += proc.name
+                proc_name += method_name
             proc_names.append(proc_name)
+
+        # Write code to save references before the overloaded method is defined
+        if shadowed_methods:
+            self.write()
+            self.write("# Save references to the original methods before overloading")
+            for i, proc in enumerate(node.procedures):
+                method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
+                if method_name in shadowed_methods:
+                    self.write(f"_{method_name}_{i} = {method_name}")
+            self.write()
 
         dct = dict(
             intf_name=node.method_name, proc_names="[" + ", ".join(proc_names) + "]"
@@ -1105,7 +1144,8 @@ return %(el_name)s"""
                     )
                 )
                 self.indent()
-                self.write("raise TypeError")
+                self.write(f"msg = f\"Expecting '{{{cls_mod_name}.{cls_name}}}' but got '{{type({arg.py_name})}}'\"")
+                self.write(f"raise TypeError(msg)")
                 self.dedent()
 
                 if self.make_package:
@@ -1153,12 +1193,9 @@ return %(el_name)s"""
                     self.indent()
                     self.write("{0} = {0}.astype('{1}')".format(arg.py_name, pytype))
                     self.dedent()
-                if ft_array_dim == -1:
-                    self.write(
-                        "if {0}.dtype.num != {1}:".format(arg.py_name, array_type)
-                    )
+
                 # Allow fortran character to match python ubyte, unicode_ or string_
-                elif array_type == np.ubyte().dtype.num:
+                if array_type == np.ubyte().dtype.num:
                     str_types = {
                         np.ubyte().dtype.num,
                         np.bytes_().dtype.num,
@@ -1174,10 +1211,21 @@ return %(el_name)s"""
                             ft_array_dim,
                         }
                     str_dims = {str(num) for num in str_dims}
-                    self.write(
-                        "if {0}.ndim not in {{{1}}} or {0}.dtype.num not in {{{2}}}:".format(
-                            arg.py_name, ",".join(str_dims), ",".join(str_types)
+                    if ft_array_dim == -1:
+                        self.write(
+                            "if {0}.dtype.num not in {{{1}}}:".format(
+                                arg.py_name, ",".join(str_types)
+                            )
                         )
+                    else:
+                        self.write(
+                            "if {0}.ndim not in {{{1}}} or {0}.dtype.num not in {{{2}}}:".format(
+                                arg.py_name, ",".join(str_dims), ",".join(str_types)
+                            )
+                        )
+                elif ft_array_dim == -1:
+                    self.write(
+                        "if {0}.dtype.num != {1}:".format(arg.py_name, array_type)
                     )
                 else:
                     self.write(
@@ -1249,10 +1297,14 @@ return %(el_name)s"""
             return pytype
 
         doc = node.doc[:]  # incoming docstring from Fortran source
-        if (
-            doc and doc[-1][-1] != "\n"
-        ):  # Short sumary and extended sumary have a trailing newline
-            doc.append("")
+        # doc can also be empty
+        try:
+            if (
+                doc and doc[-1][-1] != "\n"
+            ):  # Short summary and extended summary have a trailing newline
+                doc.append("")
+        except IndexError:
+            pass
         doc.append(format_call_signature(node))
         doc.append("Defined at %s %s" % (node.filename, _format_line_no(node.lineno)))
 
@@ -1306,4 +1358,6 @@ return %(el_name)s"""
                     % (hasattr(proc, "method_name") and proc.method_name or proc.name)
                 )
 
+        # Escape backslashes in docstrings to avoid SyntaxWarnings
+        doc = [line.replace('\\', '\\\\') for line in doc]
         return "\n".join(['"""'] + doc + ['"""'])

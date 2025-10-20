@@ -23,7 +23,12 @@ incdir_numpy = run_command(
 
 inc_np = include_directories(incdir_numpy)
 
-incdir_f2py = incdir_numpy / '..' / '..' / 'f2py' / 'src'
+# Find f2py source directory properly
+incdir_f2py = run_command(
+    py3, '-c',
+    'import os, numpy.f2py; print(os.path.join(os.path.dirname(numpy.f2py.__file__), "src"))',
+    check: true,
+).stdout().strip()
 inc_f2py = include_directories(incdir_f2py)
 fortranobject_c = incdir_f2py / 'fortranobject.c'
 
@@ -32,6 +37,7 @@ fortranobject_lib = static_library('_fortranobject',
   fortranobject_c,
   dependencies: py3_dep,
   include_directories: [inc_np, inc_f2py],
+  pic: true,
 )
 fortranobject_dep = declare_dependency(
   link_with: fortranobject_lib,
