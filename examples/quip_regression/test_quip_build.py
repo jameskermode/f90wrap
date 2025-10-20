@@ -89,7 +89,7 @@ class TestQUIPBuild(unittest.TestCase):
             print(f"\nCleaning up {cls.test_dir}...")
             shutil.rmtree(cls.test_dir)
 
-    def test_quippy_package_builds(self):
+    def test_01_quippy_package_builds(self):
         """Test that quippy Python package can be built with f90wrap"""
         print("\nBuilding quippy Python package...")
 
@@ -97,7 +97,7 @@ class TestQUIPBuild(unittest.TestCase):
 
         # Build quippy package
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--no-build-isolation", "-e", "."],
+            [sys.executable, "-m", "pip", "install", "." ],
             cwd=quippy_dir,
             capture_output=True,
             text=True
@@ -106,7 +106,7 @@ class TestQUIPBuild(unittest.TestCase):
         self.assertEqual(result.returncode, 0,
                         f"quippy build failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
 
-    def test_quippy_imports(self):
+    def test_02_quippy_imports(self):
         """Test that quippy can be imported"""
         print("\nTesting quippy import...")
 
@@ -120,7 +120,7 @@ class TestQUIPBuild(unittest.TestCase):
                         f"quippy import failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
         self.assertIn("Import successful", result.stdout)
 
-    def test_quippy_basic_usage(self):
+    def test_03_quippy_basic_usage(self):
         """Test basic quippy functionality"""
         print("\nTesting basic quippy usage...")
 
