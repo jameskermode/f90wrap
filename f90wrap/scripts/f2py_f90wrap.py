@@ -205,11 +205,14 @@ def main():
         })
 
         del numpy.f2py.rules.arg_rules[33]['frompyobj'][8]
-        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(8, {isstringarray:\
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(8, {l_and(isstringarray, isoptional):\
         "\t\tif (#varname#_capi != Py_None) slen(#varname#) = f2py_itemsize(#varname#);"
         })
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(9, {l_and(isstringarray, l_not(isoptional)):\
+        "\t\tslen(#varname#) = f2py_itemsize(#varname#);"
+        })
 
-        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(9, {isoptional:\
+        numpy.f2py.rules.arg_rules[33]['frompyobj'].insert(10, {isoptional:\
         "\n\t\tif (#varname#_capi != Py_None && capi_#varname#_as_array == NULL) {"
         "\n\t\t\tPyObject* capi_err = PyErr_Occurred();"
         "\n\t\t\tif (capi_err == NULL) {"
