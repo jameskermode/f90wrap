@@ -50,7 +50,7 @@ jobs:
 
     - name: Install f90wrap from source
       run: |
-        pip install -e .
+        pip install .
 
     - name: Run QUIP regression test
       run: |
