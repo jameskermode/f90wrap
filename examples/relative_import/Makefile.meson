@@ -1,0 +1,18 @@
+include ../make.meson.inc
+
+NAME     	:= pywrapper
+TOP_MODULE  := top_module
+WRAPFLAGS 	+= --package --relative
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+test: topmodule
+	$(PYTHON) tests.py
+
+topmodule: build
+	mkdir ${TOP_MODULE}
+	mv ${NAME}/ _${NAME}.*so ${TOP_MODULE}/
+	touch ${TOP_MODULE}/__init__.py
+
+clean:
+	$(MAKE) -f $(MAKEFILE) clean
+	rm -rf ${TOP_MODULE}
