@@ -133,12 +133,12 @@ libsrc.a: ${LIBSRC_OBJECTS}
 
 _${PYTHON_MODN}.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN} ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v  --callback pyfunc_print
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _${PYTHON_MODN} -L. -lsrc f90wrap*.f90 ${LIBSRC_WRAP_FILES}
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _${PYTHON_MODN} -L. -lsrc f90wrap*.f90 ${LIBSRC_WRAP_FILES}
 
 
 _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN}_pkg ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v -P --callback pyfunc_print
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir . -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90 ${LIBSRC_WRAP_FILES}
+	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90 ${LIBSRC_WRAP_FILES}
 
 test: _${PYTHON_MODN}_pkg.so _${PYTHON_MODN}.so
 	${PYTHON} tests.py
