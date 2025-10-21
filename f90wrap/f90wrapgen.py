@@ -142,7 +142,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
-            elif el.type.startswith("type"):  # array of derived types
+            elif ft.is_derived_type(el.type):  # array of derived types
                 self._write_dt_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
             else:
                 if "parameter" not in el.attributes:
@@ -232,7 +232,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.write("end type " + ty.name)
         self.write()
 
-    def write_type_lines(self, tname, recursive=False, tname_inner=None):
+    def write_type_lines(self, tname, recursive=False, tname_inner=None, *, pointer=False):
         """
         Write a pointer type for a given type name
 
@@ -265,7 +265,7 @@ end type %(typename)s%(suffix)s"""
             % {"suffix": suffix, "class_type": class_type, "typename": tname, "typename_inner": tname_inner}
         )
 
-    def write_class_lines(self, cname, recursive=False):
+    def write_class_lines(self, cname, recursive=False, *, pointer=False):
         """
         Write a pointer type for a given class name
 
@@ -274,11 +274,12 @@ end type %(typename)s%(suffix)s"""
         tname : `str`
             Should be the name of a class in the wrapped code.
         """
+        pointer_str = "pointer :: obj => NULL()" if pointer else "allocatable  :: obj"
         cname = ft.strip_type(cname)
         self.write(
             "type %(classname)s_wrapper_type\n"
-            "    class(%(classname)s), allocatable :: obj\n"
-            "end type %(classname)s_wrapper_type" % {"classname": cname}
+            "    class(%(classname)s), %(pointer_str)s\n"
+            "end type %(classname)s_wrapper_type" % {"classname": cname, "pointer_str": pointer_str}
         )
         self.write_type_lines(cname, recursive, f"{cname}_wrapper_type")
 
@@ -292,11 +293,11 @@ end type %(typename)s%(suffix)s"""
             return True
         return False
 
-    def write_type_or_class_lines(self, tname, recursive=False):
+    def write_type_or_class_lines(self, tname, recursive=False, *, pointer=False):
         if self.is_class(tname):
-            self.write_class_lines(tname, recursive)
+            self.write_class_lines(tname, recursive, pointer=pointer)
         else:
-            self.write_type_lines(tname, recursive)
+            self.write_type_lines(tname, recursive, pointer=pointer)
 
 
     def write_arg_decl_lines(self, node):
@@ -381,7 +382,12 @@ end type %(typename)s%(suffix)s"""
                     self.dedent()
                     self.write("else")
                     self.indent()
-                    self.write("%(arg_name)s_ptr%%p => null()" % arg_dict)
+                    if self.is_class(arg.type):
+                        node.deallocate.append(arg.name)
+                        self.write("allocate(%(arg_name)s_ptr%%p)" % arg_dict)
+                        self.write("%(arg_name)s_ptr%%p%%obj => null()" % arg_dict)
+                    else:
+                        self.write("%(arg_name)s_ptr%%p => null()" % arg_dict)
                     self.dedent()
                     self.write("end if")
 
@@ -390,10 +396,9 @@ end type %(typename)s%(suffix)s"""
         Write special user-provided init lines to a node.
         """
         for alloc in node.allocate:
-            self.write("allocate(%s_ptr%%p)" % alloc)  # (self.prefix, alloc))
-        if (self.is_class(node.type_name) and "constructor" in node.attributes
-            and "skip_call" in node.attributes):
-            self.write("allocate(this_ptr%p%obj)")
+            self.write("allocate(%s_ptr%%p)" % alloc.name)
+            if self.is_class(alloc.type):
+                self.write("allocate(%s_ptr%%p%%obj)" % alloc.name)
         for arg in node.arguments:
             if not hasattr(arg, "init_lines"):
                 continue
@@ -540,7 +545,22 @@ end type %(typename)s%(suffix)s"""
         Deallocate the opaque reference to clean up.
         """
         for dealloc in node.deallocate:
-            self.write("deallocate(%s_ptr%%p)" % dealloc)  # (self.prefix, dealloc))
+            is_optional = False
+            is_class = False
+            for arg in node.arguments:
+                if ft.strip_type(arg.name) == dealloc and "optional" in arg.attributes:
+                    is_optional = True
+                if self.is_class(arg.type):
+                    is_class = True
+            if is_optional:
+                self.write(f"if (.not. present({dealloc})) then")
+                self.indent()
+            if is_class and not is_optional:
+                self.write(f"deallocate({dealloc}_ptr%p%obj)")
+            self.write(f"deallocate({dealloc}_ptr%p)")
+            if is_optional:
+                self.dedent()
+                self.write("end if")
 
     def visit_Procedure(self, node):
         """
@@ -592,7 +612,11 @@ end type %(typename)s%(suffix)s"""
         for tname in node.types:
             if tname in self.types and "super-type" in self.types[tname].doc:
                 self.write_super_type_lines(self.types[tname])
-            self.write_type_or_class_lines(tname)
+            pointer = False
+            for arg in node.arguments:
+                if ft.strip_type(arg.type) == tname and "optional" in arg.attributes:
+                    pointer = True
+            self.write_type_or_class_lines(tname, pointer=pointer)
         self.write_arg_decl_lines(node)
         self.write_transfer_in_lines(node)
         self.write_init_lines(node)
@@ -614,7 +638,7 @@ end type %(typename)s%(suffix)s"""
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
             if len(dims) == 0:  # proper scalar type (normal or derived)
                 self._write_scalar_wrappers(node, el, self.sizeof_fortran_t)
-            elif el.type.startswith("type"):  # array of derived types
+            elif el.type.startswith(("type", "class")):  # array of derived types
                 self._write_dt_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
             else:
                 self._write_sc_array_wrapper(node, el, dims[0], self.sizeof_fortran_t)
@@ -734,13 +758,15 @@ end type %(typename)s%(suffix)s"""
             The size, in bytes, of a pointer to a fortran derived type ??
         """
         if (
-            element.type.startswith("type")
+            element.type.startswith(("type", "class"))
             and len(ft.Argument.split_dimensions(dims)) != 1
         ):
             return
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, "get")
-        self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
+        # Polymorphic objects require an assignment(=) method to be set
+        if not ft.is_class(element.type) or self.types[ft.strip_type(element.type)].has_assignment:
+            self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
         self._write_array_len(t, element, sizeof_fortran_t)
 
     def _write_scalar_wrappers(self, t, element, sizeof_fortran_t):
@@ -759,8 +785,11 @@ end type %(typename)s%(suffix)s"""
             The size, in bytes, of a pointer to a fortran derived type ??
         """
         self._write_scalar_wrapper(t, element, sizeof_fortran_t, "get")
-        if "parameter" not in element.attributes:
-            self._write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
+        # Parameters cannot be set
+        if "parameter" in element.attributes: return
+        # Polymorphic objects require an assignment(=) method to be set
+        if ft.is_class(element.type) and not self.types[ft.strip_type(element.type)].has_assignment: return
+        self._write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
 
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):
         """
@@ -836,7 +865,7 @@ end type %(typename)s%(suffix)s"""
 
         if isinstance(t, ft.Type):
             self.write_type_or_class_lines(t.name)
-        self.write_type_or_class_lines(el.type, same_type)
+        self.write_type_or_class_lines(el.type, same_type, pointer=True)
 
         self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
@@ -873,7 +902,11 @@ end type %(typename)s%(suffix)s"""
         self.indent()
 
         if getset == "get":
-            self.write("%s_ptr%%p => %s(%s)" % (el.name, array_name, safe_i))
+            self.write("allocate(%s_ptr%%p)" % (el.name))
+            if (self.is_class(el.type)):
+                self.write("%s_ptr%%p%%obj => %s(%s)" % (el.name, array_name, safe_i))
+            else:
+                self.write("%s_ptr%%p => %s(%s)" % (el.name, array_name, safe_i))
             self.write(
                 "%s = transfer(%s_ptr,%s)"
                 % (el.name + "item", el.name, el.name + "item")
@@ -882,7 +915,10 @@ end type %(typename)s%(suffix)s"""
             self.write(
                 "%s_ptr = transfer(%s,%s_ptr)" % (el.name, el.name + "item", el.name)
             )
-            self.write("%s(%s) = %s_ptr%%p" % (array_name, safe_i, el.name))
+            if (self.is_class(el.type)):
+                self.write("%s(%s) = %s_ptr%%p%%obj" % (array_name, safe_i, el.name))
+            else:
+                self.write("%s(%s) = %s_ptr%%p" % (array_name, safe_i, el.name))
 
         self.dedent()
         self.write("endif")
@@ -1032,7 +1068,7 @@ end type %(typename)s%(suffix)s"""
         # Check if the type has recursive definition:
         same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
 
-        if el.type.startswith("type") and not same_type:
+        if ft.is_derived_type(el.type) and not same_type:
             mod = self.types[el.type].mod_name
             el_tname = ft.strip_type(el.type)
             if mod in extra_uses:
@@ -1056,8 +1092,8 @@ end type %(typename)s%(suffix)s"""
         if isinstance(t, ft.Type):
             self.write_type_or_class_lines(t.orig_name)
 
-        if el.type.startswith("type") and not (el.type == "type(" + t.name + ")"):
-            self.write_type_or_class_lines(el.type)
+        if ft.is_derived_type(el.type) and not (el.type == "type(" + t.name + ")"):
+            self.write_type_or_class_lines(el.type, pointer=True)
 
         if isinstance(t, ft.Type):
             self.write("integer, intent(in)   :: this(%d)" % sizeof_fortran_t)
@@ -1070,7 +1106,7 @@ end type %(typename)s%(suffix)s"""
             if attr not in ["pointer", "allocatable", "public", "parameter", "save"]
         ]
 
-        if el.type.startswith("type"):
+        if ft.is_derived_type(el.type):
             # For derived types elements, treat as opaque reference
             self.write(
                 "integer, intent(%s) :: %s(%d)" % (inout, localvar, sizeof_fortran_t)
@@ -1086,7 +1122,7 @@ end type %(typename)s%(suffix)s"""
                 if isinstance(t, ft.Type):
                     if (self.is_class(el.type)):
                         self.write("allocate(%s_ptr%%p)" % el.orig_name)
-                        source = "%s_ptr%%p%%obj =" % el.orig_name
+                        source = "%s_ptr%%p%%obj =>" % el.orig_name
                     else:
                         source = "%s_ptr%%p =>" % el.orig_name
                     if (self.is_class(t.orig_name)):

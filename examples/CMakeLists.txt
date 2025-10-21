@@ -41,6 +41,7 @@ list(APPEND tests
     issue235_allocatable_classes
     auto_raise_error
 	  dump_package
+    method_optional
     relative_import
 )
 

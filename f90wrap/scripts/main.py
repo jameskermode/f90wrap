@@ -49,6 +49,7 @@ from f90wrap import f90wrapgen as fwrap
 from f90wrap import pywrapgen as pywrap
 
 logging.basicConfig(stream=sys.stdout)
+logger = logging.getLogger('f90wrap')
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -97,7 +98,7 @@ USAGE
     try:
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
-        parser.add_argument("-v", "--verbose", dest="verbose", action="count",
+        parser.add_argument("-v", "--verbose", dest="verbose", action="count", default=0,
                             help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
@@ -171,10 +172,14 @@ USAGE
 
         args = parser.parse_args()
 
-        if args.verbose:
-            logging.getLogger().setLevel(logging.DEBUG)
-        else:
-            logging.getLogger().setLevel(logging.INFO)
+        log_levels = {
+            0: logging.ERROR,
+            1: logging.WARNING,
+            2: logging.INFO,
+            3: logging.DEBUG
+        }
+
+        logging.getLogger().setLevel(log_levels.get(min(args.verbose, max(log_levels.keys())), logging.INFO))
 
         # set defaults, to be overridden by command line args and config file
         kind_map = {}
@@ -238,7 +243,7 @@ USAGE
 
         # documentation plugin
         if args.documentation_plugin:
-            print("Using documentation plugin script {}".format(args.documentation_plugin))
+            logger.info(f"Using documentation plugin script {args.documentation_plugin}")
             doc_plugin_fname = args.documentation_plugin
         else:
             doc_plugin_fname = None
@@ -246,7 +251,7 @@ USAGE
         # Line lengths for python files
         if args.py_max_line_length:
             py_max_line_length = int(args.py_max_line_length)
-            print("Using maximum line length in python files: {}".format(py_max_line_length))
+            logger.info(f"Using maximum line length in python files: {py_max_line_length}")
         else:
             # default set by preserving the previously hardcoded value from pywrapgen.py
             py_max_line_length = 80
@@ -254,64 +259,54 @@ USAGE
         # Line lengths for fortran files
         if args.f90_max_line_length:
             f90_max_line_length = int(args.f90_max_line_length)
-            print("Using maximum line length in fortran files: {}".format(f90_max_line_length))
+            logger.info(f"Using maximum line length in fortran files: {f90_max_line_length}")
         else:
             # default set by preserving the previously hardcoded value from f90wrapgen.py
             f90_max_line_length = 120
 
         # finally, read config file, allowing it to override command line args
         if args.conf_file:
-            print("Executing config file %s" % args.conf_file)
+            logger.info(f"Executing config file {args.conf_file}")
             # fixme: this does not get the locals() and globals()
             exec(open(args.conf_file).read())
 
-        print('Kind map (also saved to .f2py_f2cmap)')
-        pprint.pprint(kind_map)
+        logger.info('Kind map (also saved to .f2py_f2cmap)')
+        logger.info(pprint.pformat(kind_map))
         f2py_f2cmap = open('.f2py_f2cmap', 'w')
         pprint.pprint(kind_map, f2py_f2cmap)
         f2py_f2cmap.close()
-        print()
 
-        print('Constructors:')
-        print(constructors)
-        print()
+        logger.info('Constructors:')
+        logger.info(pprint.pformat(constructors))
 
-        print('Destructors:')
-        print(destructors)
-        print()
+        logger.info('Destructors:')
+        logger.info(pprint.pformat(destructors))
 
-        print('Short names for derived types:')
-        pprint.pprint(short_names)
-        print()
+        logger.info('Short names for derived types:')
+        logger.info(pprint.pformat(short_names))
 
-        print('String lengths:')
-        pprint.pprint(string_lengths)
-        print()
+        logger.info('String lengths:')
+        logger.info(pprint.pformat(string_lengths))
 
-        print('Initialisation lines for derived types')
-        pprint.pprint(init_lines)
-        print()
+        logger.info('Initialisation lines for derived types')
+        logger.info(pprint.pformat(init_lines))
 
-        print('Python module name remapping')
-        pprint.pprint(py_mod_names)
+        logger.info('Python module name remapping')
+        logger.info(pprint.pformat(py_mod_names))
 
-        print('Class names remapping')
-        pprint.pprint(class_names)
-        print()
+        logger.info('Class names remapping')
+        logger.info(pprint.pformat(class_names))
 
-        print('Argument name map:')
-        pprint.pprint(argument_name_map)
-        print()
+        logger.info('Argument name map:')
+        logger.info(pprint.pformat(argument_name_map))
 
         fsize = sizeof_fortran_t()
-        print('Size of Fortran derived type pointers is %d bytes.' % fsize)
-        print()
+        logger.info(f'Size of Fortran derived type pointers is {fsize} bytes.')
 
         # parse input Fortran source files
-        print('Parsing Fortran source files %r ...' % args.files)
+        logger.info(f'Parsing Fortran source files {args.files} ...')
         parse_tree = fparse.read_files(args.files, doc_plugin_filename=doc_plugin_fname)
-        print('done parsing source.')
-        print()
+        logger.info('done parsing source.')
 
         if args.dump_package:
             print('Dump json file %s ...' % args.dump_package)
@@ -322,19 +317,18 @@ USAGE
             print('Adding external f90wrap packages...' % args.files)
             parse_tree = fparse.add_external_packages(parse_tree, class_names, args.external_packages)
             print()
-
+        
         tree = copy.deepcopy(parse_tree)
 
         types = fortran.find_types(tree, skip_types)
-        print('Derived types detected in Fortran source files:')
-        pprint.pprint(types)
-        print()
+        logger.info('Derived types detected in Fortran source files:')
+        logger.info(pprint.pformat(types))
 
         for type_name, typ in types.items():
             if not type_name in class_names.keys():
                 class_names[type_name] = typ.orig_name
-        print('Class name mapping:')
-        pprint.pprint(class_names)
+        logger.info('Class name mapping:')
+        logger.info(pprint.pformat(class_names))
 
         # Find all modules and subroutines the user wishes to keep
         # FIXME: this is messy, add more logic to it
@@ -363,8 +357,8 @@ USAGE
         for type_name, typ in types.items():
             modules_for_type[typ.mod_name] = typ.mod_name
         modules_for_type.update(joint_modules)
-        print('Modules for each type:')
-        pprint.pprint(modules_for_type)
+        logger.info('Modules for each type:')
+        logger.info(pprint.pformat(modules_for_type))
 
         tree = tf.transform_to_generic_wrapper(tree,
                                                types,

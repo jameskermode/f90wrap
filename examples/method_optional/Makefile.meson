@@ -1,7 +1,6 @@
 include ../make.meson.inc
 
 NAME     := pywrapper
-WRAPFLAGS += -v --auto-raise-error ierr,errmsg
 
 test: build
 	$(PYTHON) tests.py
