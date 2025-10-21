@@ -1,0 +1,17 @@
+include ../make.meson.inc
+
+MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+test: wrapper
+	$(PYTHON) test.py
+
+wrapper: wrap-dta_tt wrap-dta_tc wrap-dta_ct wrap-dta_cc
+
+wrap-%: %.f90
+	$(MAKE) -f $(MAKEFILE) build NAME=$* LIBSRC_WRAP_FPP_FILES=$*.f90
+	rm -f f90wrap_$*.f90
+
+clean: clean-dta_tt clean-dta_tc clean-dta_ct clean-dta_cc
+
+clean-%: %.f90
+	$(MAKE) -f $(MAKEFILE) clean NAME=$*
