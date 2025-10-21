@@ -75,6 +75,9 @@ class Fortran(object):
         self.doxygen = doxygen
         self.lineno = lineno
 
+        if filename == '':
+            log.warning(f"Fortran node '{name}' has no filename")
+
     def __repr__(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
 
@@ -210,6 +213,7 @@ class Module(Fortran):
         if mod_depends is None:
             mod_depends = set()
         self.mod_depends = mod_depends
+        self.is_external = False
 
     # Required for the Module object to be hashable so one can create sets of Modules
     # So this function should return a unique imprint of the object
@@ -377,6 +381,7 @@ class Type(Fortran):
         self.super_types_dimensions = set()
         self.parent = parent
         self.has_assignment = has_assignment
+        self.is_external = False
 
     # Needed to reorder types in genereted code
     def __lt__(self, other):

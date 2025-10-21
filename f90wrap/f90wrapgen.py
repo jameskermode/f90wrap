@@ -132,6 +132,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
 
         Subroutines and elements within each module are properly wrapped.
         """
+        if hasattr(node, "is_external") and node.is_external:
+            return None
         log.info("F90WrapperGenerator visiting module %s" % node.name)
         self.code = []
         self.write("! Module %s defined in file %s" % (node.name, node.filename))
