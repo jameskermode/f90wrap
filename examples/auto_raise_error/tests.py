@@ -15,6 +15,11 @@ class TestError(unittest.TestCase):
             m_error.auto_raise_optional()
         self.assertEqual(str(context.exception).strip(), 'auto raise error optional')
 
+    def test_raise_out(self):
+        with self.assertRaises(RuntimeError) as context:
+            m_error.auto_raise()
+        self.assertEqual(str(context.exception).strip(), 'auto raise error')
+
     def test_no_raise(self):
         m_error.auto_no_raise()
         # Check that Error handling argument are correctly removed from interface
@@ -28,6 +33,11 @@ class TestError(unittest.TestCase):
             ierr=1
             errmsg='error'
             m_error.auto_no_raise_optional(ierr, errmsg)
+
+    def test_str_input(self):
+        keyword='foo'
+        m_error.str_input(keyword)
+        m_error.str_input()
 
     def test_no_error_var(self):
         a_number, a_string = m_error.no_error_var()

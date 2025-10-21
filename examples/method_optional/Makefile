@@ -4,10 +4,10 @@
 
 include ../make.inc
 PY_MOD      = pywrapper
-F90_SRC     = main-oo.f90 base_poly.f90
+F90_SRC     = main.f90
 OBJ         = $(F90_SRC:.f90=.o)
 F90WRAP_SRC = $(addprefix f90wrap_,${F90_SRC})
-WRAPFLAGS   = -v --type-check --kind-map kind.map
+WRAPFLAGS   = -v --type-check
 F2PY        = f2py-f90wrap
 .PHONY: all clean
 
@@ -15,9 +15,6 @@ all: test
 
 clean:
 	rm -rf *.mod *.smod *.o f90wrap*.f90 ${PY_MOD}.py _${PY_MOD}*.so __pycache__/ .f2py_f2cmap build ${PY_MOD}/
-
-main-oo.o: main-oo.f90 base_poly.o
-	${F90} ${F90FLAGS} -c $< -o $@
 
 %.o: %.f90
 	${F90} ${F90FLAGS} -c $< -o $@
@@ -29,4 +26,4 @@ f2py: ${F90WRAP_SRC}
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} f90wrap_*.f90 *.o
 
 test: f2py
-	${PYTHON} oowrap_test.py
+	${PYTHON} tests.py

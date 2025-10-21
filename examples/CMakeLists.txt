@@ -38,10 +38,12 @@ list(APPEND tests
     fortran_oo
     issue254_getter
     issue258_derived_type_attributes
-	issue206_subroutine_oldstyle
-	issue227_allocatable
-	issue235_allocatable_classes
+    issue206_subroutine_oldstyle
+    issue227_allocatable
+    issue235_allocatable_classes
     auto_raise_error
+    method_optional
+    relative_import
 )
 
 foreach(test ${tests})
