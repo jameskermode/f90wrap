@@ -19,7 +19,6 @@ def clean_str(in_str):
 class TestDocstring(unittest.TestCase):
 
   def test_module_doc(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.__doc__
     ref_docstring = """
       File: main.f90
@@ -35,7 +34,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_subroutine_docstring(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.construct_circle.__doc__
     ref_docstring = """
     Initialize circle
@@ -53,8 +51,27 @@ class TestDocstring(unittest.TestCase):
 
     assert clean_str(ref_docstring) == clean_str(docstring)
 
+  def test_subroutine_docstring_more_args(self):
+    docstring = m_circle.construct_circle_with_more_args.__doc__
+    ref_docstring = """
+    Initialize circle with more args
+
+    construct_circle_with_more_args(self, radius1, radius2)
+    Defined at main.f90 lines 17-20
+
+    Parameters
+    ----------
+    circle : T_Circle
+        t_circle to initialize [in,out]
+    radius1 : float32
+        radius of the circle [in]
+    radius2 : float32
+        radius of the circle [in]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
   def test_subroutine_docstring_more_doc(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.construct_circle_more_doc.__doc__
     ref_docstring = """
     Initialize circle with more doc
@@ -76,7 +93,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_no_direction(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.no_direction.__doc__
     ref_docstring = """
     Without direction
@@ -95,7 +111,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_docstring_incomplet(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.incomplete_doc_sub.__doc__
     ref_docstring = """
     Incomplete doc
@@ -113,7 +128,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_param_return(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.output_1.__doc__
     ref_docstring = """
     subroutine output_1 outputs 1
@@ -129,8 +143,23 @@ class TestDocstring(unittest.TestCase):
 
     assert clean_str(ref_docstring) == clean_str(docstring)
 
+  def test_err_cleanup(self):
+    docstring = m_circle.ierr_errmsg.__doc__
+    ref_docstring = """
+    subroutine is able to raise error
+
+    output = ierr_errmsg()
+    Defined at main.f90 lines 59-61
+
+    Returns
+    -------
+    output : float32
+        this is 1 [out]
+    """
+
+    assert clean_str(ref_docstring) == clean_str(docstring)
+
   def test_function_return(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.function_2.__doc__
     ref_docstring = """
     this is a function
@@ -152,7 +181,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_details(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.details_doc.__doc__
     ref_docstring = """
     Initialize circle
@@ -173,7 +201,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_details_with_parenthesis(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.details_with_parenthesis.__doc__
     ref_docstring = """
     Initialize circle
@@ -194,7 +221,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_multiline_details(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.multiline_details.__doc__
     ref_docstring = """
     Initialize circle
@@ -216,7 +242,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_empty_lines_details(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.empty_lines_details.__doc__
     ref_docstring = """
     Initialize circle
@@ -239,7 +264,6 @@ class TestDocstring(unittest.TestCase):
     assert clean_str(ref_docstring) == clean_str(docstring)
 
   def test_long_line_brief(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.long_line_brief.__doc__
     ref_docstring = """
     This is a very long brief that takes up a lot of space and contains lots of information, it should probably be wrapped to the next line, but we will continue regardless
@@ -261,7 +285,6 @@ class TestDocstring(unittest.TestCase):
 
   @unittest.skip("Support for this feature is not planned for now")
   def test_doc_inside(self):
-    circle = m_circle.t_circle()
     docstring = m_circle.doc_inside.__doc__
     ref_docstring = """
     Doc inside

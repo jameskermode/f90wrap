@@ -2,6 +2,7 @@ include ../make.meson.inc
 
 NAME     := pywrapper
 MAKEFILE := $(lastword $(MAKEFILE_LIST))
+WRAPFLAGS += --auto-raise-error ierr,errmsg
 
 LIBSRC_WRAP_FPP_FILES := main.f90
 
@@ -9,5 +10,4 @@ test: build1
 	$(PYTHON) docstring_test.py
 
 build1:
-	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME) LIBSRC_WRAP_FPP_FILES=$(LIBSRC_WRAP_FPP_FILES)
-
+	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME) LIBSRC_WRAP_FPP_FILES=$(LIBSRC_WRAP_FPP_FILES) WRAPFLAGS="$(WRAPFLAGS)"
