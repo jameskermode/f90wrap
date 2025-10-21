@@ -35,7 +35,9 @@ EXAMPLES = arrayderivedtypes \
 	issue206_subroutine_oldstyle \
 	issue227_allocatable \
 	issue235_allocatable_classes \
-	auto_raise_error
+	auto_raise_error \
+	method_optional \
+	relative_import
 
 PYTHON = python
 

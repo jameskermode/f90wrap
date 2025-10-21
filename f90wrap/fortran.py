@@ -367,7 +367,7 @@ class Type(Fortran):
 
     def __init__(self, name='', filename='', doc=None,
                  lineno=0, elements=None, procedures=None, bindings=None, interfaces=None,
-                 mod_name=None, parent=None):
+                 mod_name=None, parent=None, has_assignment=False):
         Fortran.__init__(self, name, filename, doc, lineno)
         self.elements = elements if elements else []
         self.procedures = procedures if procedures else []
@@ -376,6 +376,7 @@ class Type(Fortran):
         self.mod_name = mod_name
         self.super_types_dimensions = set()
         self.parent = parent
+        self.has_assignment = has_assignment
 
     # Needed to reorder types in genereted code
     def __lt__(self, other):
@@ -869,6 +870,7 @@ def remove_private_symbols(node):
     return node
 
 type_re = re.compile(r'(type|class)\s*\((.*?)\)')
+class_re = re.compile(r'class\s*\((.*?)\)')
 def derived_typename(typename):
     """
     type(TYPE) -> TYPE
@@ -880,6 +882,9 @@ def derived_typename(typename):
 
 def is_derived_type(typename):
     return type_re.match(typename) != None
+
+def is_class(typename):
+    return class_re.match(typename) != None
 
 def split_type_kind(typename):
     """

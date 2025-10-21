@@ -520,7 +520,6 @@ def check_program(cl, file):
             cl = file.next()
 
         cl = file.next()
-
         out.lineno = slice(out.lineno, file.lineno - 1)
         return [out, cl]
     else:
@@ -1240,6 +1239,7 @@ def check_type(cl, file):
 
         cl = file.next()
 
+        out.has_assignment = any(bind.name == "assignment(=)" for bind in out.bindings)
         out.lineno = slice(out.lineno, file.lineno - 1)
         return [out, cl]
     else:
