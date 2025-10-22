@@ -50,7 +50,7 @@ class TestTypeCheck(unittest.TestCase):
     @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
     def test_string_in_array_3(self):
         in_array = np.array(['one   ', 'four  '], dtype='S6')
-        with self.assertRaises((RuntimeError, UnicodeDecodeError)) as context:
+        with self.assertRaises(RuntimeError) as context:
           m_string_test.string_in_array(in_array)
 
     @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
@@ -61,7 +61,7 @@ class TestTypeCheck(unittest.TestCase):
     def test_string_to_string(self):
         in_string = 'yo'
         out_string = m_string_test.string_to_string(in_string)
-        self.assertEqual(in_string, out_string.decode("utf-8").strip())
+        self.assertEqual(in_string, out_string)
 
     @unittest.skipIf(version.parse(np.version.version) < version.parse("1.24.0") , "This test is known to fail on numpy version older than 1.24.0")
     def test_string_to_string_array(self):
@@ -73,7 +73,7 @@ class TestTypeCheck(unittest.TestCase):
 
     def test_string_out(self):
         out_string = m_string_test.string_out()
-        self.assertEqual(out_string.decode("utf-8").strip(), "output string")
+        self.assertEqual(out_string, "output string")
 
     @unittest.skipIf(version.parse(np.version.version) < version.parse("1.23.5") , "This test is known to fail on numpy version older than 1.23.5")
     def test_string_out_optional(self):
