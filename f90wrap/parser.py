@@ -1769,7 +1769,7 @@ def add_external_packages(root, class_names, external_packages):
             module.filename = ""
             module.is_external = True
             for typ in mod["types"]:
-                new_type = Type(name=typ["name"])
+                new_type = Type(name=typ["name"], mod_name=module.name)
                 new_type.attributes = typ["attributes"]
                 new_type.py_mod_name = mod["package"]
                 new_type.is_external = True
