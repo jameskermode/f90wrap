@@ -7,7 +7,7 @@ all: test
 
 testextends: testextends.o
 	f90wrap -m testextends testextends.f90
-	f2py-f90wrap $(F2PYFLAGS) -c -m _testextends f90wrap_*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _testextends f90wrap_*.f90 *.o
 
 test: testextends
 	$(PYTHON) testextends.py
