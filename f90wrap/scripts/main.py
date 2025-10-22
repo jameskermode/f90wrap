@@ -329,15 +329,14 @@ USAGE
         logger.info('done parsing source.')
 
         if args.dump_package:
-            print('Dump json file %s ...' % args.dump_package)
+            logger.info('Dump json file %s ...' % args.dump_package)
             fparse.dump_package(parse_tree, args.mod_name, class_names, dump_package)
 
         # add modules/types coming from other f90wrap packages
         if args.external_packages:
-            print('Adding external f90wrap packages...' % args.files)
+            logger.info('Adding external f90wrap packages...' % args.files)
             parse_tree = fparse.add_external_packages(parse_tree, class_names, args.external_packages)
-            print()
-        
+
         tree = copy.deepcopy(parse_tree)
 
         types = fortran.find_types(tree, skip_types)
