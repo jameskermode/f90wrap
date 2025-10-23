@@ -40,6 +40,9 @@ jobs:
         pip install .
     - name: Run unit tests
       run: |
+        mkdir -p test_run
+        cp -r test test_run/
+        cd test_run
         python -m unittest test.test_directc
     - name: Run example tests
       run: |
