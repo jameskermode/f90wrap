@@ -1,0 +1,47 @@
+# Compiled Fortran modules
+*.mod
+*.o
+*.a
+
+# Preprocessed Fortran files
+*.fpp
+
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# f90wrap generated files
+f90wrap_*.f90
+f90wrap_*.f
+pywrapper.py
+pywrapper_*.py
+itest.py
+test.py
+test/
+
+# f2py generated files
+*-f2pywrappers.f
+*-f2pywrappers2.f90
+.f2py_f2cmap
+*module.c
+*.pyf
+
+# Direct-C generated files
+_*.c
+
+# Build directories
+build/
+_build_dir/
+src.*/
+.libs/
+bbdir/
+
+# Shared libraries
+*.so
+*.dylib
+*.dll
+
+# Meson generated build files (generated from template during build)
+meson.build

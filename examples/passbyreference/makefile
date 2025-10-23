@@ -12,7 +12,7 @@ mycode.o : mycode.F90
 	gfortran -c -fPIC mycode.F90
 
 clean:
-	-rm *.o *.so f90wrap* mymodule.py
+	-rm -f *.o *.so f90wrap* mymodule.py
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 
 test: mymodule.so
