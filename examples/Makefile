@@ -41,7 +41,7 @@ EXAMPLES = arrayderivedtypes \
 	dump_package \
 	method_optional \
 	relative_import \
-	signature_vs_backend \
+	keep_single_interface \
 	return_bool
 
 PYTHON = python

@@ -754,6 +754,13 @@ class MethodFinder(ft.FortranTransformer):
                                       (node.method_name, intf.name, typ.name, node.mod_name))
                         break
                 else:
+                    method_name = interface.name
+                    if self.shorten_routine_names:
+                        # remove prefix from subroutine name to get method name
+                        for prefix in prefices:
+                            if interface.name.startswith(prefix):
+                                method_name = interface.name[len(prefix):]
+
                     intf = ft.Interface(interface.name,
                                         interface.filename,
                                         interface.doc,
@@ -761,6 +768,7 @@ class MethodFinder(ft.FortranTransformer):
                                         [node],
                                         mod_name=node.mod_name,
                                         type_name=typ.name)
+                    intf.method_name = method_name
                     typ.interfaces.append(intf)
                     log.info('added method %s to new interface %s in type %s module %r' %
                                   (node.method_name, intf.name, typ.name, node.mod_name))
@@ -810,17 +818,28 @@ class ConstructorExcessToClassMethod(ft.FortranTransformer):
     visit_Module = visit_Type
 
 
-def collapse_single_interfaces(tree):
+def collapse_single_interfaces(tree, keep_single_interfaces=False):
     """Collapse interfaces which contain only a single procedure."""
 
     class _InterfaceCollapser(ft.FortranTransformer):
         """Replace interfaces with only one procedure by that procedure"""
 
+        def __init__(self, keep_single_interfaces):
+            self.keep_single_interfaces = keep_single_interfaces
+
         def visit_Interface(self, node):
             if len(node.procedures) == 1:
                 proc = node.procedures[0]
-                proc.doc = node.doc + proc.doc
+                # Option to still keep interface, if name is not in collusion with procedure name
+                if self.keep_single_interfaces:
+                    if (hasattr(proc,"method_name")):
+                        if proc.method_name != node.name:
+                            return node
+                    elif proc.name != node.name:
+                        return node
+
                 log.debug('collapsing single-component interface %s' % proc.name)
+                proc.doc = node.doc + proc.doc
                 return proc
             else:
                 return node
@@ -847,7 +866,7 @@ def collapse_single_interfaces(tree):
 
         visit_Module = visit_Type
 
-    tree = _InterfaceCollapser().visit(tree)
+    tree = _InterfaceCollapser(keep_single_interfaces).visit(tree)
     tree = _ProcedureRelocator().visit(tree)
     return tree
 
@@ -1371,7 +1390,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
                                  kept_subs, kept_mods, argument_name_map,
                                  move_methods, shorten_routine_names,
                                  modules_for_type, remove_optional_arguments,
-                                 force_public=None):
+                                 force_public=None, keep_single_interfaces=False):
     """
     Apply a number of rules to *tree* to make it suitable for passing to
     a F90 and Python wrapper generators. Transformations performed are:
@@ -1400,7 +1419,7 @@ def transform_to_generic_wrapper(tree, types, callbacks, constructors,
     tree = MethodFinder(types, constructors, destructors, short_names,
                         move_methods, shorten_routine_names, modules_for_type).visit(tree)
     SetInterfaceProcedureCallNames().visit(tree)
-    tree = collapse_single_interfaces(tree)
+    tree = collapse_single_interfaces(tree, keep_single_interfaces)
     tree = fix_subroutine_uses_clauses(tree, types) # do it again, to fix interfaces
     create_super_types(tree, types)  # This must happen before fix_subroutine_type_arrays
     fix_subroutine_type_arrays(tree, types)  # This must happen after fix_subroutine_uses_clauses, to avoid using the
