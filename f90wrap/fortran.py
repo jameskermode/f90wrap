@@ -1009,6 +1009,7 @@ def f2numpy_type(typename, kind_map):
         'complex_double' : 'complex128',
         'complex_long_double' : 'complex256',
         'string' : 'str',
+        'bool' : 'bool',
     }
 
     if c_type not in c_type_to_numpy_type:
