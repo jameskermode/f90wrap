@@ -605,6 +605,7 @@ except ValueError:
                     if self.return_decoded and pytype == "str":
                         dct["result"] = dct["result"].replace(
                             ret_val.name, '%s.strip().decode("utf-8")' % ret_val.name
+                        )
                     # convert back Fortran logical to Python bool
                     if self.return_bool and ret_val.type == "logical":
                         dct["result"] = dct["result"].replace(
