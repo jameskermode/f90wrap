@@ -41,7 +41,8 @@ EXAMPLES = arrayderivedtypes \
 	dump_package \
 	method_optional \
 	relative_import \
-	decoded_strings
+	decoded_strings \
+	return_bool
 
 PYTHON = python
 

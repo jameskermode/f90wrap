@@ -171,6 +171,8 @@ USAGE
                             help="Output json file where to dump package description, can be reused in another package later via --external-packages option")
         parser.add_argument('--return-decoded', action='store_true', default=False,
                             help="Return decoded strings instead of raw bytes")
+        parser.add_argument('--return-bool', action='store_true', default=False,
+                            help="Python functions return bool (instead of integer) when associated Fortran type is a logical")
 
         args = parser.parse_args()
 
@@ -406,6 +408,7 @@ USAGE
                                       type_check=type_check,
                                       relative=relative,
                                       return_decoded=return_decoded,
+                                      return_bool=return_bool,
                                       ).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
                                   abort_func, kind_map, types, default_to_inout,

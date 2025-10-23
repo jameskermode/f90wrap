@@ -46,6 +46,7 @@ list(APPEND tests
     method_optional
     relative_import
     decoded_strings
+    return_bool
 )
 
 foreach(test ${tests})
