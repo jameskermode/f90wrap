@@ -46,6 +46,7 @@ list(APPEND tests
     method_optional
     relative_import
     keep_single_interface
+    return_bool
 )
 
 foreach(test ${tests})
