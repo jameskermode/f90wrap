@@ -748,7 +748,7 @@ except ValueError:
         if shadowed_methods:
             self.write()
             self.write("# Save references to the original methods before overloading")
-            for i, proc in enumerate(node.procedures):
+            for i, proc in enumerate(sorted_procedures):
                 method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
                 if method_name in shadowed_methods:
                     self.write(f"_{method_name}_{i} = {method_name}")
