@@ -1,0 +1,4 @@
+# I did not manage to make the meson build work for this case
+# Just include the regular makefile for now
+include Makefile
+
