@@ -6,6 +6,9 @@
 - **--build flag**: One-step wrap and build for extension modules. Use `f90wrap --build -m module source.f90`. Automatically uses Direct-C mode. For f2py or complex builds, continue using Makefiles.
 - **Direct-C mode**: Alternative to f2py for generating Python extension modules. Use `--direct-c` flag to generate C code that directly calls f90wrap Fortran helpers via the Python C API, eliminating the f2py dependency.
 
+### Improved
+- **More reliable cleanup**: Switched from `__del__` to `weakref.finalize` for derived type destructors. This fixes cleanup in reference cycles, improves thread-safety, and provides deterministic finalization order. Recommended Python best practice since 3.4.
+
 ### Implementation
 - `f90wrap/build.py`: Build orchestration module with clean API for both CLI and programmatic use
 - `f90wrap/setuptools_ext.py`: Setuptools integration with F90WrapExtension and build_ext_cmdclass
