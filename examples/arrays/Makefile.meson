@@ -14,7 +14,8 @@ build2_pre: build
 	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS="$(WRAPFLAGS)"
 
 build2: build2_pre
-	mkdir ${NAME3} 
+	rm -rf ${NAME3}
+	mkdir ${NAME3}
 	mv ${NAME2}/ _${NAME2}.*so ${NAME3}/
 	touch ${NAME3}/__init__.py
 

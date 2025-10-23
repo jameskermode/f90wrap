@@ -9,6 +9,7 @@ test: topmodule
 	$(PYTHON) tests.py
 
 topmodule: build
+	rm -rf ${TOP_MODULE}
 	mkdir ${TOP_MODULE}
 	mv ${NAME}/ _${NAME}.*so ${TOP_MODULE}/
 	touch ${TOP_MODULE}/__init__.py

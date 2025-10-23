@@ -4,7 +4,7 @@
 
 include ../make.inc
 PY_MOD      = pywrapper
-F90_SRC     = $(wildcard *.f90)
+F90_SRC     = $(filter-out f90wrap_%.f90,$(wildcard *.f90))
 OBJ         = $(F90_SRC:.f90=.o)
 F90WRAP_SRC = $(addprefix f90wrap_,${F90_SRC})
 WRAPFLAGS   = -v --package --relative
@@ -36,6 +36,7 @@ test: topmodule
 	${PYTHON} tests.py
 
 topmodule: f2py
+	rm -rf ${TOP_MODULE}
 	mkdir ${TOP_MODULE}
 	mv ${PY_MOD}/ _${PY_MOD}.*so ${TOP_MODULE}/
 	touch ${TOP_MODULE}/__init__.py
