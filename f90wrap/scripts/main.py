@@ -553,7 +553,6 @@ USAGE
 
             logging.info("Build complete")
 
->>>>>>> 4c252b9 (Add Direct-C mode for f90wrap)
         return 0
 
     except KeyboardInterrupt:
