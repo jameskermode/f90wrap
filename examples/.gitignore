@@ -1,0 +1,104 @@
+# Compiled Fortran modules
+*.mod
+*.o
+*.a
+
+# Preprocessed Fortran files
+*.fpp
+
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# f90wrap generated files
+f90wrap_*.f90
+f90wrap_*.f
+
+# f2py generated files
+*-f2pywrappers.f
+*-f2pywrappers2.f90
+.f2py_f2cmap
+*module.c
+*.pyf
+
+# Direct-C generated files
+_*.c
+
+# Build directories
+build/
+_build_dir/
+src.*/
+.libs/
+bbdir/
+
+# Shared libraries
+*.so
+*.dylib
+*.dll
+
+# Meson generated build files (generated from template during build)
+meson.build
+
+# Example-specific generated Python wrapper files
+arrayderivedtypes/arrayderivedtype.py
+arrays/ExampleArray.py
+arrays/ExampleArray_pkg/
+arrays/ExampleArray_relative/
+arrays/ExampleArray_top/
+arrays_fixed/ExampleArray.py
+arrays_fixed/ExampleArray_pkg/
+arrays_in_derived_types_issue50/issue50.py
+auto_raise_error/pywrapper.py
+class_names/classnames.py
+cylinder/Example.py
+cylinder/Example_pkg/
+derivedtypes/ExampleDerivedTypes.py
+derivedtypes/ExampleDerivedTypes_pkg/
+derivedtypes_procedure/library.py
+docstring/pywrapper.py
+dump_package/dump_package.json
+dump_package/pywrapper_*.py
+elemental/elmod.py
+example2/mockdt.py
+example2/mockdtpkg/
+example2/f90wrap/
+extends/testextends.py
+fortran_oo/pywrapper.py
+intent_out_size/pywrapper.py
+interface/example.py
+interface/examplepkg/
+issue105_function_definition_with_empty_lines/itest.py
+issue206_subroutine_oldstyle/itest.py
+issue227_allocatable/itest.py
+issue235_allocatable_classes/itest.py
+issue254_getter/itest.py
+issue258_derived_type_attributes/dta_*.py
+issue32/test.py
+issue41_abstract_classes/itest.py
+keyword_renaming_issue160/keywordr_rename.py
+keyword_renaming_issue160/keywordr_rename_pkg/
+kind_map_default/pywrapper.py
+long_subroutine_name/pywrapper.py
+method_optional/pywrapper.py
+mockderivetype/mockdt.py
+mockderivetype/mockdtpkg/
+mod_arg_clash/test/
+optional_args_issue53/test.py
+optional_args_issue53/test/
+optional_derived_arrays/test.py
+optional_derived_arrays/test/
+optional_string/pywrapper.py
+output_kind/pywrapper.py
+passbyreference/mymodule.py
+relative_import/pywrapper/
+relative_import/top_module/
+remove_pointer_arg/pywrapper.py
+return_array/pywrapper.py
+return_bool/pywrapper.py
+strings/ExampleStrings.py
+strings/ExampleStrings_pkg/
+subroutine_contains_issue101/test.py
+type_bn/type_bn.py
+type_check/pywrapper.py
