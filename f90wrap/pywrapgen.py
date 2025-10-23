@@ -600,6 +600,42 @@ except ValueError:
             self.dedent()
             self.write()
 
+    def _sort_procedures_by_specificity(self, procedures):
+        """
+        Sort procedures by specificity to improve overload resolution.
+
+        More specific procedures (array parameters) should be tried before
+        less specific ones (scalar parameters) because f2py silently accepts
+        arrays for scalar parameters by taking the first element, which
+        prevents fallback to the correct array version.
+
+        Returns procedures sorted with array versions first, scalar versions last.
+        """
+        def count_array_params(proc):
+            """Count number of array parameters in procedure signature"""
+            array_count = 0
+            for arg in proc.arguments:
+                # Check if argument has dimension attribute
+                if any(attr.startswith('dimension') for attr in arg.attributes):
+                    array_count += 1
+            return array_count
+
+        def specificity_key(proc):
+            """
+            Return a sort key where higher values = more specific = try first.
+
+            Procedures with array parameters get higher scores than scalar-only.
+            Among procedures with same array count, more total parameters = more specific.
+            """
+            array_params = count_array_params(proc)
+            total_params = len(proc.arguments)
+
+            # Array parameters weighted heavily (x100) to ensure they come first
+            return (array_params * 100) + total_params
+
+        # Sort in descending order (most specific first)
+        return sorted(procedures, key=specificity_key, reverse=True)
+
     def write_exception_handler(self, dct):
         # try to call each in turn until no TypeError raised
         self.write("for proc in %(proc_names)s:" % dct)
@@ -689,8 +725,10 @@ except ValueError:
                 log.info(f"    -> Will be shadowed!")
                 shadowed_methods.add(method_name)
 
+        # Sort procedures by specificity (array versions before scalar)
+        sorted_procedures = self._sort_procedures_by_specificity(node.procedures)
         proc_names = []
-        for i, proc in enumerate(node.procedures):
+        for i, proc in enumerate(sorted_procedures):
             proc_name = ""
             if not self.make_package and hasattr(proc, "mod_name"):
                 proc_name += normalise_class_name(proc.mod_name, self.class_names) + "."
