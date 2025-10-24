@@ -171,6 +171,8 @@ USAGE
                             help="List of json files listing modules/types coming from external f90wrap")
         parser.add_argument('--dump-package', default="",
                             help="Output json file where to dump package description, can be reused in another package later via --external-packages option")
+        parser.add_argument('--return-decoded', action='store_true', default=False,
+                            help="Return decoded strings instead of raw bytes")
         parser.add_argument('--return-bool', action='store_true', default=False,
                             help="Python functions return bool (instead of integer) when associated Fortran type is a logical")
 
@@ -408,7 +410,9 @@ USAGE
                                       auto_raise=auto_raise_error,
                                       type_check=type_check,
                                       relative=relative,
-                                      return_bool=return_bool).visit(py_tree)
+                                      return_decoded=return_decoded,
+                                      return_bool=return_bool,
+                                      ).visit(py_tree)
         fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
                                   abort_func, kind_map, types, default_to_inout,
                                   max_length=f90_max_line_length,
