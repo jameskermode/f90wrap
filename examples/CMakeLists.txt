@@ -46,6 +46,7 @@ list(APPEND tests
     method_optional
     relative_import
     decoded_strings
+    keep_single_interface
     return_bool
 )
 
