@@ -13,10 +13,9 @@ moddir:= ../Source/modules
 #      Uncomment line to choose which fortran compiler to use
 #========================================================================
 
-#F90    = gfortran
-F90    = ifort
-#F90    = pgfortran
-AR     = ar 
+include ../make.inc
+
+AR     = ar
 AROPT  = src
 
 #========================================================================
@@ -51,13 +50,13 @@ endif
 #                       PGFortran flags
 #========================================================================
 
-ifeq ($(F90),pgfortran)
-	F90       = pgfortran
-	INC_FLAGS = #-Wl,-z,muldefs 
-	OPT_FLAGS = -module $(moddir) -llapack -lblas -fPIC 
-	DEB_FLAGS = #-Mbounds -traceback #-Mchkstk Ktrap=unf   #==> for PGFortran
+ifeq ($(F90),nvfortran)
+	F90       = nvfortran
+	INC_FLAGS = #-Wl,-z,muldefs
+	OPT_FLAGS = -module $(moddir) -llapack -lblas -fPIC
+	DEB_FLAGS = #-Mbounds -traceback #-Mchkstk Ktrap=unf   #==> for NVHPC
 	PAR_FLAGS = -ta=nvidia -Minfo=accel -Mcuda=cc2x -mp=nonuma -Dopenmp \
-	             -fast 
+				 -fast
 	WK_FLAGS  = -Mextend
 	HE_FLAGS  = -Mfree
 	HE2FLAGS  = -Mnofree
@@ -106,7 +105,7 @@ PRO_FLAGS = #-g
 #code segments into directories.
 #========================================================================
 
-F90FLAGS = $(INC_FLAGS) $(OPT_FLAGS) $(PAR_FLAGS) $(DEB_FLAGS) $(PRO_FLAGS)
+F90FLAGS += $(INC_FLAGS) $(OPT_FLAGS) $(PAR_FLAGS) $(DEB_FLAGS) $(PRO_FLAGS)
 
 #========================================================================
 #                     Directories definitions

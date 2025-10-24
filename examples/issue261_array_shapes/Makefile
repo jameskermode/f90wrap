@@ -1,6 +1,5 @@
-FC = gfortran
-FCFLAGS = -fPIC
-PYTHON = python
+include ../make.inc
+
 
 all: test
 
@@ -10,7 +9,7 @@ test: wrapper
 wrapper: wrap-array_shapes
 
 wrap-%: f90wrap_%.f90 %.o
-	f2py-f90wrap --build-dir build -c -m _$* --opt="-O0 -g" f90wrap_$*.f90 $*.o 
+	f2py-f90wrap $(F2PYFLAGS) -c -m _$* --opt="-O0 -g" f90wrap_$*.f90 $*.o
 
 .PRECIOUS: f90wrap_%.f90
 

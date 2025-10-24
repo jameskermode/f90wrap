@@ -6,7 +6,7 @@ test: wrapper
 	$(PYTHON) run.py
 
 wrapper: f90wrapper mytype.o myclass.o myclass_factory.o
-	$(PYTHON) -m f90wrap --f2py-f90wrap --build-dir build -c -m _itest --opt="-O0 -g" \
+	$(PYTHON) -m f90wrap --f2py-f90wrap ${F2PYFLAGS} -c -m _itest --opt="-O0 -g" \
 		f90wrap_mytype.f90 f90wrap_myclass.f90 f90wrap_myclass_factory.f90 \
 		mytype.o myclass.o myclass_factory.o --lower
 

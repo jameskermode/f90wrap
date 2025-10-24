@@ -2,30 +2,16 @@
 #                   define the compiler names
 #=======================================================================
 
-CC       = gcc
-F90      = gfortran
-#F90      = ifort
-PYTHON = python
+include ../make.inc
 
 
 moddir   = modules
 wrap_dir = f90wrap
 
-#=======================================================================
-#                     additional flags
-#=======================================================================
-
-ifeq ($(F90),gfortran)
-	F90FLAGS = #-x f95-cpp-input ==> preprocess NOT NEEDED WITH .F90 EXTENSION
-      FCOMP    = gfortran
-endif
-
 ifeq ($(F90),ifort)
-	F90FLAGS = -fpscomp logicals -module $(moddir)   # use 1 and 0 for True and False
-      FCOMP    = intelem             # for f2py
+	F90FLAGS += -module $(moddir)   # use 1 and 0 for True and False
 endif
 
-FPP      = gfortran -E
 SOFLAGS  = -fPIC       #     ==> universal for ifort, gfortran, pgi
 
 #=======================================================================
@@ -86,7 +72,7 @@ all: test
 # test run
 
 clean:
-	rm -rf $(moddir)/*
+	-rm -rf $(moddir)/*
 	rm -rf $(wrap_dir)/*
 	rm -rf mockdt* *.so *.mod
 	rm -rf mockdtpkg
@@ -114,7 +100,7 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	mkdir -p f90wrap
 	cd $(wrap_dir) ; f90wrap -m mockdt ${SRC2_FILES} -k $(kmap_file) -v
 	cp $(wrap_dir)/*.py .
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90
 
 #=======================================================================
 #a "package", denoted by the -P option (subdirectory with multiple files)
@@ -122,7 +108,7 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 
 _mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mockdtpkg -L. -lsrc $(wrap_dir)/f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _mockdtpkg -L. -lsrc $(wrap_dir)/f90wrap*.f90
 	rm -rf mockdtpkg
 	mv $(wrap_dir)/mockdtpkg .
 	#mv _mockdtpkg.so mockdtpkg/

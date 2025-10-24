@@ -1,14 +1,10 @@
-FC = gfortran
-#FPP = ifort
-FCFLAGS = -fPIC
-PYTHON = python
-
+include ../make.inc
 %.o : %.f
-	${FC} ${FCFLAGS} -c $< -o $@
+	${F90} ${F90FLAGS} -c $< -o $@
 
 all: subroutine_oldstyle.o
 	f90wrap -m itest -P subroutine_oldstyle.f -v
-	f2py-f90wrap --build-dir build -c -m _itest f90wrap_toplevel.f90 subroutine_oldstyle.o
+	f2py-f90wrap $(F2PYFLAGS) -c -m _itest f90wrap_toplevel.f90 subroutine_oldstyle.o
 
 test: all
 	$(PYTHON) run.py

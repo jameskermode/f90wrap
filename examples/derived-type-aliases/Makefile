@@ -2,37 +2,7 @@
 #                   define the compiler names
 #=======================================================================
 
-CC       = gcc
-F90      = gfortran
-#F90      = ifort
-#F90      =  /opt/intel/composer_xe_2015.3.187/bin/intel64/ifort
-PYTHON   = python
-
-#=======================================================================
-#                     additional flags
-#=======================================================================
-
-ifeq ($(F90),gfortran)
-	FPP      = gfortran -E
-	FPP_F90FLAGS = -x f95-cpp-input -fPIC
-	F90FLAGS = -fPIC
-    FCOMP    = gfortran
-    LIBS     =
-endif
-
-ifeq ($(F90),ifort)
-
-	FPP      = gfortran -E # gfortran f90wrap temp files only. not compilation
-	FPP_F90FLAGS = -x f95-cpp-input -fPIC
-	F90FLAGS = -fpscomp logicals -fPIC # use 1 and 0 for True and False
-    FCOMP    = intelem # for f2py
-    LIBS =
-endif
-
-CFLAGS  = -fPIC #     ==> universal for ifort, gfortran, pgi
-
-#=======================================================================
-#=======================================================================
+include ../make.inc
 
 UNAME = $(shell uname)
 
@@ -105,7 +75,7 @@ all: _mytype.so _othertype.so test
 
 
 clean:
-	-rm  *.o *.a *.so *.mod *.fpp f90wrap*.f90 f90wrap*.o 
+	-rm  *.o *.a *.so *.mod *.fpp f90wrap*.f90 f90wrap*.o
 
 
 .f90.o:
@@ -129,13 +99,12 @@ libothertype_mod.a: othertype_mod.o
 
 _mytype.so: libmytype_mod.a mytype_mod.f90
 	f90wrap -m mytype mytype_mod.f90 -k ${KIND_MAP} -v
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _mytype -L. -lmytype_mod f90wrap_mytype_mod.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _mytype -L. -lmytype_mod f90wrap_mytype_mod.f90
 
 _othertype.so: libothertype_mod.a othertype_mod.f90
 	f90wrap -m othertype othertype_mod.f90 -k ${KIND_MAP} -v
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _othertype -L. -lothertype_mod f90wrap_othertype_mod.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _othertype -L. -lothertype_mod f90wrap_othertype_mod.f90
 
 
 test: _mytype.so _othertype.so
 	${PYTHON} tests.py
-

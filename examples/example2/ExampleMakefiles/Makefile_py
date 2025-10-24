@@ -1,5 +1,5 @@
 #=======================================================================
-#     Makefile for f90wrap-f2py. Originally written by James Kermode, 
+#     Makefile for f90wrap-f2py. Originally written by James Kermode,
 #  modified by Ananth Sridharan to use multiple directories/compilers
 #=======================================================================
 
@@ -7,10 +7,8 @@
 #     Define names of C, Fortran compilers and archive tools/options
 #=======================================================================
 
-CC       = gcc
-#F90      = gfortran
+include ../make.inc
 F90      = ifort
-FPP      = gfortran -E        #preprocess files with gfortran always
 
 #=======================================================================
 #     Directory definitions
@@ -24,11 +22,9 @@ wrap_dir = f90wrap
 #=======================================================================
 
 ifeq ($(F90),ifort)
-	FCOMP    =  intelem           # compiler name for f2py
 	PAR_FLAG = -openmp            # openMP flags
       OMP_LINK = -liomp5            # link openMP libraries when creating shared obj
 else
-	FCOMP    =  gfortran 
 	PAR_FLAG = -fopenmp# -cpp -Dopenmp # preprocessing done in other Makefiles
 	OMP_LINK = -lgomp
 endif
@@ -38,8 +34,8 @@ SOFLAGS  = -fPIC       #     ==> universal for ifort, gfortran, pgi
 #=======================================================================
 #                 List all source files
 #=======================================================================
-#  Note: give python access to only SELECT source files 
-#        (e.g. top level subroutines) and leave the rest of the 
+#  Note: give python access to only SELECT source files
+#        (e.g. top level subroutines) and leave the rest of the
 #        fortran code as "hidden" from python, since low-level
 #        routines should generally not be accessed from top management
 #=======================================================================
@@ -76,7 +72,7 @@ clean:
 	rm -rf $(wrap_dir)/*
 	rm -rf mockdt* *.so
 	rm -rf libsrc.a
-clean_so:	
+clean_so:
 	rm mockdt* *.so
 
 .F90.fpp:
@@ -86,7 +82,7 @@ clean_so:
 #     Create the libraries (compiled code, self-contained in each dir)
 #=======================================================================
 
-libsrc.a: 
+libsrc.a:
 	make -f Makefile
 
 #=======================================================================
@@ -95,14 +91,14 @@ libsrc.a:
 
 _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 	make
-	cd $(wrap_dir) ; f90wrap -m mockdt ${SRC2_FILES} -k $(kmap_file) -v 
+	cd $(wrap_dir) ; f90wrap -m mockdt ${SRC2_FILES} -k $(kmap_file) -v
 	cp $(wrap_dir)/*.py .
-	f2py-f90wrap -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90 \
-	--fcompiler=$(FCOMP) --f90flags=$(PAR_FLAG) $(OMP_LINK) -I$(moddir) --build-dir build 
-	
+	f2py-f90wrap $(F2PYFLAGS) -c -m _mockdt -L. -lsrc $(wrap_dir)/f90wrap*.f90 \
+	--f90flags=$(PAR_FLAG) $(OMP_LINK) -I$(moddir)
+
 #original command: works without openmp - probably because of -lgomp placement
-#	f2py-f90wrap --fcompiler=$(FCOMP) --f90flags=-fopenmp $(MOD_FLAG) \
-#     --build-dir build -c -m _mockdt -lgomp -L. -lsrc $(wrap_dir)/f90wrap*.f90
+#	f2py-f90wrap $(F2PYFLAGS) --f90flags=-fopenmp $(MOD_FLAG) \
+#     -c -m _mockdt -lgomp -L. -lsrc $(wrap_dir)/f90wrap*.f90
 
 #=======================================================================
 #a "package", denoted by the -P option (subdirectory with multiple files)
@@ -110,9 +106,9 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 
 #deprecated: the f2py-f90wrap line needs to be updated for OPENMP flags
 #_mockdtpkg.so: libsrc.a ${LIBSRC_FPP_FILES}
-#	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P 
-#	f2py-f90wrap --fcompiler=$(FCOMP) $(MOD_FLAG) --f90flags=$(PAR_FLAG) \
-#     --build-dir build -c -m _mockdtpkg -L. -lgomp -lsrc $(wrap_dir)/f90wrap*.f90
+#	cd $(wrap_dir) ; f90wrap -m mockdtpkg ${SRC2_FILES} -k $(kmap_file) -v -P
+#	f2py-f90wrap $(F2PYFLAGS) $(MOD_FLAG) --f90flags=$(PAR_FLAG) \
+#     -c -m _mockdtpkg -L. -lgomp -lsrc $(wrap_dir)/f90wrap*.f90
 #	rm -rf mockdtpkg
 #	mv $(wrap_dir)/mockdtpkg .
 #	mv _mockdtpkg.so mockdtpkg/
@@ -122,7 +118,7 @@ _mockdt.so: libsrc.a ${LIBSRC_FPP_FILES}
 #=======================================================================
 
 all_so: _mockdt.so
-#_mockdtpkg.so 
+#_mockdtpkg.so
 
 #=======================================================================
 #           final compilation and running of python script
@@ -131,4 +127,3 @@ all_so: _mockdt.so
 test: all_so
 	python test_module.py
 #	python test_package.py
-
