@@ -81,24 +81,6 @@ class TestQUIPBuild(unittest.TestCase):
         with open(quippy_pyproject, "w") as f:
             f.write(content)
 
-        # Patch QUIP's meson.build to skip enable_timing as a workaround
-        # for name collision bug (see issue #291)
-        print("Patching QUIP to skip enable_timing (workaround for #291)...")
-        quippy_meson = os.path.join(cls.quip_dir, "quippy", "meson.build")
-
-        with open(quippy_meson, "r") as f:
-            meson_content = f.read()
-
-        # Add enable_timing to the --skip list
-        # Find the line with potential_local_e_mix_finalise and add enable_timing after it
-        meson_content = meson_content.replace(
-            "'potential_local_e_mix_finalise',",
-            "'potential_local_e_mix_finalise', 'enable_timing',"
-        )
-
-        with open(quippy_meson, "w") as f:
-            f.write(meson_content)
-
         print("Building QUIP libraries...")
         result = subprocess.run(
             ["meson", "setup", "builddir"],
@@ -136,11 +118,20 @@ class TestQUIPBuild(unittest.TestCase):
         # 1. We've already patched pyproject.toml to use local f90wrap
         # 2. Build dependencies (numpy, meson-python) are already installed
         # 3. Avoids path issues with fortranobject.c in isolated environments
+
+        # Set up environment with numpy paths to help meson find fortranobject.c
+        import numpy
+        env = os.environ.copy()
+        numpy_base = os.path.dirname(numpy.__file__)
+        env['NUMPY_INCLUDE'] = os.path.join(numpy_base, '_core', 'include')
+        env['NUMPY_F2PY_SRC'] = os.path.join(os.path.dirname(numpy.f2py.__file__), 'src')
+
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", ".", "--no-build-isolation"],
+            [sys.executable, "-m", "pip", "install", ".", "--no-build-isolation", "-v"],
             cwd=quippy_dir,
             capture_output=True,
-            text=True
+            text=True,
+            env=env
         )
 
         self.assertEqual(result.returncode, 0,
