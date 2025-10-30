@@ -1240,7 +1240,8 @@ def check_type(cl, file):
 
         cl = file.next()
 
-        out.has_assignment = any(bind.name == "assignment(=)" for bind in out.bindings)
+        if any(bind.name == "assignment(=)" for bind in out.bindings):
+            out.attributes.append("has_assignment")
         out.lineno = slice(out.lineno, file.lineno - 1)
         return [out, cl]
     else:
