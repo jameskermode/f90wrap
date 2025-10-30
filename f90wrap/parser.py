@@ -1749,6 +1749,7 @@ def dump_package(root, pkg_name, class_names, json_file):
             t = {"name" : typ.orig_name}
             if typ.orig_name in class_names:
                 t["class_name"] = class_names[typ.orig_name]
+            t["attributes"] = typ.attributes
             mod["types"].append(t)
 
         package.append(mod)
@@ -1769,7 +1770,7 @@ def add_external_packages(root, class_names, external_packages):
             module.is_external = True
             for typ in mod["types"]:
                 new_type = Type(name=typ["name"])
-                new_type.attributes = []
+                new_type.attributes = typ["attributes"]
                 new_type.py_mod_name = mod["package"]
                 new_type.is_external = True
                 module.types.append(new_type)
