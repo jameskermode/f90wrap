@@ -63,6 +63,24 @@ class TestQUIPBuild(unittest.TestCase):
             capture_output=True
         )
 
+        # Patch QUIP's pyproject.toml to use local f90wrap instead of git master
+        # This ensures we test the current branch, not master
+        print("Patching QUIP to use local f90wrap...")
+        f90wrap_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+        quippy_pyproject = os.path.join(cls.quip_dir, "quippy", "pyproject.toml")
+
+        with open(quippy_pyproject, "r") as f:
+            content = f.read()
+
+        # Replace git URL with local path
+        content = content.replace(
+            'f90wrap @ git+https://github.com/jameskermode/f90wrap.git@master',
+            f'f90wrap @ file://{f90wrap_root}'
+        )
+
+        with open(quippy_pyproject, "w") as f:
+            f.write(content)
+
         print("Building QUIP libraries...")
         result = subprocess.run(
             ["meson", "setup", "builddir"],
