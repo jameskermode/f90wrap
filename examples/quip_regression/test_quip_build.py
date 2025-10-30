@@ -52,6 +52,17 @@ class TestQUIPBuild(unittest.TestCase):
         if not deps_ok:
             raise unittest.SkipTest(f"QUIP regression test skipped: {reason}")
 
+        # Install f90wrap from local source (non-editable to avoid meson-python issues)
+        print("\nInstalling f90wrap from local source...")
+        f90wrap_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", f90wrap_root, "--force-reinstall"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to install f90wrap:\\nSTDOUT:\\n{result.stdout}\\n\\nSTDERR:\\n{result.stderr}")
+
         cls.test_dir = tempfile.mkdtemp(prefix="f90wrap_quip_test_")
         cls.quip_dir = os.path.join(cls.test_dir, "QUIP")
 
@@ -114,24 +125,12 @@ class TestQUIPBuild(unittest.TestCase):
         quippy_dir = os.path.join(self.quip_dir, "quippy")
 
         # Build quippy package without build isolation
-        # We use --no-build-isolation because:
-        # 1. We've already patched pyproject.toml to use local f90wrap
-        # 2. Build dependencies (numpy, meson-python) are already installed
-        # 3. Avoids path issues with fortranobject.c in isolated environments
-
-        # Set up environment with numpy paths to help meson find fortranobject.c
-        import numpy
-        env = os.environ.copy()
-        numpy_base = os.path.dirname(numpy.__file__)
-        env['NUMPY_INCLUDE'] = os.path.join(numpy_base, '_core', 'include')
-        env['NUMPY_F2PY_SRC'] = os.path.join(os.path.dirname(numpy.f2py.__file__), 'src')
-
+        # This ensures QUIP uses the locally installed f90wrap
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", ".", "--no-build-isolation", "-v"],
             cwd=quippy_dir,
             capture_output=True,
-            text=True,
-            env=env
+            text=True
         )
 
         self.assertEqual(result.returncode, 0,
