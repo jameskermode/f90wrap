@@ -1,17 +1,16 @@
 #=======================================================================
 #                   define the compiler names
 #=======================================================================
+include ../make.inc
 
-F90         = gfortran
-PYTHON      = python3
-CFLAGS      = -fPIC
-F90FLAGS    = -fPIC
 PY_MOD      = pywrapper
 F90_SRC     = main.f90
 OBJ         = $(F90_SRC:.f90=.o)
 F2PYFLAGS   = --build-dir build
 F2PY        = f2py
-LINK		= -lgfortran
+ifeq ($(F90),gfortran)
+		LINK		= -lgfortran
+endif
 .PHONY: all clean
 
 all: test

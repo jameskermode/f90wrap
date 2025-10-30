@@ -2,37 +2,7 @@
 #                   define the compiler names
 #=======================================================================
 
-CC       = gcc
-F90      = gfortran
-#F90      = ifort
-#F90      =  /opt/intel/composer_xe_2015.3.187/bin/intel64/ifort
-PYTHON   = python
-
-#=======================================================================
-#                     additional flags
-#=======================================================================
-
-ifeq ($(F90),gfortran)
-	FPP      = gfortran -E
-	FPP_F90FLAGS = -x f95-cpp-input -fPIC
-	F90FLAGS = -fPIC
-    FCOMP    = gfortran
-    LIBS     =
-endif
-
-ifeq ($(F90),ifort)
-
-	FPP      = gfortran -E # gfortran f90wrap temp files only. not compilation
-	FPP_F90FLAGS = -x f95-cpp-input -fPIC
-	F90FLAGS = -fpscomp logicals -fPIC # use 1 and 0 for True and False
-    FCOMP    = intelem # for f2py
-    LIBS =
-endif
-
-CFLAGS  = -fPIC #     ==> universal for ifort, gfortran, pgi
-
-#=======================================================================
-#=======================================================================
+include ../make.inc
 
 UNAME = $(shell uname)
 
@@ -129,22 +99,21 @@ libsrc.a: ${LIBSRC_OBJECTS}
 
 _${PYTHON_MODN}.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN} ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _${PYTHON_MODN} -L. -lsrc f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _${PYTHON_MODN} -L. -lsrc f90wrap*.f90
 
 
 _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN}_pkg ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v -P
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90
 
 _${PYTHON_MODN}_relative.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN}_relative ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v -P --relative
-	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _${PYTHON_MODN}_relative -L. -lsrc f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) -c -m _${PYTHON_MODN}_relative -L. -lsrc f90wrap*.f90
 	rm -rf ${PYTHON_MODN}_top
 	mkdir ${PYTHON_MODN}_top
 	mv ${PYTHON_MODN}_relative/ _${PYTHON_MODN}_relative.*so ${PYTHON_MODN}_top/
 	touch ${PYTHON_MODN}_top/__init__.py
 
 
-test: _${PYTHON_MODN}_pkg.so _${PYTHON_MODN}.so  _${PYTHON_MODN}_relative.so 
+test: _${PYTHON_MODN}_pkg.so _${PYTHON_MODN}.so  _${PYTHON_MODN}_relative.so
 	${PYTHON} tests.py
-

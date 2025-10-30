@@ -1,9 +1,5 @@
-CC = gcc
-F90 = gfortran
-FPP = gfortran -E
-F90FLAGS = -x f95-cpp-input -fPIC
-CFLAGS = -fPIC
-PYTHON = python
+include ../make.inc
+F90FLAGS += -x f95-cpp-input
 
 all: test
 
@@ -12,7 +8,7 @@ test.o: test.f90
 
 mod: test.o
 	f90wrap -m test ./test.f90
-	f2py-f90wrap --build-dir build -c -m _test f90wrap_toplevel.f90 test.o
+	f2py-f90wrap $(F2PYFLAGS) -c -m _test f90wrap_toplevel.f90 test.o
 
 test: mod
 	$(PYTHON) -c 'import test; test.foo(1.0, 2)'
@@ -22,4 +18,3 @@ clean:
 	-rm -f f90wrap*.f90 *.o *.pyc *.mod
 	-rm -f _test*.so _testpkg*.so
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
-

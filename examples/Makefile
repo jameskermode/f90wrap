@@ -1,3 +1,5 @@
+include make.inc
+
 EXAMPLES = arrayderivedtypes \
 	arrays \
 	arrays_fixed \
@@ -45,7 +47,6 @@ EXAMPLES = arrayderivedtypes \
 	keep_single_interface \
 	return_bool
 
-PYTHON  = python
 DIRECTC ?= no
 
 all: test

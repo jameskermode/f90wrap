@@ -1,12 +1,19 @@
-CC        = gcc
-F90       = gfortran
-F90FLAGS  = -fPIC -xf95-cpp-input
-FPP       = gfortran -E
+CC        ?= gcc
+F90       ?= gfortran
+F90FLAGS  = -fPIC
+FPP       := gfortran -xf95-cpp-input -E
 PYTHON    = python
 #NAME      = name
 WRAPFLAGS := -v
 F2PYFLAGS := --lower
 DIRECTC   ?= no
+
+ifeq ($(F90), gfortran)
+	F90FLAGS  := $(F90FLAGS) -xf95-cpp-input
+else ifeq ($(F90), nvfortran)
+	F90FLAGS  := $(F90FLAGS) -Mpreprocess
+endif
+
 
 .SUFFIXES: .f90 .fpp .f .F90 .F
 
@@ -31,13 +38,13 @@ LIBSRC_WRAP_FPP_FILES := $(foreach src,$(LIBSRC_WRAP_FILES),$(call _to_fpp,$(src
 
 
 .f90.fpp:
-	${FPP} ${F90FLAGS} $<  -o $@
+	${FPP} $<  -o $@
 .F90.fpp:
-	${FPP} ${F90FLAGS} $<  -o $@
+	${FPP} $<  -o $@
 .f.fpp:
-	${FPP} ${F90FLAGS} $<  -o $@
+	${FPP} $<  -o $@
 .F.fpp:
-	${FPP} ${F90FLAGS} $<  -o $@
+	${FPP} $<  -o $@
 
 
 # Direct-C mode requires CFLAGS
@@ -84,9 +91,9 @@ else
 	mv _build_dir/_${NAME}*.so .
 endif
 
-clean: 
+clean:
 	-rm -f f90wrap_*.f90 *.o *.mod *.fpp *.a
-	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/
+	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build
 	-rm -rf _${NAME}* ${NAME}*/ ${NAME}.py
 	-rm -rf _build_dir
 	-rm -f meson.build*

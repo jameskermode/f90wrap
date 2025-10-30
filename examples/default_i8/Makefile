@@ -2,11 +2,7 @@
 #                   define the compiler names
 #=======================================================================
 
-CC       = gcc
-F90      = gfortran
-#F90      = ifort
-#F90      =  /opt/intel/composer_xe_2015.3.187/bin/intel64/ifort
-PYTHON   = python
+include ../make.inc
 
 #=======================================================================
 #                     additional flags
@@ -14,23 +10,11 @@ PYTHON   = python
 
 ifeq ($(F90),gfortran)
     FLAG_INT = -fdefault-integer-8
-    FPP      = gfortran -E
-    FPP_F90FLAGS = -x f95-cpp-input -fPIC -fdefault-integer-8
-    F90FLAGS = -fPIC -fdefault-integer-8
-    FCOMP    = gfortran
+    FPP_F90FLAGS += -fdefault-integer-8
+    F90FLAGS += -fdefault-integer-8
     LIBS     =
 endif
 
-#ifeq ($(F90),ifort)
-#    FLAG_INT = -fdefault-integer-8
-#    FPP      = gfortran -E # gfortran f90wrap temp files only. not compilation
-#    FPP_F90FLAGS = -x f95-cpp-input -fPIC
-#    F90FLAGS = -fpscomp logicals -fPIC # use 1 and 0 for True and False
-#    FCOMP    = intelem # for f2py
-#    LIBS =
-#endif
-
-CFLAGS  = -fPIC #     ==> universal for ifort, gfortran, pgi
 
 #=======================================================================
 #=======================================================================
@@ -129,9 +113,8 @@ libsrc.a: ${LIBSRC_OBJECTS}
 
 _${PYTHON_MODN}.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN} ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v
-	f2py-f90wrap --fcompiler=$(FCOMP) --f90flags='-fdefault-integer-8' --build-dir build -c -m _${PYTHON_MODN} -L. -lsrc f90wrap*.f90
+	f2py-f90wrap $(F2PYFLAGS) --f90flags='-fdefault-integer-8' -c -m _${PYTHON_MODN} -L. -lsrc f90wrap*.f90
 
 
 test: _${PYTHON_MODN}.so
 	${PYTHON} tests.py
-
