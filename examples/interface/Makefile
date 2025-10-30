@@ -19,8 +19,8 @@ test: mod package
 	$(PYTHON) test_pkg.py
 
 clean:
-	-rm -r examplepkg
-	-rm example.py
-	-rm f90wrap*.f90 *.o *.pyc *.mod
-	-rm _example*.so _examplepkg*.so
+	-rm -rf examplepkg
+	-rm -f example.py
+	-rm -f f90wrap*.f90 *.o *.pyc *.mod
+	-rm -f _example*.so _examplepkg*.so
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/

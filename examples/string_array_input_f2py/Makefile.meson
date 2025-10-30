@@ -1,22 +1,14 @@
 include ../make.meson.inc
 
-NAME     := pywrapper_sign
-NAME2    := pywrapper_no_sign
+NAME    := pywrapper_no_sign
 MAKEFILE := $(lastword $(MAKEFILE_LIST))
-SIGNATURES	= _signatures.pyf
 F2PY        = f2py
 
 test: extension
-	${PYTHON} tests_sign.py
 	${PYTHON} tests_no_sign.py
 
-${SIGNATURES}: ${LIBSRC_WRAP_FILES}
-	${F2PY} ${LIBSRC_WRAP_FILES} -m _${NAME} -h ${SIGNATURES}
-
-extension: ${SIGNATURES}
-	${F2PY} -c -m _${NAME} ${LIBSRC_WRAP_FILES} ${SIGNATURES}
-	${F2PY} -c -m _${NAME2} ${LIBSRC_WRAP_FILES}
-
+extension: ${LIBSRC_WRAP_FILES}
+	${F2PY} -c -m _${NAME} ${LIBSRC_WRAP_FILES}
 
 clean:
 	-rm -f f90wrap_*.f90 *.o *.mod *.fpp *.a
@@ -24,4 +16,3 @@ clean:
 	-rm -rf _${NAME}* ${NAME}*/ ${NAME}.py
 	-rm -rf _build_dir
 	-rm -f meson.build*
-	-rm -f ${SIGNATURES}

@@ -80,7 +80,7 @@ all: _${PYTHON_MODN}.so _${PYTHON_MODN}_pkg.so
 
 
 clean:
-	-rm *.o *.so *.a *.mod *.fpp f90wrap*.f90 Example.py *.pyc
+	-rm -f *.o *.so *.a *.mod *.fpp f90wrap*.f90 Example.py *.pyc
 	-rm -rf Example_pkg/ src.*
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/
 

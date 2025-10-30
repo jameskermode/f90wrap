@@ -11,6 +11,6 @@ test: all
 	$(PYTHON) run.py
 
 clean:
-	-rm *.o f90wrap*.f90 *.so *.mod
-	-rm -r test/
+	-rm -f *.o f90wrap*.f90 *.so *.mod
+	-rm -rf test/
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/

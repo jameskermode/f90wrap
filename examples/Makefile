@@ -42,7 +42,10 @@ EXAMPLES = arrayderivedtypes \
 	auto_raise_error \
 	dump_package \
 	method_optional \
-	relative_import
+	relative_import \
+	decoded_strings \
+	keep_single_interface \
+	return_bool
 
 
 all: test

@@ -14,7 +14,7 @@ test: mod
 	$(PYTHON) -c 'import test; test.foo(1.0, 2)'
 
 clean:
-	-rm test.py
-	-rm f90wrap*.f90 *.o *.pyc *.mod
-	-rm _test*.so _testpkg*.so
+	-rm -f test.py
+	-rm -f f90wrap*.f90 *.o *.pyc *.mod
+	-rm -f _test*.so _testpkg*.so
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/

@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := pywrapper
+WRAPFLAGS += --keep-single-interface
+
+test: build
+	$(PYTHON) tests.py

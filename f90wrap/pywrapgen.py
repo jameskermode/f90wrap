@@ -60,7 +60,10 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             max_length=None,
             auto_raise=None,
             type_check=False,
-            relative=False):
+            relative=False,
+            return_decoded=False,
+            return_bool=False,
+            ):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(
@@ -83,6 +86,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.init_file = init_file
         self.type_check = type_check
         self.relative = relative
+        self.return_decoded = return_decoded
+        self.return_bool = return_bool
         try:
             self._err_num_var, self._err_msg_var = auto_raise.split(',')
         except ValueError:
@@ -595,10 +600,59 @@ except ValueError:
                             "%s = %s.from_handle(%s, alloc=True)"
                             % (ret_val.name, cls_name, ret_val.name)
                         )
-                self.write("return %(result)s" % dct)
+                    # strip white space for string returns
+                    pytype = ft.f2py_type(ret_val.type)
+                    if self.return_decoded and pytype == "str":
+                        dct["result"] = dct["result"].replace(
+                            ret_val.name, '%s.strip().decode("utf-8")' % ret_val.name
+                        )
+                    # convert back Fortran logical to Python bool
+                    if self.return_bool and ret_val.type == "logical":
+                        dct["result"] = dct["result"].replace(
+                            ret_val.name, 'bool(%s)' % ret_val.name
+                        )
+
+                if dct["result"]:
+                    self.write("return %(result)s" % dct)
 
             self.dedent()
             self.write()
+
+    def _sort_procedures_by_specificity(self, procedures):
+        """
+        Sort procedures by specificity to improve overload resolution.
+
+        More specific procedures (array parameters) should be tried before
+        less specific ones (scalar parameters) because f2py silently accepts
+        arrays for scalar parameters by taking the first element, which
+        prevents fallback to the correct array version.
+
+        Returns procedures sorted with array versions first, scalar versions last.
+        """
+        def count_array_params(proc):
+            """Count number of array parameters in procedure signature"""
+            array_count = 0
+            for arg in proc.arguments:
+                # Check if argument has dimension attribute
+                if any(attr.startswith('dimension') for attr in arg.attributes):
+                    array_count += 1
+            return array_count
+
+        def specificity_key(proc):
+            """
+            Return a sort key where higher values = more specific = try first.
+
+            Procedures with array parameters get higher scores than scalar-only.
+            Among procedures with same array count, more total parameters = more specific.
+            """
+            array_params = count_array_params(proc)
+            total_params = len(proc.arguments)
+
+            # Array parameters weighted heavily (x100) to ensure they come first
+            return (array_params * 100) + total_params
+
+        # Sort in descending order (most specific first)
+        return sorted(procedures, key=specificity_key, reverse=True)
 
     def write_exception_handler(self, dct):
         # try to call each in turn until no TypeError raised
@@ -689,8 +743,10 @@ except ValueError:
                 log.info(f"    -> Will be shadowed!")
                 shadowed_methods.add(method_name)
 
+        # Sort procedures by specificity (array versions before scalar)
+        sorted_procedures = self._sort_procedures_by_specificity(node.procedures)
         proc_names = []
-        for i, proc in enumerate(node.procedures):
+        for i, proc in enumerate(sorted_procedures):
             proc_name = ""
             if not self.make_package and hasattr(proc, "mod_name"):
                 proc_name += normalise_class_name(proc.mod_name, self.class_names) + "."
@@ -710,7 +766,7 @@ except ValueError:
         if shadowed_methods:
             self.write()
             self.write("# Save references to the original methods before overloading")
-            for i, proc in enumerate(node.procedures):
+            for i, proc in enumerate(sorted_procedures):
                 method_name = proc.method_name if hasattr(proc, "method_name") else proc.name
                 if method_name in shadowed_methods:
                     self.write(f"_{method_name}_{i} = {method_name}")
