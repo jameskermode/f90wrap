@@ -47,6 +47,7 @@ from f90wrap import transform as tf
 
 from f90wrap import f90wrapgen as fwrap
 from f90wrap import pywrapgen as pywrap
+from f90wrap import directc
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger('f90wrap')
@@ -175,8 +176,18 @@ USAGE
                             help="Return decoded strings instead of raw bytes")
         parser.add_argument('--return-bool', action='store_true', default=False,
                             help="Python functions return bool (instead of integer) when associated Fortran type is a logical")
+        parser.add_argument('--direct-c', action='store_true', default=False,
+                            help="Generate direct-C extension instead of relying on f2py")
+        parser.add_argument('--build', action='store_true', default=False,
+                            help="Build extension module after generating wrappers")
+        parser.add_argument('--clean-build', action='store_true', default=False,
+                            help="Clean build artifacts before building")
 
         args = parser.parse_args()
+        logging.debug("sys.argv parsed: %s", sys.argv)
+
+        if args.build and not args.direct_c:
+            args.direct_c = True
 
         log_levels = {
             0: logging.ERROR,
@@ -202,11 +213,12 @@ USAGE
         skip_types = None
         force_public = None
         joint_modules = {}
-        callback = []
         remove_optional_arguments = []
 
         # bring command line arguments into global scope so we can override them
         globals().update(args.__dict__)
+        callback = list(args.callback)
+        logging.debug("CLI callbacks received: %s", callback)
 
         # read command line arguments
         if args.kind_map:
@@ -269,6 +281,8 @@ USAGE
         else:
             # default set by preserving the previously hardcoded value from f90wrapgen.py
             f90_max_line_length = 120
+
+        auto_raise_error = args.auto_raise_error
 
         # finally, read config file, allowing it to override command line args
         if args.conf_file:
@@ -366,6 +380,26 @@ USAGE
         logger.info('Modules for each type:')
         logger.info(pprint.pformat(modules_for_type))
 
+        def collect_shape_hints(tree):
+            hints = {}
+            for module in tree.modules:
+                mod_name = module.name
+                for proc in getattr(module, 'procedures', []):
+                    type_name = getattr(proc, 'type_name', None)
+                    proc_key = (mod_name, type_name, proc.name)
+                    for arg in getattr(proc, 'arguments', []):
+                        for attr in getattr(arg, 'attributes', []):
+                            if attr.startswith('dimension('):
+                                dims = [d.strip() for d in attr[len('dimension('):-1].split(',')]
+                                hints[(proc_key, arg.name)] = dims
+                    ret_val = getattr(proc, 'ret_val', None)
+                    if ret_val is not None:
+                        for attr in getattr(ret_val, 'attributes', []):
+                            if attr.startswith('dimension('):
+                                dims = [d.strip() for d in attr[len('dimension('):-1].split(',')]
+                                hints[(proc_key, 'return')] = dims
+            return hints
+
         tree = tf.transform_to_generic_wrapper(tree,
                                                types,
                                                callback,
@@ -383,8 +417,17 @@ USAGE
                                                force_public=force_public,
                                                keep_single_interfaces=keep_single_interfaces)
 
+        shape_hints = collect_shape_hints(tree)
+
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
+
+        interop_info = None
+        if args.direct_c:
+            interop_info = directc.analyse_interop(f90_tree, kind_map)
+            # In Direct-C mode, use Python module name for C extension
+            if not ('f90_mod_name' in globals() and globals().get('f90_mod_name')):
+                globals()['f90_mod_name'] = f"_{mod_name}"
 
         py_tree = tf.transform_to_py_wrapper(py_tree, types)
 
@@ -399,25 +442,122 @@ USAGE
                                                sizeof_fortran_t=fsize,
                                                kind_map=kind_map)
 
-        pywrap.PythonWrapperGenerator(prefix, mod_name,
-                                      types, make_package=package,
-                                      f90_mod_name=f90_mod_name,
-                                      kind_map=kind_map,
-                                      init_file=args.init_file,
-                                      py_mod_names=py_mod_names,
-                                      class_names=class_names,
-                                      max_length=py_max_line_length,
-                                      auto_raise=auto_raise_error,
-                                      type_check=type_check,
-                                      relative=relative,
-                                      return_decoded=return_decoded,
-                                      return_bool=return_bool,
-                                      ).visit(py_tree)
-        fwrap.F90WrapperGenerator(prefix, fsize, string_lengths,
-                                  abort_func, kind_map, types, default_to_inout,
-                                  max_length=f90_max_line_length,
-                                  default_string_length=default_string_length,
-                                  auto_raise=auto_raise_error).visit(f90_tree)
+        if args.direct_c and not auto_raise_error:
+            auto_raise_error = "ierr,errmsg"
+
+        pywrap.PythonWrapperGenerator(
+            prefix,
+            mod_name,
+            types,
+            f90_mod_name=f90_mod_name,
+            make_package=args.package,
+            kind_map=kind_map,
+            init_file=args.init_file,
+            py_mod_names=py_mod_names,
+            class_names=class_names,
+            max_length=py_max_line_length,
+            auto_raise=auto_raise_error,
+            type_check=args.type_check,
+            relative=args.relative,
+            return_decoded=return_decoded,
+            return_bool=return_bool,
+            namespace_types=bool(args.direct_c),
+        ).visit(py_tree)
+        fwrap.F90WrapperGenerator(
+            prefix,
+            fsize,
+            string_lengths,
+            abort_func,
+            kind_map,
+            types,
+            default_to_inout,
+            max_length=f90_max_line_length,
+            default_string_length=default_string_length,
+            auto_raise=auto_raise_error,
+            direct_c_interop=interop_info,
+            toplevel_basename=(mod_name if args.direct_c else "toplevel"),
+        ).visit(f90_tree)
+
+        if args.direct_c and interop_info:
+            from f90wrap.directc_cgen import DirectCGenerator
+
+            logging.info("Generating Direct-C extension modules...")
+            logging.debug("Direct-C callbacks: %s", callback)
+
+            error_num_arg = None
+            error_msg_arg = None
+            if auto_raise_error:
+                parts = [part.strip() for part in auto_raise_error.split(',') if part.strip()]
+                if len(parts) == 2:
+                    error_num_arg, error_msg_arg = parts
+
+            generator = DirectCGenerator(
+                root=f90_tree,
+                interop_info=interop_info,
+                kind_map=kind_map,
+                prefix=prefix,
+                handle_size=fsize,
+                error_num_arg=error_num_arg,
+                error_msg_arg=error_msg_arg,
+                callbacks=callback,
+                shape_hints=shape_hints,
+                py_module_name=mod_name
+            )
+
+            # Use Python module name for C extension (with _ prefix)
+            extension_basename = f"_{mod_name}"
+
+            # Collect all procedures for Direct-C code generation
+            # Procedures can be in multiple places after transformation:
+            # 1. module.procedures (module-level procedures)
+            # 2. module.interfaces[].procedures (generic interface procedures)
+            # 3. type.procedures (type-bound procedures)
+            # 4. tree.procedures (top-level procedures)
+            all_procs = []
+            for module in f90_tree.modules:
+                # Module-level procedures
+                all_procs.extend(module.procedures)
+
+                # Generic interface procedures (including module procedures wrapped in interfaces)
+                for iface in getattr(module, 'interfaces', []):
+                    all_procs.extend(getattr(iface, 'procedures', []))
+
+                # Type-bound procedures
+                for derived in getattr(module, 'types', []):
+                    all_procs.extend(getattr(derived, 'procedures', []))
+
+            # Top-level procedures
+            all_procs.extend(getattr(f90_tree, 'procedures', []))
+
+            c_code = generator.generate_module(extension_basename, procedures=all_procs)
+
+            if c_code:
+                c_filename = f"{extension_basename}.c"
+                with open(c_filename, 'w') as c_file:
+                    c_file.write(c_code)
+                logging.info(f"Generated {c_filename}")
+            else:
+                logging.info("No Direct-C compatible procedures found.")
+
+            logging.info("Direct-C generation complete. Compile C files with your toolchain.")
+
+        if args.build:
+            from f90wrap import build
+
+            logging.info("Building extension module...")
+            ret = build.build_extension(
+                module_name=args.mod_name,
+                source_files=args.files,
+                package_mode=args.package,
+                clean_first=args.clean_build,
+                verbose=args.verbose > 0
+            )
+
+            if ret != 0:
+                logging.error("Build failed")
+                return ret
+
+            logging.info("Build complete")
         return 0
 
     except KeyboardInterrupt:

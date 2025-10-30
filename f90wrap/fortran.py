@@ -382,6 +382,7 @@ class Type(Fortran):
         self.parent = parent
         self.has_assignment = has_assignment
         self.is_external = False
+        self.attributes = []
 
     # Needed to reorder types in genereted code
     def __lt__(self, other):
@@ -981,9 +982,17 @@ def normalise_type(typename, kind_map):
         'string' : '',
         }
     orig_kind = kind
-    kind = c_type_to_fortran_kind.get(c_type, kind)
-    # special case: preserve string lengths
-    if c_type == 'char':
+    base_kind = orig_kind.strip()
+    if base_kind.startswith('(') and base_kind.endswith(')'):
+        base_key = base_kind[1:-1].strip()
+    else:
+        base_key = base_kind
+    mapped = type in kind_map and base_key in kind_map.get(type, {})
+    if mapped:
+        kind = c_type_to_fortran_kind.get(c_type, orig_kind)
+        if c_type == 'char':
+            kind = orig_kind
+    else:
         kind = orig_kind
     return type + kind
 
