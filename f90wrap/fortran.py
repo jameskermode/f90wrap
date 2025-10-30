@@ -76,7 +76,7 @@ class Fortran(object):
         self.lineno = lineno
 
         if filename == '':
-            log.warning(f"Fortran node '{name}' has no filename")
+            log.debug(f"Fortran node '{name}' has no filename")
 
     def __repr__(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
