@@ -52,6 +52,17 @@ class TestQUIPBuild(unittest.TestCase):
         if not deps_ok:
             raise unittest.SkipTest(f"QUIP regression test skipped: {reason}")
 
+        # Install f90wrap from local source (non-editable to avoid meson-python issues)
+        print("\nInstalling f90wrap from local source...")
+        f90wrap_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", f90wrap_root, "--force-reinstall"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to install f90wrap:\\nSTDOUT:\\n{result.stdout}\\n\\nSTDERR:\\n{result.stderr}")
+
         cls.test_dir = tempfile.mkdtemp(prefix="f90wrap_quip_test_")
         cls.quip_dir = os.path.join(cls.test_dir, "QUIP")
 
@@ -62,6 +73,24 @@ class TestQUIPBuild(unittest.TestCase):
             check=True,
             capture_output=True
         )
+
+        # Patch QUIP's pyproject.toml to use local f90wrap instead of git master
+        # This ensures we test the current branch, not master
+        print("Patching QUIP to use local f90wrap...")
+        f90wrap_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+        quippy_pyproject = os.path.join(cls.quip_dir, "quippy", "pyproject.toml")
+
+        with open(quippy_pyproject, "r") as f:
+            content = f.read()
+
+        # Replace git URL with local path
+        content = content.replace(
+            'f90wrap @ git+https://github.com/jameskermode/f90wrap.git@master',
+            f'f90wrap @ file://{f90wrap_root}'
+        )
+
+        with open(quippy_pyproject, "w") as f:
+            f.write(content)
 
         print("Building QUIP libraries...")
         result = subprocess.run(
@@ -95,16 +124,34 @@ class TestQUIPBuild(unittest.TestCase):
 
         quippy_dir = os.path.join(self.quip_dir, "quippy")
 
-        # Build quippy package
+        # Build a wheel first to avoid editable install issues
+        # Use --no-build-isolation to ensure it uses our local f90wrap
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "." ],
+            [sys.executable, "-m", "pip", "wheel", ".", "--no-build-isolation", "-v",
+             "--no-deps", "-w", "dist"],
             cwd=quippy_dir,
             capture_output=True,
             text=True
         )
 
+        if result.returncode != 0:
+            self.fail(f"quippy wheel build failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
+
+        # Find the built wheel
+        dist_dir = os.path.join(quippy_dir, "dist")
+        wheels = [f for f in os.listdir(dist_dir) if f.endswith('.whl')]
+        self.assertTrue(len(wheels) > 0, "No wheel file was created")
+        wheel_path = os.path.join(dist_dir, wheels[0])
+
+        # Install the wheel (non-editable)
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", wheel_path, "--force-reinstall"],
+            capture_output=True,
+            text=True
+        )
+
         self.assertEqual(result.returncode, 0,
-                        f"quippy build failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
+                        f"quippy install failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
 
     def test_02_quippy_imports(self):
         """Test that quippy can be imported"""

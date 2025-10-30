@@ -690,16 +690,20 @@ except ValueError:
                         elif ":" in dim_str:
                             log.error("Cannot wrap ranges for dimension arguments: %s" % dim_str)
 
-                        # "size" is replaced by "size_bn" ("badname") by numpy.f2py
-                        keyword = "size"
-                        try:
-                            keyword = np.f2py.crackfortran.badnames[keyword]
-                        except KeyError:
-                            pass
-                        match = re.search(r"%s\((.*)\)" % keyword, dim_str)
+                        # Both "size" and "len" are replaced by "size_bn" and "len_bn"
+                        # ("badname") by numpy.f2py. Try both patterns.
+                        match = None
+                        for keyword in ["size", "len"]:
+                            try:
+                                keyword_bn = np.f2py.crackfortran.badnames[keyword]
+                            except KeyError:
+                                keyword_bn = keyword
+                            match = re.search(r"%s\((.*)\)" % keyword_bn, dim_str)
+                            if match:
+                                break
 
                         if match:
-                            # Case where return size is size of input
+                            # Case where return size is size/len of input
                             size_arg = match.group(1).split(",")
                             py_name = f902py_name(node, size_arg[0])
                             try:

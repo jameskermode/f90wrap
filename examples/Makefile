@@ -16,6 +16,7 @@ EXAMPLES = arrayderivedtypes \
 	keyword_renaming_issue160 \
 	mockderivetype \
 	mod_arg_clash \
+	name_collision \
 	optional_args_issue53 \
 	optional_derived_arrays \
 	passbyreference \

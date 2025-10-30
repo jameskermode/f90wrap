@@ -1669,3 +1669,52 @@ def shorten_long_name(name):
         log.info('Renaming "%s" to "%s" to comply with Fortran 2003'%(name, shorter_name))
         return shorter_name
     return name
+
+class ArgumentNameConflictResolver(ft.FortranTransformer):
+    """
+    Resolves name conflicts between procedure arguments and USE-imported symbols.
+    
+    When f90wrap generates wrappers, it creates `use module_name` statements that
+    import ALL symbols from a module. This can cause Fortran name collisions when
+    an argument has the same name as another procedure in the same module.
+    
+    This transformer detects such conflicts and renames arguments with an `_in` suffix.
+    """
+    
+    def __init__(self):
+        super(ArgumentNameConflictResolver, self).__init__()
+        self._current_module = None
+        
+    def visit_Module(self, node):
+        """Track current module while visiting"""
+        old_module = self._current_module
+        self._current_module = node
+        result = self.generic_visit(node)
+        self._current_module = old_module
+        return result
+        
+    def visit_Procedure(self, node):
+        """Detect and resolve argument name conflicts in procedures"""
+        if not self._current_module or not hasattr(node, "mod_name") or not node.mod_name:
+            return self.generic_visit(node)
+            
+        # Collect all procedure names in the current module
+        imported_symbols = set()
+        for proc in self._current_module.procedures:
+            if proc.name != node.name:  # Don't mark self as conflict
+                imported_symbols.add(proc.name)
+        
+        if not imported_symbols:
+            return self.generic_visit(node)
+            
+        # Check each argument for conflicts and rename if necessary
+        for arg in node.arguments:
+            if arg.name in imported_symbols:
+                new_name = arg.name + "_in"
+                log.warning(
+                    f"Argument '{arg.name}' in {node.mod_name}.{node.name} conflicts "
+                    f"with USE-imported symbol. Renaming to '{new_name}' in wrapper."
+                )
+                arg.name = new_name
+                
+        return self.generic_visit(node)
