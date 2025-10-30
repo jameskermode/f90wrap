@@ -1744,6 +1744,8 @@ def dump_package(root, pkg_name, class_names, json_file):
         mod["package"] = pkg_name
         mod["types"] = []
         for typ in module.types:
+            if typ.is_external:
+                continue
             t = {"name" : typ.orig_name}
             if typ.orig_name in class_names:
                 t["class_name"] = class_names[typ.orig_name]
