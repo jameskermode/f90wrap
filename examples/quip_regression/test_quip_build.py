@@ -81,6 +81,24 @@ class TestQUIPBuild(unittest.TestCase):
         with open(quippy_pyproject, "w") as f:
             f.write(content)
 
+        # Patch QUIP's meson.build to skip enable_timing as a workaround
+        # for name collision bug (see issue #291)
+        print("Patching QUIP to skip enable_timing (workaround for #291)...")
+        quippy_meson = os.path.join(cls.quip_dir, "quippy", "meson.build")
+
+        with open(quippy_meson, "r") as f:
+            meson_content = f.read()
+
+        # Add enable_timing to the --skip list
+        # Find the line with potential_local_e_mix_finalise and add enable_timing after it
+        meson_content = meson_content.replace(
+            "'potential_local_e_mix_finalise',",
+            "'potential_local_e_mix_finalise', 'enable_timing',"
+        )
+
+        with open(quippy_meson, "w") as f:
+            f.write(meson_content)
+
         print("Building QUIP libraries...")
         result = subprocess.run(
             ["meson", "setup", "builddir"],
