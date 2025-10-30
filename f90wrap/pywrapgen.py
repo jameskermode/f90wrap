@@ -1326,7 +1326,7 @@ return %(el_name)s"""
         )
 
         # Polymorphic object (class) without assignment method cannot not have setitem
-        if el.type.startswith("class") and not self.types[ft.strip_type(el.type)].has_assignment:
+        if el.type.startswith("class") and "has_assignment" not in self.types[ft.strip_type(el.type)].attributes:
             self.write(
                 """%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
                                     %(f90_mod_name)s.%(getitem_name)s,
