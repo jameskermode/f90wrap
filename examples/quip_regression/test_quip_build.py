@@ -113,9 +113,13 @@ class TestQUIPBuild(unittest.TestCase):
 
         quippy_dir = os.path.join(self.quip_dir, "quippy")
 
-        # Build quippy package
+        # Build quippy package without build isolation
+        # We use --no-build-isolation because:
+        # 1. We've already patched pyproject.toml to use local f90wrap
+        # 2. Build dependencies (numpy, meson-python) are already installed
+        # 3. Avoids path issues with fortranobject.c in isolated environments
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "." ],
+            [sys.executable, "-m", "pip", "install", ".", "--no-build-isolation"],
             cwd=quippy_dir,
             capture_output=True,
             text=True
