@@ -285,8 +285,8 @@ Author
 
 James Kermode [jameskermode](https://github.com/jameskermode)
 
-Contributors
-------------
+Key Contributors
+----------------
 
 - Tamas Stenczel [stenczelt](https://github.com/stenczelt)
 - Steven Murray [steven-murray](https://github.com/steven-murray)
@@ -298,7 +298,7 @@ Contributors
 - [Matthias Cuntz](https://github.com/mcuntz)
 - Balthasar Reuter [reuterbal](https://github.com/reuterbal)
 - Daniel Vanzo [danbeibei](https://github.com/danbeibei)
-
+- Christopher Albert [krystophny](https://github.com/krystophny)
 
 Developer Notes
 ---------------
