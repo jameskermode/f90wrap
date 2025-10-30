@@ -27,9 +27,11 @@ import warnings
 import re
 
 import numpy as np
+from typing import Set
 
 from f90wrap import codegen as cg
 from f90wrap import fortran as ft
+from f90wrap import directc
 from f90wrap.transform import shorten_long_name
 
 log = logging.getLogger(__name__)
@@ -83,6 +85,8 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         max_length=None,
         auto_raise=None,
         default_string_length=None,
+        direct_c_interop=None,
+        toplevel_basename="toplevel",
     ):
         if max_length is None:
             max_length = 120
@@ -97,19 +101,57 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.kind_map = kind_map
         self.types = types
         self.default_to_inout = default_to_inout
-        self.routines = []
+        self.routines: Set[tuple] = set()
         try:
             self._err_num_var, self._err_msg_var = auto_raise.split(',')
         except ValueError:
             self._err_num_var, self._err_msg_var = None, None
         self.default_string_length = default_string_length
+        self.direct_c_interop = direct_c_interop or {}
+        self.toplevel_basename = toplevel_basename
+        self._namespace_helper = directc.NamespaceHelper(
+            self.types,
+            namespace_types=bool(self.direct_c_interop),
+        )
+
+    def _scope_identifier_for(self, container):
+        """Build a stable identifier used to namespace generated helper names."""
+        return self._namespace_helper.scope_identifier_for(container)
+
+    def _register_modules(self, root):
+        """Cache module nodes by both generated and original names."""
+        self._namespace_helper.register_modules(root)
+
+    def _find_type(self, type_name, module_hint=None):
+        """Locate a Type node, preferring the provided module hint."""
+        return self._namespace_helper.find_type(type_name, module_hint)
+
+    def _type_owner(self, type_name, module_hint=None):
+        """Return the defining module name for a given type."""
+        return self._namespace_helper.type_owner(type_name, module_hint)
+
+    def _add_extra_use(self, extra_uses, module_name, symbol):
+        """Append a symbol to a module's ONLY list, avoiding duplicates."""
+        self._namespace_helper.add_extra_use(extra_uses, module_name, symbol)
+
+    def _direct_c_info(self, proc):
+        if not self.direct_c_interop:
+            return None
+        if not hasattr(proc, "mod_name") or not hasattr(proc, "name"):
+            return None
+        key = directc.ProcedureKey(proc.mod_name, getattr(proc, 'type_name', None), proc.name)
+        return self.direct_c_interop.get(key)
 
     def visit_Root(self, node):
         """
         Write a wrapper for top-level procedures.
         """
+        self._register_modules(node)
         # clean up any previous wrapper files
-        top_level_wrapper_file = "%s%s.f90" % (self.prefix, "toplevel")
+        top_level_wrapper_file = "%s%s.f90" % (
+            self.prefix,
+            self.toplevel_basename,
+        )
         f90_wrapper_files = [
             "%s%s.f90"
             % (self.prefix, os.path.splitext(os.path.basename(mod.filename))[0])
@@ -178,47 +220,82 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         node : Node of parse tree
         """
         all_uses = {}
-        node_uses = []
+        node_module = getattr(node, "mod_name", None)
+        if node_module:
+            self._add_extra_use(all_uses, node_module, None)
         if hasattr(node, "uses"):
             for use in node.uses:
                 if isinstance(use, str):
-                    node_uses.append((use, None))
+                    self._add_extra_use(all_uses, use, None)
                 else:
-                    node_uses.append(use)
+                    mod, only = use
+                    if only is None:
+                        self._add_extra_use(all_uses, mod, None)
+                    else:
+                        for symbol in only:
+                            self._add_extra_use(all_uses, mod, symbol)
 
         if extra_uses_dict is not None:
-            for mod, only in extra_uses_dict.items():
-                node_uses.append((mod, only))
+            for mod, info in extra_uses_dict.items():
+                if isinstance(info, dict):
+                    if info.get("full"):
+                        self._add_extra_use(all_uses, mod, None)
+                    for symbol in info.get("symbols", []):
+                        self._add_extra_use(all_uses, mod, symbol)
+                elif info is None:
+                    self._add_extra_use(all_uses, mod, None)
+                else:
+                    for symbol in info:
+                        self._add_extra_use(all_uses, mod, symbol)
 
         if (
             hasattr(node, "attributes")
             and "destructor" in node.attributes
             and not "skip_call" in node.attributes
         ):
-            node_uses.append((node.mod_name, [node.call_name]))
+            self._add_extra_use(all_uses, node.mod_name, node.call_name)
 
-        if node_uses:
-            for mod, only in node_uses:
-                if mod in all_uses:
-                    if only is None:
+        if all_uses:
+            symbol_sources = {}
+            for mod, entry in list(all_uses.items()):
+                if entry["full"]:
+                    continue
+                cleaned = []
+                for symbol in entry["symbols"]:
+                    symbol_str = symbol if isinstance(symbol, str) else str(symbol)
+                    if "=>" in symbol_str:
+                        cleaned.append(symbol_str)
                         continue
-                    for symbol in only:
-                        if all_uses[mod] is None:
-                            all_uses[mod] = []
-                        if symbol not in all_uses[mod]:
-                            all_uses[mod] += [symbol]
-                elif only is not None:
-                    all_uses[mod] = list(only)
+                    base_symbol = symbol_str.strip()
+                    owner = self._type_owner(base_symbol)
+                    if owner and owner != mod:
+                        if symbol_sources.get(base_symbol) is not None:
+                            continue
+                    prev = symbol_sources.get(base_symbol)
+                    if prev and prev != mod:
+                        if owner and prev == owner:
+                            continue
+                        if owner and mod != owner:
+                            continue
+                    symbol_sources[base_symbol] = mod
+                    cleaned.append(base_symbol)
+                if cleaned:
+                    entry["symbols"] = cleaned
                 else:
-                    all_uses[mod] = None
+                    if entry["full"]:
+                        entry["symbols"] = []
+                    else:
+                        del all_uses[mod]
 
-        for mod, only in all_uses.items():
-            if only is not None:
-                self.write(
-                    "use %s, only: %s" % (mod, ", ".join(set(only)))
-                )  # YANN: "set" to avoid derundancy
-            else:
-                self.write("use %s" % mod)
+        for mod, entry in all_uses.items():
+            if entry["full"]:
+                self.write(f"use {mod}")
+        for mod, entry in all_uses.items():
+            symbols = entry["symbols"]
+            if not symbols:
+                continue
+            ordered = list(dict.fromkeys(symbols))
+            self.write(f"use {mod}, only: {', '.join(ordered)}")
 
     def write_super_type_lines(self, ty):
         self.write("type " + ty.name)
@@ -250,7 +327,11 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         if tname_inner is None:
             tname_inner = tname
 
-        if "abstract" in self.types[tname].attributes:
+        type_node = self._find_type(tname)
+        if type_node is None:
+            type_node = self.types.get(ft.strip_type(tname))
+        attributes = getattr(type_node, "attributes", []) if type_node is not None else []
+        if "abstract" in attributes:
             class_type = "class"
         else:
             class_type = "type"
@@ -288,10 +369,16 @@ end type %(typename)s%(suffix)s"""
     def is_class(self, tname):
         if not tname:
             return False
-        tname_lower = tname.lower()
-        if not tname_lower in self.types:
+        type_node = self._find_type(tname)
+        if type_node is None:
+            type_node = self.types.get(ft.strip_type(tname))
+        if type_node is None:
             return False
-        if "used_as_class" in self.types[tname_lower].attributes:
+        attributes = getattr(type_node, "attributes", [])
+        if "used_as_class" in attributes:
+            return True
+        fallback = self.types.get(ft.strip_type(tname))
+        if fallback is not None and "used_as_class" in getattr(fallback, "attributes", []):
             return True
         return False
 
@@ -302,7 +389,7 @@ end type %(typename)s%(suffix)s"""
             self.write_type_lines(tname, recursive, pointer=pointer)
 
 
-    def write_arg_decl_lines(self, node):
+    def write_arg_decl_lines(self, node, helper_forward=False):
         """
         Write argument declaration lines to the code
 
@@ -329,9 +416,10 @@ end type %(typename)s%(suffix)s"""
             }  # self.prefix+arg.name}
 
             if arg.name in node.transfer_in or arg.name in node.transfer_out:
-                self.write(
-                    "type(%(type_name)s_ptr_type) :: %(arg_name)s_ptr" % arg_dict
-                )
+                if not helper_forward:
+                    self.write(
+                        "type(%(type_name)s_ptr_type) :: %(arg_name)s_ptr" % arg_dict
+                    )
                 arg_dict["arg_type"] = arg.wrapper_type
                 attributes.append("dimension(%d)" % arg.wrapper_dim)
 
@@ -360,6 +448,20 @@ end type %(typename)s%(suffix)s"""
                 # No f2py instruction and no explicit intent : force f2py to make the argument intent(inout)
                 # This is put as an option to prserve backwards compatibility
                 self.write("!f2py intent(inout) " + arg.name)
+
+        # For allocatable class returns, declare temporary variable for move_alloc
+        orig_node = getattr(node, 'orig_node', node)
+        if isinstance(orig_node, ft.Function):
+            is_allocatable_return = any("allocatable" in attr.lower() for attr in orig_node.ret_val.attributes)
+            if is_allocatable_return:
+                is_class_return = self.is_class(orig_node.ret_val.type)
+                # Only declare temp for classes (which use wrapper_type and can use move_alloc)
+                # For non-class derived types, we can't use move_alloc with pointer target
+                if is_class_return:
+                    type_name = (orig_node.ret_val.type.startswith("type") and orig_node.ret_val.type[5:-1]) or \
+                               (orig_node.ret_val.type.startswith("class") and orig_node.ret_val.type[6:-1])
+                    temp_name = f"temp_{orig_node.ret_val.name}"
+                    self.write(f"class({type_name}), allocatable :: {temp_name}")
 
     def write_transfer_in_lines(self, node):
         """
@@ -398,9 +500,20 @@ end type %(typename)s%(suffix)s"""
         Write special user-provided init lines to a node.
         """
         for alloc in node.allocate:
-            self.write("allocate(%s_ptr%%p)" % alloc.name)
-            if self.is_class(alloc.type):
-                self.write("allocate(%s_ptr%%p%%obj)" % alloc.name)
+            # For return values that are allocatable, don't pre-allocate the pointer
+            # The assignment will handle allocation automatically (Fortran 2003 semantics)
+            is_allocatable_return = any("allocatable" in attr.lower() for attr in alloc.attributes)
+            is_class_return = self.is_class(alloc.type)
+
+            if not is_allocatable_return:
+                # Non-allocatable returns: allocate both pointer and object
+                self.write("allocate(%s_ptr%%p)" % alloc.name)
+                if is_class_return:
+                    self.write("allocate(%s_ptr%%p%%obj)" % alloc.name)
+            elif is_class_return:
+                # Allocatable class returns: allocate pointer wrapper but not the object
+                # The move_alloc will move the allocatable result into p%obj
+                self.write("allocate(%s_ptr%%p)" % alloc.name)
         for arg in node.arguments:
             if not hasattr(arg, "init_lines"):
                 continue
@@ -415,7 +528,7 @@ end type %(typename)s%(suffix)s"""
             else:
                 self.write(exe % D)
 
-    def write_call_lines(self, node, func_name):
+    def write_call_lines(self, node, func_name, helper_forward=False):
         """
         Write line that calls a single wrapped Fortran routine
         """
@@ -441,6 +554,8 @@ end type %(typename)s%(suffix)s"""
             return False
 
         def actual_arg_name(arg):
+            if helper_forward:
+                return arg.name
             name = arg.name
             if (hasattr(node, "transfer_in") and arg.name in node.transfer_in) or (
                 hasattr(node, "transfer_out") and arg.name in node.transfer_out
@@ -496,14 +611,57 @@ end type %(typename)s%(suffix)s"""
             self.write(f"{self._err_msg_var}=''")
 
         if isinstance(orig_node, ft.Function):
-            self.write(
-                "%(ret_val)s = %(func_name)s(%(arg_names)s)"
-                % {
-                    "ret_val": actual_arg_name(orig_node.ret_val),
-                    "func_name": func_name,
-                    "arg_names": ", ".join(arg_names),
-                }
-            )
+            # For allocatable returns, use move_alloc or allocate+assign appropriately
+            ret_val_name = actual_arg_name(orig_node.ret_val)
+            is_allocatable_return = any("allocatable" in attr.lower() for attr in orig_node.ret_val.attributes)
+            is_class_return = self.is_class(orig_node.ret_val.type)
+            is_derived_type = orig_node.ret_val.type.startswith("type(")
+
+            if is_allocatable_return:
+                if is_class_return:
+                    # Use temporary + move_alloc to avoid finalizer calls on assignment
+                    temp_name = f"temp_{orig_node.ret_val.name}"
+                    self.write(
+                        "%(temp_name)s = %(func_name)s(%(arg_names)s)"
+                        % {
+                            "temp_name": temp_name,
+                            "func_name": func_name,
+                            "arg_names": ", ".join(arg_names),
+                        }
+                    )
+                    self.write(f"call move_alloc({temp_name}, {ret_val_name})")
+                elif is_derived_type:
+                    # For allocatable derived type returns without wrapper, use allocate with source=
+                    # This copies the function result and automatically deallocates the temporary
+                    self.write(
+                        "allocate(%(ret_val)s, source=%(func_name)s(%(arg_names)s))"
+                        % {
+                            "ret_val": ret_val_name,
+                            "func_name": func_name,
+                            "arg_names": ", ".join(arg_names),
+                        }
+                    )
+                else:
+                    # For allocatable intrinsic types, use move_alloc
+                    temp_name = f"temp_{orig_node.ret_val.name}"
+                    self.write(
+                        "%(temp_name)s = %(func_name)s(%(arg_names)s)"
+                        % {
+                            "temp_name": temp_name,
+                            "func_name": func_name,
+                            "arg_names": ", ".join(arg_names),
+                        }
+                    )
+                    self.write(f"call move_alloc({temp_name}, {ret_val_name})")
+            else:
+                self.write(
+                    "%(ret_val)s = %(func_name)s(%(arg_names)s)"
+                    % {
+                        "ret_val": ret_val_name,
+                        "func_name": func_name,
+                        "arg_names": ", ".join(arg_names),
+                    }
+                )
         else:
             if func_name == "assignment(=)":
                 if len(arg_names) != 2:
@@ -575,10 +733,12 @@ end type %(typename)s%(suffix)s"""
         if hasattr(node, "call_name"):
             call_name = node.call_name
 
-        if node.name in self.routines:
+        type_name = getattr(node, "type_name", None)
+        routine_key = (node.name, type_name, node.mod_name if type_name is None else None)
+        if routine_key in self.routines:
             return self.generic_visit(node)
 
-        self.routines.append(node.name)
+        self.routines.add(routine_key)
 
         log.info(
             "F90WrapperGenerator visiting routine %s call_name %s mod_name %r"
@@ -610,21 +770,34 @@ end type %(typename)s%(suffix)s"""
             if hasattr(node, "orig_node") and isinstance(node.orig_node, ft.Function):
                 self.write("%s %s" % (node.orig_node.ret_val.type, node.orig_name))
 
+        helper_forward = call_name.startswith(self.prefix)
+
+        saved_types = None
+        if helper_forward:
+            saved_types = node.types
+            node.types = set()
+
         self.write()
-        for tname in node.types:
-            if tname in self.types and "super-type" in self.types[tname].doc:
-                self.write_super_type_lines(self.types[tname])
-            pointer = False
-            for arg in node.arguments:
-                if ft.strip_type(arg.type) == tname and "optional" in arg.attributes:
-                    pointer = True
-            self.write_type_or_class_lines(tname, pointer=pointer)
-        self.write_arg_decl_lines(node)
-        self.write_transfer_in_lines(node)
+        if not helper_forward:
+            for tname in node.types:
+                type_node = self._find_type(tname, node.mod_name)
+                if type_node is not None and "super-type" in getattr(type_node, "doc", ""):
+                    self.write_super_type_lines(type_node)
+                pointer = False
+                for arg in node.arguments:
+                    if ft.strip_type(arg.type) == tname and "optional" in arg.attributes:
+                        pointer = True
+                self.write_type_or_class_lines(tname, pointer=pointer)
+        self.write_arg_decl_lines(node, helper_forward=helper_forward)
+        if not helper_forward:
+            self.write_transfer_in_lines(node)
         self.write_init_lines(node)
-        self.write_call_lines(node, call_name)
-        self.write_transfer_out_lines(node)
+        self.write_call_lines(node, call_name, helper_forward=helper_forward)
+        if not helper_forward:
+            self.write_transfer_out_lines(node)
         self.write_finalise_lines(node)
+        if helper_forward:
+            node.types = saved_types
         self.dedent()
         self.write("end subroutine %s" % (sub_name))
         self.write()
@@ -676,16 +849,23 @@ end type %(typename)s%(suffix)s"""
         else:
             this = "dummy_this, "
 
-        subroutine_name = "%s%s__array__%s" % (self.prefix, t.name, el.name)
+        subroutine_name = "%s%s__array__%s" % (
+            self.prefix,
+            self._scope_identifier_for(t),
+            el.name,
+        )
         subroutine_name = shorten_long_name(subroutine_name)
 
         self.write("subroutine %s(%snd, dtype, dshape, dloc)" % (subroutine_name, this))
         self.indent()
 
         if isinstance(t, ft.Module):
-            self.write_uses_lines(
-                t, {t.orig_name: ["%s_%s => %s" % (t.name, el.name, el.orig_name)]}
-            )
+            module_name = t.orig_name or t.name
+            alias = "%s_%s => %s" % (t.name, el.name, el.orig_name)
+            extra_uses = {}
+            self._add_extra_use(extra_uses, module_name, None)
+            self._add_extra_use(extra_uses, module_name, alias)
+            self.write_uses_lines(t, extra_uses)
         else:
             self.write_uses_lines(t)
 
@@ -824,7 +1004,7 @@ end type %(typename)s%(suffix)s"""
         # TODO: check if el.orig_name would be needed here instead of el.name
         subroutine_name = "%s%s__array_%sitem__%s" % (
             self.prefix,
-            t.name,
+            self._scope_identifier_for(t),
             getset,
             el.name,
         )
@@ -838,23 +1018,22 @@ end type %(typename)s%(suffix)s"""
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.orig_name)]
+            alias = "%s_%s => %s" % (t.name, el.name, el.orig_name)
+            module_name = t.orig_name or t.name
+            self._add_extra_use(extra_uses, module_name, None)
+            self._add_extra_use(extra_uses, module_name, alias)
         elif isinstance(t, ft.Type):
             if "super-type" in t.doc:
                 # YANN: propagate parameter uses
                 for use in t.uses:
-                    if use[0] in extra_uses and use[1][0] not in extra_uses[use[0]]:
-                        extra_uses[use[0]].append(use[1][0])
-                    else:
-                        extra_uses[use[0]] = [use[1][0]]
+                    module_name = use[0]
+                    only_list = use[1] if len(use) > 1 else []
+                    for symbol in only_list:
+                        self._add_extra_use(extra_uses, module_name, symbol)
             else:
-                extra_uses[t.mod_name] = [t.name]
-        mod = self.types[el.type].mod_name
-        el_tname = ft.strip_type(el.type)
-        if mod in extra_uses:
-            extra_uses[mod].append(el_tname)
-        else:
-            extra_uses[mod] = [el_tname]
+                self._add_extra_use(extra_uses, t.mod_name, None)
+        owner_module = self._type_owner(el.type, getattr(t, "mod_name", getattr(t, "name", None)))
+        self._add_extra_use(extra_uses, owner_module, None)
         self.write_uses_lines(el, extra_uses)
         self.write("implicit none")
         self.write()
@@ -958,7 +1137,11 @@ end type %(typename)s%(suffix)s"""
             this = "dummy_this"
         safe_n = self.prefix + "n"  # YANN: "n" could be in the "uses"
 
-        subroutine_name = "%s%s__array_len__%s" % (self.prefix, t.name, el.name)
+        subroutine_name = "%s%s__array_len__%s" % (
+            self.prefix,
+            self._scope_identifier_for(t),
+            el.name,
+        )
         subroutine_name = shorten_long_name(subroutine_name)
 
         self.write("subroutine %s(%s, %s)" % (subroutine_name, this, safe_n))
@@ -966,24 +1149,21 @@ end type %(typename)s%(suffix)s"""
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.name] = ["%s_%s => %s" % (t.name, el.name, el.orig_name)]
+            alias = "%s_%s => %s" % (t.name, el.name, el.orig_name)
+            self._add_extra_use(extra_uses, t.orig_name or t.name, alias)
         elif isinstance(t, ft.Type):
             if "super-type" in t.doc:
                 # YANN: propagate parameter uses
                 for use in t.uses:
-                    if use[0] in extra_uses and use[1][0] not in extra_uses[use[0]]:
-                        extra_uses[use[0]].append(use[1][0])
-                    else:
-                        extra_uses[use[0]] = [use[1][0]]
+                    module_name = use[0]
+                    only_list = use[1] if len(use) > 1 else []
+                    for symbol in only_list:
+                        self._add_extra_use(extra_uses, module_name, symbol)
             else:
-                extra_uses[self.types[t.name].mod_name] = [t.name]
+                self._add_extra_use(extra_uses, t.mod_name, None)
 
-        mod = self.types[el.type].mod_name
-        el_tname = ft.strip_type(el.type)
-        if mod in extra_uses:
-            extra_uses[mod].append(el_tname)
-        else:
-            extra_uses[mod] = [el_tname]
+        owner_module = self._type_owner(el.type, getattr(t, "mod_name", getattr(t, "name", None)))
+        self._add_extra_use(extra_uses, owner_module, None)
         self.write_uses_lines(el, extra_uses)
         self.write("implicit none")
         self.write()
@@ -1061,28 +1241,28 @@ end type %(typename)s%(suffix)s"""
         # Get appropriate use statements
         extra_uses = {}
         if isinstance(t, ft.Module):
-            extra_uses[t.orig_name] = [
-                "%s_%s => %s" % (t.name, el.orig_name, el.orig_name)
-            ]
+            alias = "%s_%s => %s" % (t.name, el.orig_name, el.orig_name)
+            self._add_extra_use(extra_uses, t.orig_name or t.name, alias)
         elif isinstance(t, ft.Type):
-            extra_uses[self.types[t.name].mod_name] = [t.name]
+            self._add_extra_use(extra_uses, t.mod_name, None)
 
         # Check if the type has recursive definition:
         same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
 
-        if ft.is_derived_type(el.type) and not same_type:
-            mod = self.types[el.type].mod_name
-            el_tname = ft.strip_type(el.type)
-            if mod in extra_uses:
-                extra_uses[mod].append(el_tname)
-            else:
-                extra_uses[mod] = [el_tname]
+        if el.type.startswith("type") and not same_type:
+            owner_module = self._type_owner(el.type, getattr(t, "mod_name", getattr(t, "name", None)))
+            self._add_extra_use(extra_uses, owner_module, None)
 
         # Prepend prefix to element name
         #   -- Since some cases require a safer localvar name, we always transform it
         localvar = self.prefix + el.orig_name
 
-        subroutine_name = "%s%s__%s__%s" % (self.prefix, t.name, getset, el.name)
+        subroutine_name = "%s%s__%s__%s" % (
+            self.prefix,
+            self._scope_identifier_for(t),
+            getset,
+            el.name,
+        )
         subroutine_name = shorten_long_name(subroutine_name)
 
         self.write("subroutine %s(%s%s)" % (subroutine_name, this, localvar))

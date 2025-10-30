@@ -150,6 +150,38 @@ that introduces the following features:
     After the Fortran routine returns, the previous interrupt handler
     is restored.
 
+Direct-C mode extensions
+-------------------------
+
+Quick build: `f90wrap --build -m mymodule source.f90`
+
+Manual compilation: `f90wrap --direct-c -m mymodule source.f90`
+
+Python package (pyproject.toml + setup.py):
+
+```toml
+[build-system]
+requires = ["setuptools", "numpy", "f90wrap"]
+
+[project]
+name = "mypackage"
+version = "0.1.0"
+
+[tool.setuptools.packages]
+find = {}
+```
+
+```python
+# setup.py
+from setuptools import setup
+from f90wrap.setuptools_ext import F90WrapExtension, build_ext_cmdclass
+
+setup(ext_modules=[F90WrapExtension("mymodule", ["src/mymodule.f90"])],
+      cmdclass=build_ext_cmdclass())
+```
+
+Result: `import mypackage` then use `mypackage.mymodule`
+
 Notes
 -----
 
@@ -181,13 +213,17 @@ allow it to be called from Python.
     This allows opaque references to the
     true Fortran derived type data structures to be passed back and
     forth between Python and Fortran.
-4.  f2py is used to combine the F90 wrappers and the original compiled
+4.  **Standard mode (default)**: f2py is used to combine the F90 wrappers and the original compiled
     functions into a Python extension module (optionally, f2py can be
     replaced by f2py-f90wrap, a slightly modified version which adds
     support for exception handling and interruption during exceution of
     Fortran code).
+
+    **Direct-C mode (`--direct-c`)**: As an alternative to f2py, the
+    `f90wrap.directc_cgen` package generates C code using the Python C API
+    to call the F90 wrappers directly. This eliminates the f2py dependency.
 5.  The `f90wrap.pywrapgen.PythonWrapperGenerator` class is used to
-    write a thin object-oriented layer on top of the f2py generated
+    write a thin object-oriented layer on top of the f2py (or Direct-C) generated
     wrapper functions which handles conversion between Python object
     instances and Fortran derived-type variables, converting arguments
     back and forth automatically.
@@ -278,6 +314,7 @@ some of the options are used:
                             Maximum length of lines in fortan files written.
                             Default: 120
       --type-check          Check for type/shape matching of Python argument with the wrapped Fortran subroutine
+      --direct-c            Generate direct-C extension instead of relying on f2py
 
 
 Author
