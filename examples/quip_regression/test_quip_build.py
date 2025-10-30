@@ -124,17 +124,34 @@ class TestQUIPBuild(unittest.TestCase):
 
         quippy_dir = os.path.join(self.quip_dir, "quippy")
 
-        # Build quippy package without build isolation
-        # This ensures QUIP uses the locally installed f90wrap
+        # Build a wheel first to avoid editable install issues
+        # Use --no-build-isolation to ensure it uses our local f90wrap
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", ".", "--no-build-isolation", "-v"],
+            [sys.executable, "-m", "pip", "wheel", ".", "--no-build-isolation", "-v",
+             "--no-deps", "-w", "dist"],
             cwd=quippy_dir,
             capture_output=True,
             text=True
         )
 
+        if result.returncode != 0:
+            self.fail(f"quippy wheel build failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
+
+        # Find the built wheel
+        dist_dir = os.path.join(quippy_dir, "dist")
+        wheels = [f for f in os.listdir(dist_dir) if f.endswith('.whl')]
+        self.assertTrue(len(wheels) > 0, "No wheel file was created")
+        wheel_path = os.path.join(dist_dir, wheels[0])
+
+        # Install the wheel (non-editable)
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", wheel_path, "--force-reinstall"],
+            capture_output=True,
+            text=True
+        )
+
         self.assertEqual(result.returncode, 0,
-                        f"quippy build failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
+                        f"quippy install failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
 
     def test_02_quippy_imports(self):
         """Test that quippy can be imported"""
