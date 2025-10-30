@@ -113,7 +113,6 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             self.types,
             namespace_types=bool(self.direct_c_interop),
         )
-        self._current_module = None  # Track current module for symbol conflict detection
 
     def _scope_identifier_for(self, container):
         """Build a stable identifier used to namespace generated helper names."""
@@ -181,11 +180,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.code = []
         self.write("! Module %s defined in file %s" % (node.name, node.filename))
         self.write()
-        # Store current module for symbol conflict detection
-        old_module = self._current_module
-        self._current_module = node
         self.generic_visit(node)
-        self._current_module = old_module
 
         for el in node.elements:
             dims = list(filter(lambda x: x.startswith("dimension"), el.attributes))
@@ -727,105 +722,6 @@ end type %(typename)s%(suffix)s"""
                 self.dedent()
                 self.write("end if")
 
-    def _collect_imported_symbols(self, node):
-        """
-        Collect all symbol names that will be imported via USE statements.
-
-        This identifies symbols that could potentially conflict with argument names
-        in the wrapper subroutine.
-
-        Parameters
-        ----------
-        node : Procedure node
-            The procedure node being wrapped
-
-        Returns
-        -------
-        set of str
-            Set of all symbol names that will be imported
-        """
-        symbols = set()
-
-        # Collect symbols from the node's uses attribute
-        if hasattr(node, "uses"):
-            for use in node.uses:
-                if isinstance(use, str):
-                    # Full module import - we can't easily determine what gets imported
-                    # so we skip checking for conflicts (conservative approach)
-                    continue
-                else:
-                    # Tuple of (module, only_list)
-                    mod, only = use
-                    if only is not None:
-                        # Extract base symbol names (handle rename syntax "a => b")
-                        for symbol in only:
-                            symbol_str = symbol if isinstance(symbol, str) else str(symbol)
-                            if "=>" in symbol_str:
-                                # For renamed imports like "foo => bar", we care about "foo"
-                                # (what will be available in the local scope)
-                                base_symbol = symbol_str.split("=>")[0].strip()
-                            else:
-                                base_symbol = symbol_str.strip()
-                            symbols.add(base_symbol)
-
-        # When a procedure belongs to a module, f90wrap generates "use module_name"
-        # which imports ALL symbols from that module. We need to check for conflicts
-        # with other procedures in the same module.
-        if hasattr(node, "mod_name") and node.mod_name and self._current_module:
-            # Traverse the current module to find all procedures
-            for proc in self._current_module.procedures:
-                # Don't mark the current procedure as a conflict with itself
-                if proc.name != node.name:
-                    symbols.add(proc.name)
-
-        return symbols
-
-    def _detect_and_rename_conflicting_args(self, node):
-        """
-        Detect arguments that conflict with USE-imported symbols and rename them.
-
-        When a subroutine argument has the same name as a symbol imported via USE,
-        Fortran will report an ambiguous reference error. This method detects such
-        conflicts and automatically renames the wrapper arguments to avoid the clash.
-
-        The original Fortran routine is called using keyword arguments with the
-        original names (via arg.orig_name), so renaming wrapper arguments is safe.
-
-        Parameters
-        ----------
-        node : Procedure node
-            The procedure node being wrapped
-
-        Returns
-        -------
-        dict
-            Mapping of {original_name: new_name} for renamed arguments
-        """
-        # Collect all symbols that will be imported
-        imported_symbols = self._collect_imported_symbols(node)
-
-        if not imported_symbols:
-            return {}
-
-        # Check each argument for conflicts and rename if necessary
-        renames = {}
-        for arg in node.arguments:
-            if arg.name in imported_symbols:
-                # Conflict detected - generate new name by appending suffix
-                new_name = arg.name + "_in"
-
-                log.warning(
-                    f"Argument '{arg.name}' in {node.mod_name}.{node.name} conflicts "
-                    f"with USE-imported symbol. Renaming to '{new_name}' in wrapper."
-                )
-
-                # Update argument name in place
-                # Note: arg.orig_name is preserved and used in the actual call
-                renames[arg.name] = new_name
-                arg.name = new_name
-
-        return renames
-
     def visit_Procedure(self, node):
         """
         Write wrapper code necessary for a Fortran subroutine or function
@@ -848,10 +744,6 @@ end type %(typename)s%(suffix)s"""
             "F90WrapperGenerator visiting routine %s call_name %s mod_name %r"
             % (node.name, call_name, node.mod_name)
         )
-
-        # Check for and resolve argument name conflicts with USE-imported symbols
-        # This must happen before we use node.arguments anywhere
-        self._detect_and_rename_conflicting_args(node)
 
         filtered_arguments = node.arguments
         if self._err_num_var is not None and self._err_msg_var is not None:

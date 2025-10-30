@@ -21,17 +21,17 @@ class Test_Module(f90wrap.runtime.FortranModule):
         _test_collision.f90wrap_test_module__enable_timing()
     
     @staticmethod
-    def system_init(enable_timing, verbosity=None, interface_call=False):
+    def system_init(enable_timing_in, verbosity=None, interface_call=False):
         """
-        system_init(enable_timing[, verbosity])
+        system_init(enable_timing_in[, verbosity])
         Defined at test_module.f90 lines 13-23
         
         Parameters
         ----------
-        enable_timing : bool
+        enable_timing_in : bool
         verbosity : int32
         """
-        _test_collision.f90wrap_test_module__system_init(enable_timing=enable_timing, \
+        _test_collision.f90wrap_test_module__system_init(enable_timing_in=enable_timing_in, \
             verbosity=verbosity)
     
     _dt_array_initialisers = []

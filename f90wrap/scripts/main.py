@@ -419,6 +419,10 @@ USAGE
 
         shape_hints = collect_shape_hints(tree)
 
+        # Resolve argument name conflicts with USE-imported symbols
+        # This must happen before trees are copied so both wrappers see renamed arguments
+        tf.ArgumentNameConflictResolver().visit(tree)
+
         py_tree = copy.deepcopy(tree)
         f90_tree = copy.deepcopy(tree)
 
