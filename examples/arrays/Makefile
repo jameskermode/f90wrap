@@ -139,6 +139,7 @@ _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 _${PYTHON_MODN}_relative.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f90wrap -m ${PYTHON_MODN}_relative ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v -P --relative
 	f2py-f90wrap --fcompiler=$(FCOMP) --build-dir build -c -m _${PYTHON_MODN}_relative -L. -lsrc f90wrap*.f90
+	rm -rf ${PYTHON_MODN}_top
 	mkdir ${PYTHON_MODN}_top
 	mv ${PYTHON_MODN}_relative/ _${PYTHON_MODN}_relative.*so ${PYTHON_MODN}_top/
 	touch ${PYTHON_MODN}_top/__init__.py
