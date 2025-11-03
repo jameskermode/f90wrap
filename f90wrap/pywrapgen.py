@@ -804,6 +804,8 @@ except ValueError:
             Procedures with array parameters get higher scores than scalar-only.
             Among procedures with same array count, more total parameters = more specific.
             """
+            if isinstance(proc, ft.Prototype):
+                return 0  # Prototypes are least specific
             array_params = _count_array_params(proc)
             total_params = len(proc.arguments)
 
