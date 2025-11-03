@@ -467,7 +467,7 @@ except ValueError:
                 )
         self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
 
-        self.write("if handle is not None:")
+        self.write("if isinstance(handle, numpy.ndarray) and handle.ndim == 1 and handle.dtype.num == 5:")
         self.indent()
         self.write("self._handle = handle")
         self.write("self._alloc = True")
