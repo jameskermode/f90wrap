@@ -328,10 +328,6 @@ USAGE
         parse_tree = fparse.read_files(args.files, doc_plugin_filename=doc_plugin_fname)
         logger.info('done parsing source.')
 
-        if args.dump_package:
-            logger.info('Dump json file %s ...' % args.dump_package)
-            fparse.dump_package(parse_tree, args.mod_name, class_names, dump_package)
-
         # add modules/types coming from other f90wrap packages
         if args.external_packages:
             logger.info('Adding external f90wrap packages...' % args.files)
@@ -561,6 +557,10 @@ USAGE
                 return ret
 
             logger.info("Build complete")
+
+        if args.dump_package:
+            logger.info('Dump json file %s ...' % args.dump_package)
+            fparse.dump_package(tree, args.mod_name, class_names, args.dump_package)
         return 0
 
     except KeyboardInterrupt:
