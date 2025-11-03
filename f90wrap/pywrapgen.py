@@ -788,7 +788,7 @@ except ValueError:
 
         Returns procedures sorted with array versions first, scalar versions last.
         """
-        def count_array_params(proc):
+        def _count_array_params(proc):
             """Count number of array parameters in procedure signature"""
             array_count = 0
             for arg in proc.arguments:
@@ -804,7 +804,7 @@ except ValueError:
             Procedures with array parameters get higher scores than scalar-only.
             Among procedures with same array count, more total parameters = more specific.
             """
-            array_params = count_array_params(proc)
+            array_params = _count_array_params(proc)
             total_params = len(proc.arguments)
 
             # Array parameters weighted heavily (x100) to ensure they come first
