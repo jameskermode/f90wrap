@@ -380,6 +380,8 @@ end type %(typename)s%(suffix)s"""
         fallback = self.types.get(ft.strip_type(tname))
         if fallback is not None and "used_as_class" in getattr(fallback, "attributes", []):
             return True
+        if "has_assignment" in getattr(fallback, "attributes", []):
+            return True
         return False
 
     def write_type_or_class_lines(self, tname, recursive=False, *, pointer=False):
@@ -947,7 +949,7 @@ end type %(typename)s%(suffix)s"""
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, "get")
         # Polymorphic objects require an assignment(=) method to be set
-        if not ft.is_class(element.type) or self.types[ft.strip_type(element.type)].has_assignment:
+        if not ft.is_class(element.type) or "has_assignment" in self.types[ft.strip_type(element.type)].attributes:
             self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
         self._write_array_len(t, element, sizeof_fortran_t)
 
@@ -970,7 +972,8 @@ end type %(typename)s%(suffix)s"""
         # Parameters cannot be set
         if "parameter" in element.attributes: return
         # Polymorphic objects require an assignment(=) method to be set
-        if ft.is_class(element.type) and not self.types[ft.strip_type(element.type)].has_assignment: return
+        if ft.is_class(element.type) and "has_assignment" not in self.types[ft.strip_type(element.type)].attributes:
+            return None
         self._write_scalar_wrapper(t, element, sizeof_fortran_t, "set")
 
     def _write_array_getset_item(self, t, el, sizeof_fortran_t, getset):

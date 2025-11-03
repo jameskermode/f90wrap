@@ -76,7 +76,7 @@ class Fortran(object):
         self.lineno = lineno
 
         if filename == '':
-            log.warning(f"Fortran node '{name}' has no filename")
+            log.debug(f"Fortran node '{name}' has no filename")
 
     def __repr__(self):
         return '%s(name=%s)' % (self.__class__.__name__, self.name)
@@ -371,7 +371,7 @@ class Type(Fortran):
 
     def __init__(self, name='', filename='', doc=None,
                  lineno=0, elements=None, procedures=None, bindings=None, interfaces=None,
-                 mod_name=None, parent=None, has_assignment=False):
+                 mod_name=None, parent=None):
         Fortran.__init__(self, name, filename, doc, lineno)
         self.elements = elements if elements else []
         self.procedures = procedures if procedures else []
@@ -380,7 +380,6 @@ class Type(Fortran):
         self.mod_name = mod_name
         self.super_types_dimensions = set()
         self.parent = parent
-        self.has_assignment = has_assignment
         self.is_external = False
         self.attributes = []
 

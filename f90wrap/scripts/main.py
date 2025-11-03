@@ -184,7 +184,7 @@ USAGE
                             help="Clean build artifacts before building")
 
         args = parser.parse_args()
-        logging.debug("sys.argv parsed: %s", sys.argv)
+        logger.debug("sys.argv parsed: %s", sys.argv)
 
         if args.build and not args.direct_c:
             args.direct_c = True
@@ -218,7 +218,7 @@ USAGE
         # bring command line arguments into global scope so we can override them
         globals().update(args.__dict__)
         callback = list(args.callback)
-        logging.debug("CLI callbacks received: %s", callback)
+        logger.debug("CLI callbacks received: %s", callback)
 
         # read command line arguments
         if args.kind_map:
@@ -328,16 +328,11 @@ USAGE
         parse_tree = fparse.read_files(args.files, doc_plugin_filename=doc_plugin_fname)
         logger.info('done parsing source.')
 
-        if args.dump_package:
-            print('Dump json file %s ...' % args.dump_package)
-            fparse.dump_package(parse_tree, args.mod_name, class_names, dump_package)
-
         # add modules/types coming from other f90wrap packages
         if args.external_packages:
-            print('Adding external f90wrap packages...' % args.files)
+            logger.info('Adding external f90wrap packages...' % args.files)
             parse_tree = fparse.add_external_packages(parse_tree, class_names, args.external_packages)
-            print()
-        
+
         tree = copy.deepcopy(parse_tree)
 
         types = fortran.find_types(tree, skip_types)
@@ -485,8 +480,8 @@ USAGE
         if args.direct_c and interop_info:
             from f90wrap.directc_cgen import DirectCGenerator
 
-            logging.info("Generating Direct-C extension modules...")
-            logging.debug("Direct-C callbacks: %s", callback)
+            logger.info("Generating Direct-C extension modules...")
+            logger.debug("Direct-C callbacks: %s", callback)
 
             error_num_arg = None
             error_msg_arg = None
@@ -539,16 +534,16 @@ USAGE
                 c_filename = f"{extension_basename}.c"
                 with open(c_filename, 'w') as c_file:
                     c_file.write(c_code)
-                logging.info(f"Generated {c_filename}")
+                logger.info(f"Generated {c_filename}")
             else:
-                logging.info("No Direct-C compatible procedures found.")
+                logger.info("No Direct-C compatible procedures found.")
 
-            logging.info("Direct-C generation complete. Compile C files with your toolchain.")
+            logger.info("Direct-C generation complete. Compile C files with your toolchain.")
 
         if args.build:
             from f90wrap import build
 
-            logging.info("Building extension module...")
+            logger.info("Building extension module...")
             ret = build.build_extension(
                 module_name=args.mod_name,
                 source_files=args.files,
@@ -558,10 +553,14 @@ USAGE
             )
 
             if ret != 0:
-                logging.error("Build failed")
+                logger.error("Build failed")
                 return ret
 
-            logging.info("Build complete")
+            logger.info("Build complete")
+
+        if args.dump_package:
+            logger.info('Dump json file %s ...' % args.dump_package)
+            fparse.dump_package(tree, args.mod_name, class_names, args.dump_package)
         return 0
 
     except KeyboardInterrupt:
