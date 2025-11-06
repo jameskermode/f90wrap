@@ -31,7 +31,7 @@ f90wrap_main.f90: main.f90 ${JSON_FILE}
 ${JSON_FILE}: f90wrap_array_type.f90
 
 f2py_%: f90wrap_%.f90 ${OBJ}
-	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD}_$(<:f90wrap_%.f90=%) ${F2PYFLAGS} $< $(<:f90wrap_%.f90=%).o
+	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD}_$(<:f90wrap_%.f90=%) ${F2PYFLAGS} $< ${OBJ}
 
 test: f2py_main f2py_array_type
 	${PYTHON} tests.py
