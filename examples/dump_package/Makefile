@@ -14,7 +14,7 @@ JSON_FILE   = dump_package.json
 all: test
 
 clean:
-	rm -rf *.mod *.smod *.o f90wrap*.f90 ${PY_MOD}_* __pycache__/ .f2py_f2cmap build ${JSON_FILE}
+	-rm -rf *.mod *.smod *.o *.so f90wrap*.f90 ${PY_MOD}_* __pycache__/ .f2py_f2cmap build ${JSON_FILE}
 
 main.o: main.f90 array_type.o
 	${F90} ${F90FLAGS} -c $< -o $@
