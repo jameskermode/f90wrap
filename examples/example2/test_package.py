@@ -28,6 +28,7 @@ from __future__ import print_function
 
 
 import numpy as np
+import re
 import unittest
 
 #=======================================================================
@@ -77,7 +78,7 @@ class TestTypeCheck(unittest.TestCase):
         #Create "Solveroptions" derived type, defined in mod defineallproperties
         #=======================================================================
 
-    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
+    @unittest.skipIf(re.search("nvfortran", os.environ.get('F90', '')), "Fails with nvfortran")
     def test_case_2(self):
         Options =  md.defineallproperties.SolverOptionsDef()
 

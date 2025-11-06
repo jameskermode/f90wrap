@@ -31,6 +31,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import re
 
 import sys
 import os
@@ -57,7 +58,7 @@ class BaseTests(object):
         val_out = self.lib.library.return_value_sub(val_in)
         self.assertEqual(val_in+10, val_out)
 
-    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
+    @unittest.skipIf(re.search("nvfortran", os.environ.get('F90', '')), "Fails with nvfortran")
     def test_return_a_dt_func(self):
         dt = self.lib.library.return_a_dt_func()
         self.assertTrue(isinstance(dt, self.lib.datatypes.different_types))
