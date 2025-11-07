@@ -46,7 +46,6 @@ class TestTypeCheck(unittest.TestCase):
 
         self.assertEqual(out, 13)
 
-    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
     def test_shape_selection_1d(self):
         out = np.array([-1], dtype=np.int32)
         m_type_test.write_array(out)
