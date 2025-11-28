@@ -84,8 +84,6 @@ def main():
     #include <stdlib.h>
     #include <string.h>
 
-    jmp_buf environment_buffer;
-    char abort_message[ABORT_BUFFER_SIZE];
 
     void f90wrap_abort_(char *message, int len_message)
     {
@@ -258,6 +256,17 @@ def main():
             print('\nNumPy 2.0+ detected, using meson backend (distutils was removed).')
             sys.argv.insert(1, '--backend')
             sys.argv.insert(2, 'meson')
+
+    # _abort_buffers shared library contains environment_buffer and abort_message variables allocation
+    # Those variables are used for error handling with setjmp/longjmp mechanism
+    # Those variables should be allocated once for every library generated with f90wrap
+    if "-c" in sys.argv:
+        import os
+        import f90wrap
+        f90wrap_path = os.path.dirname(f90wrap.__file__)
+        sys.argv.append(f"-L{f90wrap_path}")
+        sys.argv.append("-l_abort_buffers")
+        os.environ['LDFLAGS'] = os.environ.get('LDFLAGS', '') + f" -Wl,-rpath,{f90wrap_path}"
 
     # Monkey-patch numpy's meson backend to fix include and library paths
     # for separate build directories when using --build-dir
