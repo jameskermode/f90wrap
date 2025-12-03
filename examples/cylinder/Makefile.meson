@@ -5,7 +5,7 @@ NAME2    := Example_pkg
 WRAPFLAGS += -k kind_map
 MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
-ifeq ($(F90),nvfortran)
+ifeq ($(notdir $(F90)),nvfortran)
 	F90FLAGS     += -Mpreprocess
 endif
 

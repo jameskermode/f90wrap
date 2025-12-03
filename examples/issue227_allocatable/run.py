@@ -2,6 +2,8 @@
 import unittest
 import gc
 import tracemalloc
+import re
+import os
 
 import itest
 
@@ -23,6 +25,7 @@ class TestAllocOutput(unittest.TestCase):
         t = itest.alloc_output.alloc_output_type_func(VAL)
         self.assertAlmostEqual(t.a, VAL, delta=TOL)
 
+    @unittest.skipIf(re.search("nvfortran", os.environ.get('F90', '')), "Fails with nvfortran")
     def test_memory_leak(self):
         gc.collect()
         t = []

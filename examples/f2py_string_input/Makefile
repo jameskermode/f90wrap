@@ -9,7 +9,7 @@ F90_SRC     = main.f90
 OBJ         = $(F90_SRC:.f90=.o)
 SIGNATURES	= _signatures.pyf
 F2PY        = f2py
-ifeq ($(F90),gfortran)
+ifeq ($(notdir $(F90)),gfortran)
 	LINK				= -lgfortran
 endif
 .PHONY: all clean

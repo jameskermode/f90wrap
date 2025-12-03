@@ -22,7 +22,7 @@ AROPT  = src
 #                       gfortran flags
 #========================================================================
 
-ifeq ($(F90),gfortran)
+ifeq ($(notdir $(F90)),gfortran)
 	INC_FLAGS =#-Wl,-stack_size,0x40000000
 	OPT_FLAGS = -llapack -lblas -J$(moddir) -fPIC
 	DEB_FLAGS = #-fbounds-check -fbacktrace
@@ -36,7 +36,7 @@ endif
 #                       IFORT flags
 #========================================================================
 
-ifeq ($(F90),ifort)
+ifeq ($(notdir $(F90)),ifort)
 	INC_FLAGS = #-Wl,-stack_size,0x20000000  # USE THIS FOR MACS!!
 	OPT_FLAGS = -llapack -lblas -module $(moddir) -fPIC
 	DEB_FLAGS = #-check bounds -traceback
@@ -50,7 +50,7 @@ endif
 #                       PGFortran flags
 #========================================================================
 
-ifeq ($(F90),nvfortran)
+ifeq ($(notdir $(F90)),nvfortran)
 	F90       = nvfortran
 	INC_FLAGS = #-Wl,-z,muldefs
 	OPT_FLAGS = -module $(moddir) -llapack -lblas -fPIC

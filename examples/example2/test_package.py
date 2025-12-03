@@ -28,7 +28,9 @@ from __future__ import print_function
 
 
 import numpy as np
+import re
 import unittest
+from enum import Enum
 
 #=======================================================================
 #the first import is a subroutine, the second is a module)
@@ -77,7 +79,6 @@ class TestTypeCheck(unittest.TestCase):
         #Create "Solveroptions" derived type, defined in mod defineallproperties
         #=======================================================================
 
-    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
     def test_case_2(self):
         Options =  md.defineallproperties.SolverOptionsDef()
 
@@ -85,16 +86,26 @@ class TestTypeCheck(unittest.TestCase):
         Options.airframevib = 0
         Options.fet_qddot   = 1
 
+        # nvfortran compiler uses -1 for True and 0 for False
+        if re.search("nvfortran", os.environ.get('F90', '')):
+            class my_bool(Enum):
+                FALSE = 0
+                TRUE = -1
+        else:
+            class my_bool(Enum):
+                FALSE = 0
+                TRUE = 1
+
         #=======================================================================
         #           Set default values for this derived type
         #=======================================================================
 
         md.set_defaults(Options)
-        self.assertEqual(Options.airframevib, 1)
-        self.assertEqual(Options.fet_qddot, 0)
-        self.assertEqual(Options.fusharm, 0)
-        self.assertEqual(Options.fet_response, 0)
-        self.assertEqual(Options.store_fet_responsejac, 0)
+        self.assertEqual(Options.airframevib, my_bool.TRUE.value)
+        self.assertEqual(Options.fet_qddot, my_bool.FALSE.value)
+        self.assertEqual(Options.fusharm, my_bool.FALSE.value)
+        self.assertEqual(Options.fet_response, my_bool.FALSE.value)
+        self.assertEqual(Options.store_fet_responsejac, my_bool.FALSE.value)
 
 if __name__ == '__main__':
 

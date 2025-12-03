@@ -8,7 +8,7 @@ include ../make.inc
 moddir   = modules
 wrap_dir = f90wrap
 
-ifeq ($(F90),ifort)
+ifeq ($(notdir $(F90)),ifort)
 	F90FLAGS += -module $(moddir)   # use 1 and 0 for True and False
 endif
 
