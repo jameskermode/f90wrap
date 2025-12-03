@@ -10,7 +10,7 @@ F90WRAP_SRC = $(addprefix f90wrap_,${F90_SRC})
 WRAPFLAGS   = -v --package --relative
 F2PY        = f2py-f90wrap
 TOP_MODULE  = top_module
-.PHONY: all clean
+.PHONY: all clean f90wrap f2py test topmodule
 
 all: test
 
@@ -26,10 +26,10 @@ main.o: $(filter-out main.o, ${OBJ})
 %.o: %.f90
 	${F90} ${F90FLAGS} -c $< -o $@
 
-${F90WRAP_SRC}: ${OBJ}
+f90wrap: ${OBJ}
 	${F90WRAP} -m ${PY_MOD} ${WRAPFLAGS} ${F90_SRC}
 
-f2py: ${F90WRAP_SRC}
+f2py: f90wrap
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} f90wrap_*.f90 *.o
 
 test: topmodule

@@ -467,7 +467,7 @@ except ValueError:
                 )
         self.write("f90wrap.runtime.FortranDerivedType.__init__(self)")
 
-        self.write("if handle is not None:")
+        self.write("if isinstance(handle, numpy.ndarray) and handle.ndim == 1 and handle.dtype.num == 5:")
         self.indent()
         self.write("self._handle = handle")
         self.write("self._alloc = True")
@@ -788,7 +788,7 @@ except ValueError:
 
         Returns procedures sorted with array versions first, scalar versions last.
         """
-        def count_array_params(proc):
+        def _count_array_params(proc):
             """Count number of array parameters in procedure signature"""
             array_count = 0
             for arg in proc.arguments:
@@ -804,7 +804,9 @@ except ValueError:
             Procedures with array parameters get higher scores than scalar-only.
             Among procedures with same array count, more total parameters = more specific.
             """
-            array_params = count_array_params(proc)
+            if isinstance(proc, ft.Prototype):
+                return 0  # Prototypes are least specific
+            array_params = _count_array_params(proc)
             total_params = len(proc.arguments)
 
             # Array parameters weighted heavily (x100) to ensure they come first
@@ -1326,7 +1328,7 @@ return %(el_name)s"""
         )
 
         # Polymorphic object (class) without assignment method cannot not have setitem
-        if el.type.startswith("class") and not self.types[ft.strip_type(el.type)].has_assignment:
+        if el.type.startswith("class") and "has_assignment" not in self.types[ft.strip_type(el.type)].attributes:
             self.write(
                 """%(selfdot)s%(el_name)s = f90wrap.runtime.FortranDerivedTypeArray(%(parent)s,
                                     %(f90_mod_name)s.%(getitem_name)s,
