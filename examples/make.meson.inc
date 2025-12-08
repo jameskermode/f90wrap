@@ -8,9 +8,9 @@ WRAPFLAGS := -v
 F2PYFLAGS := --lower
 DIRECTC   ?= no
 
-ifeq ($(F90), gfortran)
+ifeq ($(notdir $(F90)),gfortran)
 	F90FLAGS  := $(F90FLAGS) -xf95-cpp-input
-else ifeq ($(F90), nvfortran)
+else ifeq ($(notdir $(F90)),nvfortran)
 	F90FLAGS  := $(F90FLAGS) -Mpreprocess
 endif
 

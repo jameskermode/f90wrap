@@ -4,9 +4,9 @@
 
 include ../make.inc
 
-ifeq ($(F90),gfortran)
+ifeq ($(notdir $(F90)),gfortran)
     F90FLAGS     += -x f95-cpp-input
-else ifeq ($(F90),nvfortran)
+else ifeq ($(notdir $(F90)),nvfortran)
 	F90FLAGS     += -Mpreprocess
 endif
 

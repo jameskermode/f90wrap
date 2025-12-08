@@ -21,7 +21,7 @@ wrap_dir = f90wrap
 #     f2py compilation flags
 #=======================================================================
 
-ifeq ($(F90),ifort)
+ifeq ($(notdir $(F90)),ifort)
 	PAR_FLAG = -openmp            # openMP flags
       OMP_LINK = -liomp5            # link openMP libraries when creating shared obj
 else

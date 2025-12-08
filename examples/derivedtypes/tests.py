@@ -17,7 +17,7 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with f90wrap. If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 #  If you would like to license the source code under different terms,
 #  please contact James Kermode, james.kermode@gmail.com
 # -*- coding: utf-8 -*-
@@ -31,6 +31,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import re
+from enum import Enum
 
 import sys
 import os
@@ -57,11 +59,20 @@ class BaseTests(object):
         val_out = self.lib.library.return_value_sub(val_in)
         self.assertEqual(val_in+10, val_out)
 
-    @unittest.skipIf(os.environ.get('F90') == 'nvfortran', "Fails with nvfortran")
     def test_return_a_dt_func(self):
+        # nvfortran compiler uses -1 for True and 0 for False
+        if re.search("nvfortran", os.environ.get('F90', '')):
+            class my_bool(Enum):
+                FALSE = 0
+                TRUE = -1
+        else:
+            class my_bool(Enum):
+                FALSE = 0
+                TRUE = 1
+
         dt = self.lib.library.return_a_dt_func()
         self.assertTrue(isinstance(dt, self.lib.datatypes.different_types))
-        self.assertEqual(dt.alpha, 1) # logicals, so 1/0 instead of T/F
+        self.assertEqual(dt.alpha, my_bool.TRUE.value)
         self.assertEqual(dt.beta, 666)
         self.assertEqual(dt.delta, 666.666)
 

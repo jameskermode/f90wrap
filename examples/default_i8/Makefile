@@ -8,7 +8,7 @@ include ../make.inc
 #                     additional flags
 #=======================================================================
 
-ifeq ($(F90),gfortran)
+ifeq ($(notdir $(F90)),gfortran)
     FLAG_INT = -fdefault-integer-8
     FPP_F90FLAGS += -fdefault-integer-8
     F90FLAGS += -fdefault-integer-8
