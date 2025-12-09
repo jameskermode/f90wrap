@@ -485,7 +485,11 @@ except ValueError:
 
         destructor_proc = self._destructor_proc_for(node)
         fallback_call = "%(mod_name)s.%(subroutine_name)s" % dct
-        fallback_call = fallback_call.replace("__initialise", "__finalise")
+        # Replace _initialise with _finalise for fallback finalizer
+        # Note: use single underscore pattern, not double, because subroutine names
+        # like "f90wrap_module__type_initialise" have __ between module and type,
+        # but only _ between type and "initialise"
+        fallback_call = fallback_call.replace("_initialise", "_finalise")
         destructor_helper = None
         destructor_args = None
 
