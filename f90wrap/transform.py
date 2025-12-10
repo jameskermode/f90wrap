@@ -467,6 +467,9 @@ def find_inheritence_relations(tree):
             match = re.match(r'extends\((.*?)\)', attr)
             if match:
                 parent = match.group(1)
+                if parent not in type_map:
+                    log.warning("Parent type %s of type %s not found" % (parent, node.name))
+                    continue
                 node.parent = type_map[parent]
 
                 parent_mod = module_map[node.parent.mod_name]
