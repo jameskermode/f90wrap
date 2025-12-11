@@ -190,10 +190,9 @@ USAGE
             args.direct_c = True
 
         log_levels = {
-            0: logging.ERROR,
-            1: logging.WARNING,
-            2: logging.INFO,
-            3: logging.DEBUG
+            0: logging.WARNING,  # Show warnings by default (was ERROR)
+            1: logging.INFO,
+            2: logging.DEBUG,
         }
 
         logging.getLogger().setLevel(log_levels.get(min(args.verbose, max(log_levels.keys())), logging.INFO))
