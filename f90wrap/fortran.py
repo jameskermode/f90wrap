@@ -930,6 +930,8 @@ def f2c_type(typename, kind_map):
         'integer': 'int',
         'real': 'float',
         'double precision': 'double',
+        'complex': 'complex_float',
+        'double complex': 'complex_double',
         'logical': 'int',
         }
 
