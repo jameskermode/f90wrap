@@ -13,7 +13,7 @@ test:
 	@rm -f *.c *.py f90wrap_*.f90 .f2py_f2cmap
 	@OUTPUT=$$(python -m f90wrap --direct-c -m $(NAME) $(SOURCES) 2>&1); \
 	 echo "$$OUTPUT"; \
-	 if echo "$$OUTPUT" | grep -q "removing container_t.data due to pointer"; then \
+	 if echo "$$OUTPUT" | grep -q "skipping container_t.data"; then \
 	   echo "PASS: Warning message present for pointer arrays"; \
 	 else \
 	   echo "FAIL: No warning about pointer arrays - regression!"; \
