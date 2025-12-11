@@ -1,5 +1,6 @@
 # Issue #299: Direct-C generates nested function definitions
 # https://github.com/jameskermode/f90wrap/issues/299
+# FIXED: This test now verifies the fix works correctly
 
 NAME=types
 WRAPPER=_types
@@ -10,16 +11,16 @@ SOURCES=types.f90
 $(WRAPPER).c: $(SOURCES)
 	python -m f90wrap --direct-c -m $(NAME) $(SOURCES)
 
-# Test that C compilation fails (expected to fail until bug is fixed)
+# Test that C compilation succeeds (issue #299 is now fixed)
 test: $(WRAPPER).c
-	@echo "Testing C compilation (expected to FAIL until issue #299 is fixed)..."
+	@echo "Testing C compilation for issue #299 fix..."
 	@NUMPY_INC=$$(python -c "import numpy; print(numpy.get_include())") && \
 	 PYTHON_INC=$$(python -c "import sysconfig; print(sysconfig.get_path('include'))") && \
 	 if gcc -c -I"$$NUMPY_INC" -I"$$PYTHON_INC" $(WRAPPER).c 2>/dev/null; then \
-	   echo "UNEXPECTED: C compilation succeeded - issue #299 may be fixed!"; \
+	   echo "PASS: C compilation succeeded - issue #299 is fixed"; \
 	   exit 0; \
 	 else \
-	   echo "EXPECTED: C compilation failed - issue #299 still present"; \
+	   echo "FAIL: C compilation failed - regression detected!"; \
 	   exit 1; \
 	 fi
 
