@@ -891,6 +891,10 @@ except ValueError:
     def visit_Interface(self, node):
         log.info("PythonWrapperGenerator visiting interface %s" % node.name)
 
+        if "abstract" in node.attributes:
+            log.info(" -> abstract interface, skipping")
+            return
+
         # first output all the procedures within the interface
         self.generic_visit(node)
         cls_name = None
