@@ -1524,6 +1524,27 @@ return %(el_name)s"""
             if "optional" in arg.attributes:
                 self.dedent()
 
+    def _format_pytype_str(self, node_or_arg):
+        """
+        Format Python type string for an Argument or Element.
+
+        Handles special cases like logical arrays that need int32 instead of bool.
+        """
+        pytype = ft.f2py_type(node_or_arg.type, node_or_arg.attributes)
+        if pytype in ["float", "int", "complex"]:
+            # This allows to specify size, ex: 32 bit, 64 bit
+            pytype = ft.f2numpy_type(node_or_arg.type, self.kind_map)
+        elif pytype == "bool array":
+            # Logical arrays require int32 in f2py (Fortran logical is 4 bytes,
+            # but NumPy bool is 1 byte). See issue #307.
+            pytype = "int32 array"
+        elif pytype == "bool":
+            # Scalar logical also maps to int32 for consistency
+            # (though less critical since scalars auto-convert)
+            if "dimension" not in str(node_or_arg.attributes):
+                pytype = "bool"  # Keep scalar bool as-is
+        return pytype
+
     def _format_doc_string(self, node):
         """
         Generate Python docstring from Fortran docstring and call signature
@@ -1539,17 +1560,6 @@ return %(el_name)s"""
                 return "lines %d-%d" % (lineno.start, lineno.stop - 1)
             else:
                 return "line %d" % lineno
-
-        def _format_pytype(self, arg):
-            pytype = ft.f2py_type(arg.type, arg.attributes)
-            if pytype in ["float", "int", "complex"]:
-                # This allows to specify size, ex: 32 bit, 64 bit
-                pytype = ft.f2numpy_type(arg.type, self.kind_map)
-            elif pytype == "bool array":
-                # Logical arrays require int32 in f2py (Fortran logical is 4 bytes,
-                # but NumPy bool is 1 byte). See issue #307.
-                pytype = "int32 array"
-            return pytype
 
         doc = node.doc[:]  # incoming docstring from Fortran source
         # doc can also be empty
@@ -1568,7 +1578,7 @@ return %(el_name)s"""
             doc.append("")
             # Input parameters
             for i, arg in enumerate(self._filtered_arguments):
-                pytype = _format_pytype(self, arg)
+                pytype = self._format_pytype_str(arg)
                 if i == 0:
                     doc.append("Parameters")
                     doc.append("----------")
@@ -1586,7 +1596,7 @@ return %(el_name)s"""
 
             if isinstance(node, ft.Function):
                 for i, arg in enumerate(self._filtered_ret_val):
-                    pytype = _format_pytype(self, arg)
+                    pytype = self._format_pytype_str(arg)
                     if i == 0:
                         if doc[-1] != "":
                             doc.append("")
@@ -1654,7 +1664,7 @@ return %(el_name)s"""
             return "Element %s ftype=%s pytype=%s" % (
                 node.name,
                 node.type,
-                ft.f2py_type(node.type),
+                self._format_pytype_str(node),
             )
         elif isinstance(node, ft.Interface):
             if hasattr(node, "method_name"):
