@@ -70,7 +70,7 @@ submodule = re.compile(r'^submodule', re.IGNORECASE)
 program = re.compile(r'^program', re.IGNORECASE)
 program_end = re.compile(r'^end\s*program|end$', re.IGNORECASE)
 
-attribs = r'allocatable|pointer|save|contiguous|dimension *\(.*?\)|parameter|target|public|private|abstract|extends *\(.*?\)|bind\(C\)'  # jrk33 added target
+attribs = r'allocatable|pointer|save|contiguous|dimension *\(.*?\)|parameter|target|public|private|abstract|extends *\(.*?\)|bind\(C\)|value'  # jrk33 added target, value added for issue #171
 
 type_re = re.compile(r'^type((,\s*(' + attribs + r')\s*)*)(::)?\s*(?!\()', re.IGNORECASE)
 type_end = re.compile(r'^end\s*type|end$', re.IGNORECASE)
@@ -79,7 +79,7 @@ dummy_types_re = re.compile(r'recursive|pure|elemental', re.IGNORECASE)
 
 prefixes = r'elemental|impure|module|non_recursive|pure|recursive'
 types = r'double precision|(real\s*(\(.*?\))?)|(complex\s*(\(.*?\))?)|(integer\s*(\(.*?\))?)|(logical)|(character\s*(\(.*?\))?)|(type\s*\().*?(\))|(class\s*\().*?(\))'
-a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private|contiguous'
+a_attribs = r'allocatable|pointer|save|dimension\(.*?\)|intent\(.*?\)|optional|target|public|private|contiguous|value'
 
 types_re = re.compile(types, re.IGNORECASE)
 
