@@ -46,7 +46,8 @@ EXAMPLES = arrayderivedtypes \
 	relative_import \
 	decoded_strings \
 	keep_single_interface \
-	return_bool
+	return_bool \
+	issue307_logical_array
 
 DIRECTC ?= no
 

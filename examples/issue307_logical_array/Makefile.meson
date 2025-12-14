@@ -1,0 +1,4 @@
+include ../make.meson.inc
+
+test: build
+	${PYTHON} tests.py

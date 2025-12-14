@@ -101,11 +101,26 @@ These PRs have associated issues, include test cases, and are marked as "clean" 
 
 ## Priority 3: Recent Issues Without PRs
 
-### Moderate Complexity
+### Issue #307 - FIXED (in this branch)
+
+**Problem:** Logical arrays require int32 workaround - misleading docstring says bool
+
+**Root Cause:**
+- Fortran `logical` is 4 bytes (same as `integer`)
+- f2py maps it to C `int`
+- NumPy `bool` is only 1 byte
+- The docstring incorrectly said `bool array` when users must pass `int32 array`
+
+**Fix Applied:**
+1. `f90wrap/pywrapgen.py` - In `_format_pytype()`, map "bool array" → "int32 array" for docstrings
+2. `f90wrap/numpy_utils.py` - In `numpy_type_from_fortran()`, map logical → `NPY_INT32` (not `NPY_BOOL`)
+3. `test/test_directc.py` - Updated test to expect `NPY_INT32` for logical
+4. Added test case: `examples/issue307_logical_array/`
+
+### Remaining Issues (Moderate Complexity)
 
 | Issue | Title | Complexity | Notes |
 |-------|-------|------------|-------|
-| #307 | Logical arrays require int32 workaround | Medium | Type size mismatch (Fortran logical=4 bytes, NumPy bool=1 byte). Needs docstring fix and potentially auto-conversion |
 | #306 | Module-level allocatable arrays fail after reallocation | Medium-High | Dynamic array dimension tracking issue. Wrapper caches original size |
 
 ### Lower Priority (Documentation/CI)

@@ -1541,6 +1541,10 @@ return %(el_name)s"""
             if pytype in ["float", "int", "complex"]:
                 # This allows to specify size, ex: 32 bit, 64 bit
                 pytype = ft.f2numpy_type(arg.type, self.kind_map)
+            elif pytype == "bool array":
+                # Logical arrays require int32 in f2py (Fortran logical is 4 bytes,
+                # but NumPy bool is 1 byte). See issue #307.
+                pytype = "int32 array"
             return pytype
 
         doc = node.doc[:]  # incoming docstring from Fortran source

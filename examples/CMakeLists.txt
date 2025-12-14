@@ -48,6 +48,7 @@ list(APPEND tests
     decoded_strings
     keep_single_interface
     return_bool
+    issue307_logical_array
 )
 
 foreach(test ${tests})
