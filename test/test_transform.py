@@ -106,3 +106,28 @@ class TestTransform(unittest.TestCase):
 
         # Same input should produce same output (deterministic)
         self.assertEqual(shorten_long_name(long_name), shortened)
+
+    def test_kind_parameter_uses_clause(self):
+        '''
+        Verify that kind parameters used in procedure arguments are imported.
+        This is a regression test for issue #253.
+        '''
+        root = parser.read_files([str(test_samples_dir/'kind_param.f90')])
+        types = fortran.find_types(root)
+
+        # Apply the transformation that sets up uses clauses
+        transform.fix_subroutine_uses_clauses(root, types)
+
+        # Find the multiply function
+        m = root.modules[0]
+        func = m.procedures[0]
+        self.assertEqual(func.name, 'multiply')
+
+        # Verify that jprb is in the uses clause
+        uses_symbols = set()
+        for mod_name, symbols in func.uses:
+            for sym in symbols:
+                uses_symbols.add(sym)
+
+        self.assertIn('jprb', uses_symbols,
+            'Kind parameter jprb should be included in uses clause')
