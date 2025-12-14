@@ -193,7 +193,7 @@ USAGE
             0: logging.ERROR,
             1: logging.WARNING,
             2: logging.INFO,
-            3: logging.DEBUG
+            3: logging.DEBUG,
         }
 
         logging.getLogger().setLevel(log_levels.get(min(args.verbose, max(log_levels.keys())), logging.INFO))

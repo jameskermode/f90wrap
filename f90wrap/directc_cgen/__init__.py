@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -279,9 +280,17 @@ class DirectCGenerator(cg.CodeGenerator):
 
         for element in derived_elements:
             is_array = any(attr.startswith("dimension(") for attr in element.attributes)
+            is_pointer = "pointer" in element.attributes
             is_parameter = any(attr.startswith("parameter") for attr in element.attributes)
             element_type = element.type.strip().lower()
             is_derived = element_type.startswith("type(") or element_type.startswith("class(")
+
+            # Pointer arrays are not supported in direct-c mode
+            if is_pointer and is_array:
+                print(f"f90wrap: skipping {derived.name}.{element.name} "
+                      "(pointer arrays not supported in direct-c mode)",
+                      file=sys.stderr)
+                continue
 
             if not is_array:
                 if is_derived:
