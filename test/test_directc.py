@@ -44,8 +44,12 @@ class TestNumpyUtils(unittest.TestCase):
         )
 
     def test_numpy_type_from_fortran_logical(self):
-        """Test logical type mapping to NumPy."""
-        self.assertEqual(numpy_utils.numpy_type_from_fortran('logical', {}), 'NPY_BOOL')
+        """Test logical type mapping to NumPy.
+
+        Fortran logical is 4 bytes (like integer), so it maps to NPY_INT32.
+        NumPy bool is only 1 byte and would cause a size mismatch. See #307.
+        """
+        self.assertEqual(numpy_utils.numpy_type_from_fortran('logical', {}), 'NPY_INT32')
 
     def test_numpy_type_from_fortran_complex(self):
         """Test complex type mapping to NumPy."""

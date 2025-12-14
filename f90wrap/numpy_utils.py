@@ -79,7 +79,10 @@ def numpy_type_from_fortran(ftype: str, kind_map: Dict[str, Dict[str, str]]) -> 
         return "NPY_FLOAT32"
 
     elif base == "logical":
-        return "NPY_BOOL"
+        # Fortran logical is typically 4 bytes (same as integer), so it maps
+        # to int in C (see c_type_from_fortran). Use NPY_INT32 to match.
+        # NumPy bool is only 1 byte and would cause a size mismatch. See #307.
+        return "NPY_INT32"
 
     elif base == "complex":
         complex_map = {
