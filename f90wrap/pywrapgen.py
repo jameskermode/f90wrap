@@ -403,8 +403,8 @@ except ValueError:
         else:
             self.dedent()  # finish the FortranModule class
             self.write()
-            # instantise the module class
-            self.write("%s = %s()" % (node.name, cls_name))
+            # instantiate the module class using mapped name (issue #269)
+            self.write("%s = %s()" % (self.current_module, cls_name))
             self.write()
 
         self.current_module = None
