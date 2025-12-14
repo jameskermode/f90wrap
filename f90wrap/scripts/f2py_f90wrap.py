@@ -149,6 +149,32 @@ def main():
 
     numpy.f2py.cb_rules.cb_routine_rules['body'] = numpy.f2py.cb_rules.cb_routine_rules['body'].replace('capi_longjmp_ok = 1', 'capi_longjmp_ok = 0')
 
+    # Fix for issue #204: When callbacks are called indirectly from Fortran (not through
+    # a Python wrapper), the callback context is not set up, so cb->nofargs is 0.
+    # This causes arguments to not be passed to the callback. We fix this by:
+    # 1. Always setting nofargs to maxnofargs (whether using cb_local or persistent context)
+    # 2. Always creating a fresh tuple for the arguments to avoid stale state from previous calls
+
+    # Set nofargs when falling back to cb_local
+    numpy.f2py.cb_rules.cb_routine_rules['body'] = numpy.f2py.cb_rules.cb_routine_rules['body'].replace(
+        'cb = &cb_local;\n    }',
+        'cb = &cb_local;\n        cb->nofargs = #maxnofargs#;\n    }'
+    )
+
+    # Always ensure nofargs is set correctly and create a fresh tuple for each invocation.
+    # This handles both the cb_local case and the persistent callback context case.
+    # The persistent context may have stale args_capi from a previous call.
+    numpy.f2py.cb_rules.cb_routine_rules['body'] = numpy.f2py.cb_rules.cb_routine_rules['body'].replace(
+        'capi_arglist = cb->args_capi;\n',
+        'capi_arglist = NULL; /* Always create fresh tuple for indirect calls */\n    cb->nofargs = #maxnofargs#;\n'
+    )
+
+    # Create a properly sized tuple (was empty before)
+    numpy.f2py.cb_rules.cb_routine_rules['body'] = numpy.f2py.cb_rules.cb_routine_rules['body'].replace(
+        'capi_arglist = (PyTupleObject *)Py_BuildValue("()");',
+        'capi_arglist = (PyTupleObject *)PyTuple_New(#maxnofargs#);'
+    )
+
     numpy.f2py.rules.arg_rules[7]['cleanupfrompyobj'] = {l_not(persistant_callbacks): numpy.f2py.rules.arg_rules[7]['cleanupfrompyobj'],
                                                          persistant_callbacks: '}'}
 
