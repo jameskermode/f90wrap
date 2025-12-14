@@ -1230,9 +1230,13 @@ return %(el_name)s"""
             """array_ndim, array_type, array_shape, array_handle = \
     %(mod_name)s.%(subroutine_name)s(%(handle)s)
 array_hash = hash((array_ndim, array_type, tuple(array_shape), array_handle))
-if array_hash in %(selfdot)s_arrays:
-    %(el_name)s = %(selfdot)s_arrays[array_hash]
-else:
+%(el_name)s = %(selfdot)s_arrays.get(array_hash)
+if %(el_name)s is not None:
+    # Validate cached array: check data pointer matches current handle (issue #222)
+    # Arrays can be deallocated and reallocated at same address, invalidating cache
+    if %(el_name)s.ctypes.data != array_handle:
+        %(el_name)s = None
+if %(el_name)s is None:
     try:
         %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
                                 %(handle)s,
