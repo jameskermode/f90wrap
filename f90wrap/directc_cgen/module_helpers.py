@@ -73,6 +73,9 @@ def write_module_helper_wrapper(gen: DirectCGenerator, helper: ModuleHelper) -> 
 
     else:  # array helper
         write_array_helper_body(gen, helper, helper_symbol)
+        gen.dedent()
+        gen.write("}")
+        gen.write("")
 
 
 def write_module_scalar_get_wrapper(gen: DirectCGenerator, helper: ModuleHelper, helper_symbol: str) -> None:
