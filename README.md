@@ -192,6 +192,44 @@ Notes
 - Arrays of derived types are currently not fully supported: a workaround is provided for 1D-fixed-length arrays, i.e. `type(a), dimension(b) :: c`. In this case, the super-type `Type_a_Xb_Array` will be created, and the array of types can be accessed through `c.items`. Note that dimension b can not be `:`, but can be a parameter.
 - Doxygen documentation in Fortran sources are parsed and given as docstring in corresponding python interfaces. Doxygen support is partial and keyword support is limited to `brief`, `details`, `file`, `author` and `copyright`.
 
+Troubleshooting
+---------------
+
+### NumPy 2.0+ and Meson Backend Issues
+
+Starting with NumPy 2.0, the `f2py` build system transitioned from `distutils`
+to `meson`. This can cause issues with f90wrap, particularly when Fortran module
+files (`.mod` files) cannot be found during compilation.
+
+**Symptom**: Errors like "Cannot open module file 'modulename.mod' for reading"
+during the f2py-f90wrap compilation step.
+
+**Workarounds**:
+
+1. **Set FFLAGS to include current directory** (recommended):
+   ```bash
+   export FFLAGS="-I$(pwd)"
+   f2py-f90wrap -c -m _mymodule f90wrap_*.f90 *.o
+   ```
+
+2. **Use the `--build-dir` option with f2py-f90wrap**:
+   ```bash
+   f2py-f90wrap --build-dir build -c -m _mymodule f90wrap_*.f90 mymodule.f90
+   ```
+   Note: When using `--build-dir`, pass the original `.f90` source files instead
+   of pre-compiled `.o` files, as the meson backend needs to compile them in the
+   build directory where the `.mod` files will be generated.
+
+3. **Downgrade to NumPy < 2.0** (temporary):
+   ```bash
+   pip install 'numpy<2.0'
+   ```
+
+**Note**: The `f2py-f90wrap` script includes patches to help with the meson
+backend, including automatic handling of include paths and library directories
+when using `--build-dir`. If you encounter issues, please report them at
+https://github.com/jameskermode/f90wrap/issues
+
 How f90wrap works
 -----------------
 
