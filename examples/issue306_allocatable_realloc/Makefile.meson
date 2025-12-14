@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME := alloc_mod
+
+test: build
+	$(PYTHON) tests.py
