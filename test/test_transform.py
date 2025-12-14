@@ -1,4 +1,5 @@
 import unittest
+import logging
 from f90wrap import fortran, parser, transform
 from . import test_samples_dir
 
@@ -81,3 +82,26 @@ class TestTransform(unittest.TestCase):
         self.assertEqual(len(t.elements), 0)
         self.assertEqual(len(t.bindings), 4)
         self.assertEqual(len(t.interfaces), 1)
+
+    def test_unknown_parent_type_handled_gracefully(self):
+        '''
+        Verify that derived types extending unknown parent types don't crash.
+        This is a regression test for issue #297.
+        '''
+        root = parser.read_files([str(test_samples_dir/'child_unknown_parent.f90')])
+
+        # Capture log messages to verify warning is emitted
+        with self.assertLogs('f90wrap.transform', level='WARNING') as log_context:
+            new = transform.find_inheritence_relations(root)
+
+        # Verify warning was logged about unknown parent type
+        self.assertTrue(any('unknown parent type' in msg for msg in log_context.output))
+        self.assertTrue(any('unknown_parent_type' in msg for msg in log_context.output))
+
+        # Verify the transformation completed successfully
+        self.assertIsNotNone(new)
+        m = new.modules[0]
+        t = m.types[0]
+        # The child type should exist but have no parent set
+        self.assertEqual(t.name, 'child_type')
+        self.assertIsNone(t.parent)
