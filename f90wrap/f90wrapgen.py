@@ -863,7 +863,8 @@ end type %(typename)s%(suffix)s"""
 
         if isinstance(t, ft.Module):
             module_name = t.orig_name or t.name
-            alias = "%s_%s => %s" % (t.name, el.name, el.orig_name)
+            local_name = shorten_long_name("%s_%s" % (t.name, el.name))
+            alias = "%s => %s" % (local_name, el.orig_name)
             extra_uses = {}
             self._add_extra_use(extra_uses, module_name, None)
             self._add_extra_use(extra_uses, module_name, alias)
@@ -897,7 +898,7 @@ end type %(typename)s%(suffix)s"""
             self.write("this_ptr = transfer(this, this_ptr)")
             array_name = self._get_type_member_array_name(t, el.orig_name)
         else:
-            array_name = "%s_%s" % (t.name, el.name)
+            array_name = shorten_long_name("%s_%s" % (t.name, el.name))
 
         if "allocatable" in el.attributes:
             self.write("if (allocated(%s)) then" % array_name)
@@ -1021,7 +1022,8 @@ end type %(typename)s%(suffix)s"""
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            alias = "%s_%s => %s" % (t.name, el.name, el.orig_name)
+            local_name = shorten_long_name("%s_%s" % (t.name, el.name))
+            alias = "%s => %s" % (local_name, el.orig_name)
             module_name = t.orig_name or t.name
             self._add_extra_use(extra_uses, module_name, None)
             self._add_extra_use(extra_uses, module_name, alias)
@@ -1056,7 +1058,7 @@ end type %(typename)s%(suffix)s"""
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             array_name = self._get_type_member_array_name(t, el.name)
         else:
-            array_name = "%s_%s" % (t.name, el.name)
+            array_name = shorten_long_name("%s_%s" % (t.name, el.name))
         self.write("integer, intent(in) :: %s" % (safe_i))
         self.write(
             "integer, intent(%s) :: %s(%d)"
@@ -1152,7 +1154,8 @@ end type %(typename)s%(suffix)s"""
         self.write()
         extra_uses = {}
         if isinstance(t, ft.Module):
-            alias = "%s_%s => %s" % (t.name, el.name, el.orig_name)
+            local_name = shorten_long_name("%s_%s" % (t.name, el.name))
+            alias = "%s => %s" % (local_name, el.orig_name)
             self._add_extra_use(extra_uses, t.orig_name or t.name, alias)
         elif isinstance(t, ft.Type):
             if "super-type" in t.doc:
@@ -1186,7 +1189,7 @@ end type %(typename)s%(suffix)s"""
             self.write("this_ptr = transfer(%s, this_ptr)" % (this))
             array_name = self._get_type_member_array_name(t, el.name)
         else:
-            array_name = "%s_%s" % (t.name, el.name)
+            array_name = shorten_long_name("%s_%s" % (t.name, el.name))
 
         if "allocatable" in el.attributes:
             self.write("if (allocated(%s)) then" % array_name)
@@ -1243,8 +1246,10 @@ end type %(typename)s%(suffix)s"""
 
         # Get appropriate use statements
         extra_uses = {}
+        module_local_name = None  # shortened name for module-level elements
         if isinstance(t, ft.Module):
-            alias = "%s_%s => %s" % (t.name, el.orig_name, el.orig_name)
+            module_local_name = shorten_long_name("%s_%s" % (t.name, el.orig_name))
+            alias = "%s => %s" % (module_local_name, el.orig_name)
             self._add_extra_use(extra_uses, t.orig_name or t.name, alias)
         elif isinstance(t, ft.Type):
             self._add_extra_use(extra_uses, t.mod_name, None)
@@ -1317,7 +1322,7 @@ end type %(typename)s%(suffix)s"""
                     self.write("%s %s" % (source, target))
                 else:
                     self.write(
-                        "%s_ptr%%p => %s_%s" % (el.orig_name, t.name, el.orig_name)
+                        "%s_ptr%%p => %s" % (el.orig_name, module_local_name)
                     )
                 self.write(
                     "%s = transfer(%s_ptr,%s)" % (localvar, el.orig_name, localvar)
@@ -1339,7 +1344,7 @@ end type %(typename)s%(suffix)s"""
                     self.write("%s = %s" % (source, target))
                 else:
                     self.write(
-                        "%s_%s = %s_ptr%%p" % (t.name, el.orig_name, el.orig_name)
+                        "%s = %s_ptr%%p" % (module_local_name, el.orig_name)
                     )
         else:
             if attributes != []:
@@ -1359,7 +1364,7 @@ end type %(typename)s%(suffix)s"""
                     else:
                         self.write("%s = this_ptr%%p%%%s" % (localvar, el.orig_name))
                 else:
-                    self.write("%s = %s_%s" % (localvar, t.name, el.orig_name))
+                    self.write("%s = %s" % (localvar, module_local_name))
             else:
                 if isinstance(t, ft.Type):
                     if (self.is_class(t.orig_name)):
@@ -1367,7 +1372,7 @@ end type %(typename)s%(suffix)s"""
                     else:
                         self.write("this_ptr%%p%%%s = %s" % (el.orig_name, localvar))
                 else:
-                    self.write("%s_%s = %s" % (t.name, el.orig_name, localvar))
+                    self.write("%s = %s" % (module_local_name, localvar))
         self.dedent()
         self.write("end subroutine %s" % (subroutine_name))
         self.write()
