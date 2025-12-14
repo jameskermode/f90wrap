@@ -40,6 +40,7 @@ EXAMPLES = arrayderivedtypes \
 	issue206_subroutine_oldstyle \
 	issue227_allocatable \
 	issue235_allocatable_classes \
+	issue297_ignored_abstract_classes \
 	auto_raise_error \
 	dump_package \
 	method_optional \
