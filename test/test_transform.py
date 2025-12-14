@@ -81,3 +81,28 @@ class TestTransform(unittest.TestCase):
         self.assertEqual(len(t.elements), 0)
         self.assertEqual(len(t.bindings), 4)
         self.assertEqual(len(t.interfaces), 1)
+
+    def test_shorten_long_name(self):
+        '''
+        Verify that shorten_long_name correctly truncates names exceeding 63 characters.
+        This is a regression test for issue #120.
+        '''
+        from f90wrap.transform import shorten_long_name
+
+        # Short name should pass through unchanged
+        short_name = "short_name"
+        self.assertEqual(shorten_long_name(short_name), short_name)
+
+        # Name exactly 63 chars should pass through unchanged
+        exact_name = "a" * 63
+        self.assertEqual(shorten_long_name(exact_name), exact_name)
+
+        # Long name should be shortened to 63 chars with hash suffix
+        long_name = "this_is_a_very_long_variable_name_that_exceeds_the_sixty_three_character_limit"
+        shortened = shorten_long_name(long_name)
+        self.assertEqual(len(shortened), 63)
+        # Should start with truncated prefix and end with hash
+        self.assertTrue(shortened.startswith("this_is_a_very_long_variable_name_that_exceeds_the_sixty_th"))
+
+        # Same input should produce same output (deterministic)
+        self.assertEqual(shorten_long_name(long_name), shortened)
