@@ -6,7 +6,7 @@ This test verifies that:
 2. int32 arrays work correctly with Fortran logical arrays
 """
 import numpy as np
-import logical_mod
+from logical_mod import Logical_Mod as logical_mod
 
 def test_docstring():
     """Check that docstring mentions int32, not bool for logical arrays."""
