@@ -13,7 +13,7 @@ module cback
         call pyfunc_print(msg)
     end
 
-    ! TODO cannot seem to make it work. Leads to "error: ‘PyStringObject’ undeclared"
+    ! TODO cannot seem to make it work. Leads to "error: 'PyStringObject' undeclared"
     ! character(len=20) function return_message(msg)
     !     !f2py    intent(callback, hide) pyfunc_return
     !     external pyfunc_return

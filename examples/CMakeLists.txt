@@ -63,15 +63,15 @@ list(APPEND tests
     strings
     subroutine_args
     subroutine_contains_issue101
+    callback_print_function_issue93
+    recursive_type
     type_bn
     type_check
 )
 
 # TODO: Fix these failing examples
-#    callback_print_function_issue93  # undefined symbol: pyfunc_print_
 #    f2py_string_input                # undefined symbol: string_in_array_ (linking issue)
 #    issue299_directc_nested_functions# types.py shadows stdlib types module
-#    recursive_type                   # Error: Derived type 'node' at (1) has not been declared
 
 foreach(test ${tests})
     message(STATUS "Adding test ${test}")
