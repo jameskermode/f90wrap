@@ -68,6 +68,11 @@ EXAMPLES = \
 	type_bn \
 	type_check
 
+# TODO: Fix these failing examples
+#    callback_print_function_issue93 \  # undefined symbol: pyfunc_print_
+#    issue41_abstract_classes \         # AttributeError: 'myclass_t' object has no attribute 'get_value'
+#    recursive_type \                   # Error: Derived type 'node' at (1) has not been declared
+
 DIRECTC ?= no
 
 all: test
