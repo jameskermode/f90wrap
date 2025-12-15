@@ -534,7 +534,7 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
                                                arg.attributes if attr.startswith('intent')]
 
             typename = ft.strip_type(arg.type)
-            arg.wrapper_type = 'integer'
+            arg.wrapper_type = 'integer(c_int)'
             arg.wrapper_dim = sizeof_fortran_t
             sub.types.add(typename)
 
