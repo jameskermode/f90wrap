@@ -15,5 +15,5 @@ del obj
 REF2 = 2.0
 obj2 = itest.myclass_factory.create_myclass("impl2")
 output2 = obj2.get_value()
-assert(abs(output-REF)<TOL)
+assert(abs(output2-REF2)<TOL)
 print(f"OK: {output2} == {REF2}")

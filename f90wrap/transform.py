@@ -1180,8 +1180,11 @@ class LinkBoundDType(ft.FortranVisitor):
     def visit_Type(self, node):
         for binding in node.bindings:
             binding.dtype = node
-            if binding.type == 'procedure' and 'deferred' not in binding.attributes:
+            if binding.type == 'procedure':
                 for proc in binding.procedures:
+                    # Skip Prototype objects (unresolved deferred bindings)
+                    if not hasattr(proc, 'attributes'):
+                        continue
                     proc.attributes.append('bound(%s)'%binding.name)
                     if 'abstract' in node.attributes:
                         proc.attributes.append('abstract')
@@ -1341,8 +1344,24 @@ class ResolveBindingPrototypes(ft.FortranTransformer):
             for ib, binding in enumerate(type.bindings):
                 if binding.type == 'generic':
                     continue
-                # Deferred bindings do not have associated procedures
+                # Handle deferred bindings on abstract types for polymorphic dispatch
                 if 'deferred' in binding.attributes:
+                    proto = binding.procedures[0]
+                    if proto.name not in proc_interf_map:
+                        log.debug('Skipping deferred binding %s: no abstract interface found', binding.name)
+                        continue
+                    proc = proc_interf_map[proto.name]
+                    proc = copy.deepcopy(proc)
+                    log.debug('Creating polymorphic method for abstract type %s from interface %s.',
+                              type.name, proc.name)
+                    proc.type_name = type.name
+                    proc.method_name = binding.name + '__binding__' + type.name
+                    proc.name = proc.method_name
+                    proc.binding_name = binding.name
+                    proc.call_name = binding.name
+                    proc.attributes.append('method')
+                    proc.attributes.append('deferred')  # Mark for polymorphic dispatch
+                    binding.procedures = [proc]
                     continue
                 proto = binding.procedures[0]  # Only generics have multiple procedures
                 proc = proc_interf_map[proto.name]
