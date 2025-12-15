@@ -1,56 +1,57 @@
 include make.inc
 
-EXAMPLES = arrayderivedtypes \
+EXAMPLES = \
+	arrayderivedtypes \
 	arrays \
 	arrays_fixed \
 	arrays_in_derived_types_issue50 \
+	auto_raise_error \
 	class_names \
 	cylinder \
+	decoded_strings \
 	derivedtypes \
+	derivedtypes_procedure \
+	docstring \
+	dump_package \
 	elemental \
 	example2 \
 	extends \
+	fortran_oo \
+	intent_out_size \
 	interface \
 	issue105_function_definition_with_empty_lines \
+	issue206_subroutine_oldstyle \
+	issue227_allocatable \
+	issue235_allocatable_classes \
+	issue254_getter \
+	issue258_derived_type_attributes \
+	issue297_ignored_abstract_classes \
+	issue305_multiple_abstract_interfaces \
+	issue306_allocatable_realloc \
+	issue307_logical_array \
 	issue32 \
+	keep_single_interface \
 	keyword_renaming_issue160 \
+	kind_map_default \
+	long_subroutine_name \
+	method_optional \
 	mockderivetype \
 	mod_arg_clash \
 	name_collision \
 	optional_args_issue53 \
 	optional_derived_arrays \
+	optional_string \
+	output_kind \
 	passbyreference \
+	relative_import \
+	remove_pointer_arg \
+	return_array \
+	return_bool \
+	string_array_input_f2py \
 	strings \
 	subroutine_contains_issue101 \
 	type_bn \
-	docstring \
-	type_check \
-	derivedtypes_procedure \
-	return_array \
-	string_array_input_f2py \
-	optional_string \
-	long_subroutine_name \
-	kind_map_default \
-	intent_out_size \
-	output_kind \
-	remove_pointer_arg \
-	fortran_oo \
-	issue254_getter \
-	issue258_derived_type_attributes \
-	issue206_subroutine_oldstyle \
-	issue227_allocatable \
-	issue235_allocatable_classes \
-	issue297_ignored_abstract_classes \
-	issue305_multiple_abstract_interfaces \
-	issue306_allocatable_realloc \
-	auto_raise_error \
-	dump_package \
-	method_optional \
-	relative_import \
-	decoded_strings \
-	keep_single_interface \
-	return_bool \
-	issue307_logical_array
+	type_check
 
 DIRECTC ?= no
 

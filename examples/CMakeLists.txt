@@ -8,49 +8,49 @@ list(APPEND tests
     arrays
     arrays_fixed
     arrays_in_derived_types_issue50
+    auto_raise_error
     class_names
     cylinder
+    decoded_strings
     derivedtypes
+    docstring
+    dump_package
     elemental
     example2
     extends
+    fortran_oo
+    intent_out_size
     interface
     issue105_function_definition_with_empty_lines
+    issue206_subroutine_oldstyle
+    issue227_allocatable
+    issue235_allocatable_classes
+    issue254_getter
+    issue258_derived_type_attributes
+    issue297_ignored_abstract_classes
+    issue305_multiple_abstract_interfaces
+    issue307_logical_array
     issue32
+    keep_single_interface
+    kind_map_default
+    long_subroutine_name
+    method_optional
     mockderivetype
     mod_arg_clash
     optional_args_issue53
     optional_derived_arrays
+    optional_string
+    output_kind
     passbyreference
+    relative_import
+    remove_pointer_arg
+    return_array
+    return_bool
+    string_array_input_f2py
     strings
     subroutine_contains_issue101
     type_bn
-    kind_map_default
-    docstring
-    return_array
-    intent_out_size
-    string_array_input_f2py
     type_check
-    optional_string
-    long_subroutine_name
-    output_kind
-    remove_pointer_arg
-    fortran_oo
-    issue254_getter
-    issue258_derived_type_attributes
-    issue206_subroutine_oldstyle
-    issue227_allocatable
-    issue235_allocatable_classes
-    issue297_ignored_abstract_classes
-    issue305_multiple_abstract_interfaces
-    auto_raise_error
-    dump_package
-    method_optional
-    relative_import
-    decoded_strings
-    keep_single_interface
-    return_bool
-    issue307_logical_array
 )
 
 foreach(test ${tests})
