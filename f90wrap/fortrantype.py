@@ -98,13 +98,16 @@ class FortranDerivedType(object):
 
 
 class FortranDerivedTypeArray(object):
-    def __init__(self, parent, getfunc, setfunc, lenfunc, doc, arraytype):
+    def __init__(self, parent, getfunc, setfunc, lenfunc, doc, arraytype,
+                 module_level=False):
         self.parent = weakref.ref(parent)
         self.getfunc = getfunc
         self.setfunc = setfunc
         self.lenfunc = lenfunc
         self.doc = doc
         self.arraytype = arraytype
+        # Module-level arrays do not pass handle to Fortran functions (issue #306)
+        self.module_level = module_level
 
     def iterindices(self):
         return iter(range(len(self)))
@@ -122,6 +125,8 @@ class FortranDerivedTypeArray(object):
         parent = self.parent()
         if parent is None:
             raise RuntimeError("Array's parent has gone out of scope")
+        if self.module_level:
+            return self.lenfunc()
         return self.lenfunc(parent._handle)
 
     def __getitem__(self, i):
@@ -132,7 +137,10 @@ class FortranDerivedTypeArray(object):
         # i += 1  # convert from 0-based (Python) to 1-based indices (Fortran)
         # YANN: as "i" is passed by reference, and would be incremented on each call ! This seems wrong to me
         #       so I propose to add the +1 on the function call instead, as following.
-        element_handle = self.getfunc(parent._handle, i + 1)
+        if self.module_level:
+            element_handle = self.getfunc(i + 1)
+        else:
+            element_handle = self.getfunc(parent._handle, i + 1)
         try:
             obj = parent._objs[tuple(element_handle)]
         except KeyError:
@@ -146,7 +154,10 @@ class FortranDerivedTypeArray(object):
 
         # i += 1 # convert from 0-based (Python) to 1-based indices (Fortran)
         # YANN: Same issue
-        self.setfunc(parent._handle, i + 1, value._handle)
+        if self.module_level:
+            self.setfunc(i + 1, value._handle)
+        else:
+            self.setfunc(parent._handle, i + 1, value._handle)
 
     def __copy__(self):
         out = []

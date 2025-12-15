@@ -849,7 +849,10 @@ end type %(typename)s%(suffix)s"""
         if isinstance(t, ft.Type):
             this = "this, "
         else:
-            this = "dummy_this, "
+            # Module-level arrays do not need a this argument since there is no
+            # instance handle to pass.  Removing it avoids sizeof_fortran_t
+            # mismatches between generation and runtime environments (issue #306).
+            this = ""
 
         subroutine_name = "%s%s__array__%s" % (
             self.prefix,
@@ -878,8 +881,6 @@ end type %(typename)s%(suffix)s"""
             self.write_type_or_class_lines(t.orig_name)
             self.write("integer(c_int), intent(in) :: this(%d)" % sizeof_fortran_t)
             self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
-        else:
-            self.write("integer, intent(in) :: dummy_this(%d)" % sizeof_fortran_t)
 
         self.write("integer(c_int), intent(out) :: nd")
         self.write("integer(c_int), intent(out) :: dtype")
@@ -1003,7 +1004,8 @@ end type %(typename)s%(suffix)s"""
         if isinstance(t, ft.Type):
             this = self.prefix + "this"
         else:
-            this = "dummy_this"
+            # Module-level arrays do not need a this argument (issue #306).
+            this = None
         safe_i = self.prefix + "i"  # YANN: i could be in the "uses" clauses
         # TODO: check if el.orig_name would be needed here instead of el.name
         subroutine_name = "%s%s__array_%sitem__%s" % (
@@ -1014,10 +1016,16 @@ end type %(typename)s%(suffix)s"""
         )
         subroutine_name = shorten_long_name(subroutine_name)
 
-        self.write(
-            "subroutine %s(%s, %s, %s)"
-            % (subroutine_name, this, safe_i, el.name + "item")
-        )
+        if this is not None:
+            self.write(
+                "subroutine %s(%s, %s, %s)"
+                % (subroutine_name, this, safe_i, el.name + "item")
+            )
+        else:
+            self.write(
+                "subroutine %s(%s, %s)"
+                % (subroutine_name, safe_i, el.name + "item")
+            )
         self.indent()
         self.write()
         extra_uses = {}
@@ -1053,7 +1061,8 @@ end type %(typename)s%(suffix)s"""
             self.write_type_or_class_lines(t.name)
         self.write_type_or_class_lines(el.type, same_type, pointer=True)
 
-        self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
+        if this is not None:
+            self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             array_name = self._get_type_member_array_name(t, el.name)
@@ -1139,7 +1148,8 @@ end type %(typename)s%(suffix)s"""
         if isinstance(t, ft.Type):
             this = self.prefix + "this"
         else:
-            this = "dummy_this"
+            # Module-level arrays do not need a this argument (issue #306).
+            this = None
         safe_n = self.prefix + "n"  # YANN: "n" could be in the "uses"
 
         subroutine_name = "%s%s__array_len__%s" % (
@@ -1149,7 +1159,10 @@ end type %(typename)s%(suffix)s"""
         )
         subroutine_name = shorten_long_name(subroutine_name)
 
-        self.write("subroutine %s(%s, %s)" % (subroutine_name, this, safe_n))
+        if this is not None:
+            self.write("subroutine %s(%s, %s)" % (subroutine_name, this, safe_n))
+        else:
+            self.write("subroutine %s(%s)" % (subroutine_name, safe_n))
         self.indent()
         self.write()
         extra_uses = {}
@@ -1182,7 +1195,8 @@ end type %(typename)s%(suffix)s"""
             self.write_type_or_class_lines(t.name)
         self.write_type_or_class_lines(el.type, same_type)
         self.write("integer, intent(out) :: %s" % (safe_n))
-        self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
+        if this is not None:
+            self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             self.write()
