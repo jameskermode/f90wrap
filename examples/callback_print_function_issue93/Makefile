@@ -81,8 +81,8 @@ all: _${PYTHON_MODN}.so _${PYTHON_MODN}_pkg.so test
 
 
 clean:
-	-rm ${LIBSRC_OBJECTS} ${LIBSRC_FPP_FILES} libsrc.a _${PYTHON_MODN}*.so \
-	*.mod *.fpp f90wrap*.f90 f90wrap*.o *.o
+	-rm -rf ${LIBSRC_OBJECTS} ${LIBSRC_FPP_FILES} libsrc.a _${PYTHON_MODN}*.so \
+	*.mod *.fpp f90wrap*.f90 f90wrap*.o *.o build/ ${PYTHON_MODN}.py ${PYTHON_MODN}_pkg/
 
 
 .f90.o:
@@ -107,6 +107,7 @@ _${PYTHON_MODN}.so: libsrc.a ${LIBSRC_FPP_FILES}
 
 
 _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
+	rm -rf build/  # Clean meson build directory before second module
 	f90wrap -m ${PYTHON_MODN}_pkg ${LIBSRC_WRAP_FPP_FILES} -k ${KIND_MAP} -v -P --callback pyfunc_print
 	f2py-f90wrap $(F2PYFLAGS) -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90 ${LIBSRC_WRAP_FILES}
 
