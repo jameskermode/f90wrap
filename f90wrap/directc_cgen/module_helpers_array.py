@@ -122,7 +122,7 @@ def _write_array_helper_return(gen: DirectCGenerator) -> None:
     gen.dedent()
     gen.write("}")
 
-    gen.write("PyObject* result = PyTuple_New(3);")
+    gen.write("PyObject* result = PyTuple_New(4);")
     gen.write("if (result == NULL) {")
     gen.indent()
     gen.write("Py_DECREF(shape_tuple);")
@@ -132,6 +132,7 @@ def _write_array_helper_return(gen: DirectCGenerator) -> None:
     gen.write("PyTuple_SET_ITEM(result, 0, PyLong_FromLong((long)nd));")
     gen.write("PyTuple_SET_ITEM(result, 1, PyLong_FromLong((long)dtype));")
     gen.write("PyTuple_SET_ITEM(result, 2, shape_tuple);")
+    gen.write("PyTuple_SET_ITEM(result, 3, PyLong_FromLongLong(handle));")
     gen.write("return result;")
 
 

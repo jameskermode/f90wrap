@@ -1258,7 +1258,7 @@ return %(el_name)s"""
 if array_handle == 0:
     %(el_name)s = None
 else:
-    array_shape = array_shape[:array_ndim].copy()
+    array_shape = list(array_shape[:array_ndim])
     array_hash = hash((array_ndim, array_type, tuple(array_shape), array_handle))
     if array_hash in %(selfdot)s_arrays:
         %(el_name)s = %(selfdot)s_arrays[array_hash]
