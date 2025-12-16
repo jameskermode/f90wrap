@@ -71,10 +71,8 @@ EXAMPLES = \
 DIRECTC ?= no
 
 # Examples with known issues in meson build (both f2py and Direct-C modes)
-# These are pre-existing bugs that need proper fixes
+# callback: meson build doesn't link callback symbols correctly
 MESON_EXPECTED_FAILURES = \
-    issue235_allocatable_classes \
-    issue301_complex_types \
     callback_print_function_issue93
 
 # Examples with known Direct-C limitations (expected to fail in DIRECTC=yes mode)

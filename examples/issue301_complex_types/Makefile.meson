@@ -1,6 +1,8 @@
-include ../make.meson.inc
+# This example only tests wrapper generation, not a full Python import.
+# Delegate to the regular Makefile.
 
-NAME := complex_mod
+test:
+	$(MAKE) -f Makefile test
 
-test: build
-	$(PYTHON) tests.py
+clean:
+	$(MAKE) -f Makefile clean
