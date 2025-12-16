@@ -85,6 +85,7 @@ DIRECTC_EXPECTED_FAILURES = \
     issue261_array_shapes \
     issue301_complex_types \
     issue302_pointer_warning \
+    issue306_allocatable_realloc \
     issue41_abstract_classes \
     keep_single_interface \
     keyword_renaming_issue160 \
