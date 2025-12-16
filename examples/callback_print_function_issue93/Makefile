@@ -111,4 +111,4 @@ _${PYTHON_MODN}_pkg.so: libsrc.a ${LIBSRC_FPP_FILES}
 	f2py-f90wrap $(F2PYFLAGS) -c -m _${PYTHON_MODN}_pkg -L. -lsrc f90wrap*.f90 ${LIBSRC_WRAP_FILES}
 
 test: _${PYTHON_MODN}_pkg.so _${PYTHON_MODN}.so
-	${PYTHON} tests.py
+	${PYTHON} -X faulthandler tests.py
