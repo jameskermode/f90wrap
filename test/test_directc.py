@@ -324,6 +324,19 @@ class TestDirectCGenerator(unittest.TestCase):
         self.assertNotIn('def ', c_code)
         self.assertNotIn('import ', c_code)
 
+    def test_c_code_has_character_setter(self):
+        """Character module variables should generate setter wrappers."""
+        element = Mock(spec=ft.Element)
+        element.name = "greeting"
+        element.type = "character(len=12)"
+        element.attributes = []
+
+        self.generator.root.modules[0].elements = [element]
+
+        c_code = self.generator.generate_module('testmod')
+
+        self.assertIn("wrap_testmod_helper_set_greeting", c_code)
+
 
 class TestDirectCRuntime(unittest.TestCase):
     """Runtime utilities for Direct-C mode."""

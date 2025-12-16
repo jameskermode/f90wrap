@@ -150,6 +150,116 @@ def write_module_scalar_set_wrapper(gen: DirectCGenerator, helper: ModuleHelper,
     if fmt == "s":
         _write_character_setter(gen, helper, helper_symbol)
         return
+
+    if fmt == "D":
+        gen.write("Py_complex value;")
+        gen.write(f"static char *kwlist[] = {{\"{helper.element.name}\", NULL}};")
+        gen.write(
+            f"if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"{fmt}\", kwlist, &value)) {{"
+        )
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+        c_type = c_type_from_fortran(helper.element.type, gen.kind_map)
+        gen.write(f"{c_type} fortran_value = ({c_type})(value.real + value.imag * I);")
+        gen.write(f"{helper_symbol}(&fortran_value);")
+        gen.write("if (PyErr_Occurred()) {")
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+        gen.write("Py_RETURN_NONE;")
+        return
+
+    c_type = c_type_from_fortran(helper.element.type, gen.kind_map)
+    parse_type = "double" if fmt == "d" else c_type
+    gen.write(f"{parse_type} value;")
+    gen.write(f"static char *kwlist[] = {{\"{helper.element.name}\", NULL}};")
+    gen.write(
+        f"if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"{fmt}\", kwlist, &value)) {{"
+    )
+    gen.indent()
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+
+    if parse_type != c_type:
+        gen.write(f"{c_type} fortran_value = ({c_type})value;")
+        gen.write(f"{helper_symbol}(&fortran_value);")
+    else:
+        gen.write(f"{helper_symbol}(&value);")
+    gen.write("if (PyErr_Occurred()) {")
+    gen.indent()
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+    gen.write("Py_RETURN_NONE;")
+
+
+def _write_character_setter(gen: DirectCGenerator, helper: ModuleHelper, helper_symbol: str) -> None:
+    """Helper for character type setters."""
+    gen.write("PyObject* py_value;")
+    gen.write(f"static char *kwlist[] = {{\"{helper.element.name}\", NULL}};")
+    gen.write(
+        "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"O\", kwlist, &py_value)) {"
+    )
+    gen.indent()
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+    gen.write("if (py_value == Py_None) {")
+    gen.indent()
+    gen.write(
+        f'PyErr_SetString(PyExc_TypeError, "Argument {helper.element.name} must be str or bytes");'
+    )
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+    gen.write("PyObject* value_bytes = NULL;")
+    gen.write("if (PyBytes_Check(py_value)) {")
+    gen.indent()
+    gen.write("value_bytes = py_value;")
+    gen.write("Py_INCREF(value_bytes);")
+    gen.dedent()
+    gen.write("} else if (PyUnicode_Check(py_value)) {")
+    gen.indent()
+    gen.write("value_bytes = PyUnicode_AsUTF8String(py_value);")
+    gen.write("if (value_bytes == NULL) {")
+    gen.indent()
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+    gen.dedent()
+    gen.write("} else {")
+    gen.indent()
+    gen.write(
+        f'PyErr_SetString(PyExc_TypeError, "Argument {helper.element.name} must be str or bytes");'
+    )
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+
+    gen.write("int value_len = (int)PyBytes_GET_SIZE(value_bytes);")
+    gen.write("char* value = (char*)malloc((size_t)value_len + 1);")
+    gen.write("if (value == NULL) {")
+    gen.indent()
+    gen.write("Py_DECREF(value_bytes);")
+    gen.write("PyErr_NoMemory();")
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+    gen.write("memcpy(value, PyBytes_AS_STRING(value_bytes), (size_t)value_len);")
+    gen.write("value[value_len] = '\\0';")
+    gen.write(f"{helper_symbol}(value, value_len);")
+    gen.write("free(value);")
+    gen.write("Py_DECREF(value_bytes);")
+    gen.write("if (PyErr_Occurred()) {")
+    gen.indent()
+    gen.write("return NULL;")
+    gen.dedent()
+    gen.write("}")
+    gen.write("Py_RETURN_NONE;")
 def _write_derived_getter_body(gen: DirectCGenerator, helper: ModuleHelper, helper_symbol: str) -> None:
     """Helper for derived type getter body."""
     if helper.is_type_member:
