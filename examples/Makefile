@@ -70,11 +70,6 @@ EXAMPLES = \
 
 DIRECTC ?= no
 
-# Examples with known issues in meson build (both f2py and Direct-C modes)
-# callback: meson build doesn't link callback symbols correctly
-MESON_EXPECTED_FAILURES = \
-    callback_print_function_issue93
-
 # Examples with known Direct-C limitations (expected to fail in DIRECTC=yes mode)
 # These are NOT skipped - they run and failures are allowed only in Direct-C mode
 DIRECTC_EXPECTED_FAILURES = \
@@ -146,11 +141,6 @@ test_meson:
 	    echo "PASS: $$example" ; \
 	  else \
 	    IS_EXPECTED=no ; \
-	    if echo " ${MESON_EXPECTED_FAILURES} " | grep -q " $$example "; then \
-	      IS_EXPECTED=yes ; \
-	      echo "EXPECTED FAIL (known bug): $$example" ; \
-	      EXPECTED_FAILED="$$EXPECTED_FAILED $$example" ; \
-	    fi ; \
 	    if [ "$(DIRECTC)" = "yes" ] && echo " ${DIRECTC_EXPECTED_FAILURES} " | grep -q " $$example "; then \
 	      IS_EXPECTED=yes ; \
 	      echo "EXPECTED FAIL (Direct-C limitation): $$example" ; \
