@@ -416,6 +416,13 @@ except ValueError:
             self.write('raise(NotImplementedError("This is an abstract class"))')
             self.dedent()
             self.write()
+            # Abstract classes still need _setup_finalizer for polymorphic factory returns
+            self.write("def _setup_finalizer(self):")
+            self.indent()
+            self.write('"""Abstract classes have no destructor to call."""')
+            self.write("pass")
+            self.dedent()
+            self.write()
             return
 
         handle_arg = ft.Argument(
