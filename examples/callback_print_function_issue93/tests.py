@@ -39,26 +39,27 @@ import CBF
 class TestExample(unittest.TestCase):
 
     def setUp(self):
-
         pass
 
-    @unittest.skipIf(sys.platform == 'darwin' or sys.version_info[:2] == (3, 10),
-                     "f2py callback issues on macOS and Python 3.10")
     def test_basic(self):
+        """Test f2py callbacks through cross-module Fortran calls.
+
+        Note: Do NOT call write_message directly before calling through caller
+        module. The f2py callback wrapper has a bug where it stores the callback
+        context in thread-local storage but doesn't restore it after the call
+        returns. This leaves a dangling pointer that causes segfaults when the
+        callback is invoked through a different path (e.g., via caller module).
+
+        See: https://github.com/jameskermode/f90wrap/issues/93
+        """
         print(CBF._CBF.cback.write_message.__doc__)
-        def f(msg): 
+        def f(msg):
             print("Yo! " + msg)
         CBF._CBF.pyfunc_print = f
-        # We need to prime the callback with a call "under the hood", not sure why.
-        CBF._CBF.cback.write_message('blah')
-        # Subsequently other calls to higher level functions work.
+        # Call through caller module - this works correctly
         CBF.caller.test_write_msg()
         CBF.caller.test_write_msg()
         CBF.caller.test_write_msg_2()
-        # TODO?
-        # CBF.caller.test_return_msg()
-        # CBF.caller.test_return_msg()
-        # CBF.caller.test_return_msg_2()
 
 if __name__ == '__main__':
     unittest.main()
