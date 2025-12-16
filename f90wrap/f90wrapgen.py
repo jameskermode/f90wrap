@@ -1030,7 +1030,10 @@ end type %(typename)s%(suffix)s"""
             return
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, "get")
-        self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
+        # For CLASS arrays without has_assignment: only generate setitem in Direct-C mode
+        # (Direct-C uses select type for polymorphic assignment; f2py can't parse it)
+        if self.direct_c_interop or not ft.is_class(element.type) or "has_assignment" in self.types[ft.strip_type(element.type)].attributes:
+            self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
         self._write_array_len(t, element, sizeof_fortran_t)
 
     def _write_scalar_wrappers(self, t, element, sizeof_fortran_t):
@@ -1190,7 +1193,9 @@ end type %(typename)s%(suffix)s"""
             self.write(
                 "%s_ptr = transfer(%s,%s_ptr)" % (el.name, el.name + "item", el.name)
             )
-            if el.type.startswith("class"):
+            if self.direct_c_interop and el.type.startswith("class"):
+                # Direct-C mode: use select type for polymorphic assignment
+                # (f2py doesn't understand select type syntax, so skip this for f2py)
                 base_type = ft.strip_type(el.type)
                 self.write("select type (lhs => %s(%s))" % (array_name, safe_i))
                 self.indent()
@@ -1208,18 +1213,19 @@ end type %(typename)s%(suffix)s"""
                 self.dedent()
                 self.write("end select")
                 self.dedent()
+                self.dedent()
                 self.write("class default")
                 self.indent()
                 self.write('call %s("class array setitem type mismatch")' % self.abort_func)
                 self.dedent()
                 self.write("end select")
+                self.dedent()
+            elif self.is_class(el.type):
+                self.write(
+                    "%s(%s) = %s_ptr%%p%%obj" % (array_name, safe_i, el.name)
+                )
             else:
-                if (self.is_class(el.type)):
-                    self.write(
-                        "%s(%s) = %s_ptr%%p%%obj" % (array_name, safe_i, el.name)
-                    )
-                else:
-                    self.write("%s(%s) = %s_ptr%%p" % (array_name, safe_i, el.name))
+                self.write("%s(%s) = %s_ptr%%p" % (array_name, safe_i, el.name))
 
         self.dedent()
         self.write("endif")
