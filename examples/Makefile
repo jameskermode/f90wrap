@@ -19,6 +19,7 @@ EXAMPLES = \
 	errorbinding \
 	example2 \
 	extends \
+	f2py_string_input \
 	fixed_1D_derived_type_array_argument \
 	fortran_oo \
 	intent_out_size \
@@ -68,7 +69,6 @@ EXAMPLES = \
 
 # TODO: Fix these failing examples
 #    callback_print_function_issue93 \  # TypeError on Python 3.10 (callback issue)
-#    f2py_string_input \                # undefined symbol: string_in_array_ (linking issue)
 
 DIRECTC ?= no
 

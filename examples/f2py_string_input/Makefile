@@ -31,5 +31,5 @@ f2py-ko: ${OBJ} ${SIGNATURES}
 f2py-ok: ${F90_SRC}
 	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} ${F90_SRC}
 
-test: f2py-ko
+test: f2py-ok
 	${PYTHON} test.py
