@@ -1,0 +1,6 @@
+include ../make.meson.inc
+
+NAME := array_shapes
+
+test: build
+	$(PYTHON) test.py

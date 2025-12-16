@@ -1,0 +1,8 @@
+# f2py_string_input: Pure f2py example (not f90wrap)
+# This example tests f2py directly, not f90wrap, so it doesn't use meson build
+
+test:
+	@echo "Skipping: f2py_string_input is a pure f2py example, not f90wrap"
+
+clean:
+	@true
