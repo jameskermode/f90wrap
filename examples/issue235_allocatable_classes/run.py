@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import gc
 import unittest
 from itest import mytype, myclass, myclass_factory
 
@@ -19,6 +20,7 @@ class TestMyType(unittest.TestCase):
         self.assertTrue(abs(obj.val - REF) < TOL)
 
         del obj
+        gc.collect()
 
         self.assertEqual(mytype.create_count, 1)
         self.assertGreaterEqual(mytype.destroy_count, 1)
@@ -50,6 +52,7 @@ class TestMyClass(unittest.TestCase):
         self.assertTrue(abs(obj.get_val() - REF) < TOL)
 
         del obj
+        gc.collect()
 
         self.assertEqual(myclass.create_count, 1)
         self.assertGreaterEqual(myclass.destroy_count, 1)
