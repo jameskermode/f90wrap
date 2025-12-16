@@ -642,7 +642,7 @@ end type %(typename)s%(suffix)s"""
 
         direct_c_integer_scalars = []
         if self.direct_c_interop:
-            for arg in arg_node.arguments:
+            for arg in node.arguments:
                 arg_type = str(getattr(arg, "type", "")).strip().lower()
                 is_integer_scalar = arg_type == "integer" and not any(
                     str(attr).startswith("dimension(") for attr in getattr(arg, "attributes", [])
@@ -974,8 +974,14 @@ end type %(typename)s%(suffix)s"""
         else:
             array_name = shorten_long_name("%s_%s" % (t.name, el.name))
 
+        pointer_guard = None
         if "allocatable" in el.attributes:
-            self.write("if (allocated(%s)) then" % array_name)
+            pointer_guard = f"allocated({array_name})"
+        elif "pointer" in el.attributes:
+            pointer_guard = f"associated({array_name})"
+
+        if pointer_guard is not None:
+            self.write(f"if ({pointer_guard}) then")
             self.indent()
         if el.type.startswith("character"):
             first = ",".join(["1" for i in range(rank - 1)])
@@ -986,10 +992,11 @@ end type %(typename)s%(suffix)s"""
         else:
             self.write("dshape(1:%d) = shape(%s)" % (rank, array_name))
         self.write("dloc = loc(%s)" % array_name)
-        if "allocatable" in el.attributes:
+        if pointer_guard is not None:
             self.dedent()
             self.write("else")
             self.indent()
+            self.write(f"dshape(1:{rank}) = 0")
             self.write("dloc = 0")
             self.dedent()
             self.write("end if")
@@ -1023,9 +1030,7 @@ end type %(typename)s%(suffix)s"""
             return
 
         self._write_array_getset_item(t, element, sizeof_fortran_t, "get")
-        # Polymorphic objects require an assignment(=) method to be set
-        if not ft.is_class(element.type) or "has_assignment" in self.types[ft.strip_type(element.type)].attributes:
-            self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
+        self._write_array_getset_item(t, element, sizeof_fortran_t, "set")
         self._write_array_len(t, element, sizeof_fortran_t)
 
     def _write_scalar_wrappers(self, t, element, sizeof_fortran_t):
@@ -1185,10 +1190,36 @@ end type %(typename)s%(suffix)s"""
             self.write(
                 "%s_ptr = transfer(%s,%s_ptr)" % (el.name, el.name + "item", el.name)
             )
-            if (self.is_class(el.type)):
-                self.write("%s(%s) = %s_ptr%%p%%obj" % (array_name, safe_i, el.name))
+            if el.type.startswith("class"):
+                base_type = ft.strip_type(el.type)
+                self.write("select type (lhs => %s(%s))" % (array_name, safe_i))
+                self.indent()
+                self.write("type is (%s)" % base_type)
+                self.indent()
+                self.write("select type (rhs => %s_ptr%%p%%obj)" % el.name)
+                self.indent()
+                self.write("type is (%s)" % base_type)
+                self.indent()
+                self.write("lhs = rhs")
+                self.dedent()
+                self.write("class default")
+                self.indent()
+                self.write('call %s("class array setitem type mismatch")' % self.abort_func)
+                self.dedent()
+                self.write("end select")
+                self.dedent()
+                self.write("class default")
+                self.indent()
+                self.write('call %s("class array setitem type mismatch")' % self.abort_func)
+                self.dedent()
+                self.write("end select")
             else:
-                self.write("%s(%s) = %s_ptr%%p" % (array_name, safe_i, el.name))
+                if (self.is_class(el.type)):
+                    self.write(
+                        "%s(%s) = %s_ptr%%p%%obj" % (array_name, safe_i, el.name)
+                    )
+                else:
+                    self.write("%s(%s) = %s_ptr%%p" % (array_name, safe_i, el.name))
 
         self.dedent()
         self.write("endif")
