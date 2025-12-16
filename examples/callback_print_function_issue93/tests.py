@@ -42,8 +42,8 @@ class TestExample(unittest.TestCase):
 
         pass
 
-    @unittest.skipIf(sys.version_info[:2] == (3, 10),
-                     "f2py callback issue on Python 3.10")
+    @unittest.skipIf(sys.platform == 'darwin' and sys.version_info[:2] == (3, 10),
+                     "f2py callback segfault on macOS Python 3.10")
     def test_basic(self):
         print(CBF._CBF.cback.write_message.__doc__)
         def f(msg): 
