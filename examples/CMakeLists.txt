@@ -63,15 +63,13 @@ list(APPEND tests
     strings
     subroutine_args
     subroutine_contains_issue101
+    callback_print_function_issue93
     f2py_string_input
     issue299_directc_nested_functions
     recursive_type
     type_bn
     type_check
 )
-
-# TODO: Fix these failing examples
-#    callback_print_function_issue93  # TypeError on Python 3.10 (callback issue)
 
 foreach(test ${tests})
     message(STATUS "Adding test ${test}")

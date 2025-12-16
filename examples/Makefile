@@ -6,6 +6,7 @@ EXAMPLES = \
 	arrays_fixed \
 	arrays_in_derived_types_issue50 \
 	auto_raise_error \
+	callback_print_function_issue93 \
 	class_names \
 	cylinder \
 	decoded_strings \
@@ -66,9 +67,6 @@ EXAMPLES = \
 	subroutine_contains_issue101 \
 	type_bn \
 	type_check
-
-# TODO: Fix these failing examples
-#    callback_print_function_issue93 \  # TypeError on Python 3.10 (callback issue)
 
 DIRECTC ?= no
 
