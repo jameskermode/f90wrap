@@ -626,13 +626,19 @@ end type %(typename)s%(suffix)s"""
             else:
                 func_name = "%s%%p%%%s" % (call_name, bound_name)
 
-        if (
-            self._err_num_var is not None and self._err_msg_var is not None
-            and f"{self._err_num_var}={self._err_num_var}" in arg_names
-            and f"{self._err_msg_var}={self._err_msg_var}" in arg_names
-        ):
-            self.write(f"{self._err_num_var}=0")
-            self.write(f"{self._err_msg_var}=''")
+        has_err_vars = False
+        if self._err_num_var is not None and self._err_msg_var is not None:
+            dummy_names = [
+                dummy_arg_name(arg)
+                for arg in arg_node.arguments
+                if "intent(hide)" not in arg.attributes
+            ]
+            has_err_vars = (
+                self._err_num_var in dummy_names and self._err_msg_var in dummy_names
+            )
+            if has_err_vars:
+                self.write(f"{self._err_num_var}=0")
+                self.write(f"{self._err_msg_var}=''")
 
         direct_c_integer_scalars = []
         if self.direct_c_interop:
@@ -736,11 +742,7 @@ end type %(typename)s%(suffix)s"""
             if intent in {"out", "inout"}:
                 self.write(f"{arg.name} = {self.prefix}{arg.name}_default")
 
-        if (
-            self._err_num_var is not None and self._err_msg_var is not None
-            and f"{self._err_num_var}={self._err_num_var}" in arg_names
-            and f"{self._err_msg_var}={self._err_msg_var}" in arg_names
-        ):
+        if has_err_vars:
             self.write(f"if ({self._err_num_var}.ne.0) then")
             self.indent()
             self.write(f"call {self.abort_func}({self._err_msg_var})")
