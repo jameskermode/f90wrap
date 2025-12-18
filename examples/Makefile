@@ -70,6 +70,31 @@ EXAMPLES = \
 
 DIRECTC ?= no
 
+# Examples with known Direct-C limitations (expected to fail in DIRECTC=yes mode)
+# These are NOT skipped - they run and failures are allowed only in Direct-C mode
+DIRECTC_EXPECTED_FAILURES = \
+    arrays \
+    arrays_in_derived_types_issue50 \
+    default_i8 \
+    derivedtypes \
+    derivedtypes_procedure \
+    dump_package \
+    fixed_1D_derived_type_array_argument \
+    fortran_oo \
+    issue235_allocatable_classes \
+    issue261_array_shapes \
+    issue301_complex_types \
+    issue302_pointer_warning \
+    issue306_allocatable_realloc \
+    issue41_abstract_classes \
+    keep_single_interface \
+    keyword_renaming_issue160 \
+    long_subroutine_name \
+    method_optional \
+    mockderivetype \
+    strings \
+    callback_print_function_issue93
+
 all: test
 
 test:
@@ -107,14 +132,40 @@ clean_directc:
 	$(MAKE) clean_meson
 
 test_meson:
+	@FAILED="" ; \
+	EXPECTED_FAILED="" ; \
 	for example in ${EXAMPLES}; do \
 	  echo "" ; \
-	  echo "" ; \
-	  echo "" ; \
 	  echo "# ---------------------------------------------------" ; \
-	  echo "running make test in $$example" ; \
-	  make -C $$example -f Makefile.meson PYTHON=$(PYTHON) DIRECTC=$(DIRECTC) test || echo "FAILED: $$example" ; \
-	done
+	  echo "Testing: $$example" ; \
+	  if make -C $$example -f Makefile.meson PYTHON=$(PYTHON) DIRECTC=$(DIRECTC) test; then \
+	    echo "PASS: $$example" ; \
+	  else \
+	    IS_EXPECTED=no ; \
+	    if [ "$(DIRECTC)" = "yes" ] && echo " ${DIRECTC_EXPECTED_FAILURES} " | grep -q " $$example "; then \
+	      IS_EXPECTED=yes ; \
+	      echo "EXPECTED FAIL (Direct-C limitation): $$example" ; \
+	      EXPECTED_FAILED="$$EXPECTED_FAILED $$example" ; \
+	    fi ; \
+	    if [ "$$IS_EXPECTED" = "no" ]; then \
+	      echo "FAIL: $$example" ; \
+	      FAILED="$$FAILED $$example" ; \
+	    fi ; \
+	  fi ; \
+	done ; \
+	echo "" ; \
+	echo "========================================" ; \
+	if [ -n "$$EXPECTED_FAILED" ]; then \
+	  echo "Expected failures:$$EXPECTED_FAILED" ; \
+	fi ; \
+	if [ -n "$$FAILED" ]; then \
+	  echo "UNEXPECTED FAILURES:$$FAILED" ; \
+	  echo "========================================" ; \
+	  exit 1 ; \
+	else \
+	  echo "All tests passed (or expected failures only)" ; \
+	  echo "========================================" ; \
+	fi
 
 clean_meson:
 	for example in ${EXAMPLES}; do \

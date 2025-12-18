@@ -17,7 +17,7 @@ f90wrap_%.f90 %.py: %.o %.f90
 	f90wrap -m $* $*.f90 -v
 
 %.o: %.f90
-	$(FC) $(FCFLAGS) -c -g -O0 $< -o $@
+	$(F90) $(F90FLAGS) -c -g -O0 $< -o $@
 
 clean:
 	rm -f *.o f90wrap*.f90 *.so *.mod *.x .f2py_f2cmap

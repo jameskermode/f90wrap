@@ -10,7 +10,7 @@ test: all
 	$(PYTHON) run.py
 
 clean:
-	rm -f *.o f90wrap*.f *.so *.mod
+	rm -f *.o f90wrap*.f f90wrap*.f90 *.so *.mod
 	rm -rf src.*/
 	rm -rf itest/
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/

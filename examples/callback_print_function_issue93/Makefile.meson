@@ -1,15 +1,8 @@
-include ../make.meson.inc
+# Callback examples require special build steps (static library, --callback flag)
+# that make.meson.inc doesn't support. Delegate to the regular Makefile.
 
-NAME     := CBF
-NAME2    := CBF_pkg
-MAKEFILE := $(lastword $(MAKEFILE_LIST))
+test:
+	$(MAKE) -f Makefile test
 
-test: build2
-	$(PYTHON) tests.py
-
-build2: build
-	$(MAKE) -f $(MAKEFILE) build NAME=$(NAME2) WRAPFLAGS="$(WRAPFLAGS) -P"
-
-clean: 
-	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME)
-	$(MAKE) -f $(MAKEFILE) clean NAME=$(NAME2)
+clean:
+	$(MAKE) -f Makefile clean

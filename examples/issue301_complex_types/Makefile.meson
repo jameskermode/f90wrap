@@ -1,0 +1,8 @@
+# This example only tests wrapper generation, not a full Python import.
+# Delegate to the regular Makefile.
+
+test:
+	$(MAKE) -f Makefile test
+
+clean:
+	$(MAKE) -f Makefile clean

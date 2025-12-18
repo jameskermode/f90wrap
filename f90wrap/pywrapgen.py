@@ -416,6 +416,13 @@ except ValueError:
             self.write('raise(NotImplementedError("This is an abstract class"))')
             self.dedent()
             self.write()
+            # Abstract classes still need _setup_finalizer for polymorphic factory returns
+            self.write("def _setup_finalizer(self):")
+            self.indent()
+            self.write('"""Abstract classes have no destructor to call."""')
+            self.write("pass")
+            self.dedent()
+            self.write()
             return
 
         handle_arg = ft.Argument(
@@ -483,6 +490,12 @@ except ValueError:
         self.write("self._alloc = True")
         self.dedent()
 
+        # Call the _setup_finalizer method to register the destructor
+        self.write("self._setup_finalizer()")
+        self.dedent()
+        self.write()
+
+        # Generate the _setup_finalizer method that can be called from __init__ or from_handle
         destructor_proc = self._destructor_proc_for(node)
         fallback_call = "%(mod_name)s.%(subroutine_name)s" % dct
         # Replace _initialise with _finalise for fallback finalizer
@@ -508,6 +521,9 @@ except ValueError:
                 getattr(node, "type_name", "<unknown>"),
             )
 
+        self.write("def _setup_finalizer(self):")
+        self.indent()
+        self.write('"""Set up weak reference destructor to prevent Fortran memory leaks."""')
         # Register finalizer using weakref (modern Python 3.4+ approach)
         # More reliable than __del__ for resource cleanup
         self.write("if self._alloc:")
@@ -763,6 +779,8 @@ except ValueError:
                             "%s = %s.from_handle(%s, alloc=True)"
                             % (ret_val.name, cls_name, ret_val.name)
                         )
+                        # Set up finalizer for objects created via factory functions
+                        self.write("%s._setup_finalizer()" % ret_val.name)
                     # strip white space for string returns
                     pytype = ft.f2py_type(ret_val.type)
                     if self.return_decoded and pytype == "str":

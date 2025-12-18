@@ -1,0 +1,9 @@
+# Issue #299: Direct-C nested functions
+# This example tests Direct-C mode in its regular Makefile
+# Just re-use the regular test
+
+test:
+	$(MAKE) -f Makefile test
+
+clean:
+	$(MAKE) -f Makefile clean
