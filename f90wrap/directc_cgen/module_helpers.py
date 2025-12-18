@@ -323,21 +323,45 @@ def write_module_helper_declaration(gen: DirectCGenerator, helper: ModuleHelper)
             else:
                 gen.write(f"extern void {symbol}({c_type}* value);")
     elif helper.kind == "array":
-        gen.write(
-            f"extern void {symbol}(int* dummy_this, int* nd, int* dtype, int* dshape, long long* handle);"
-        )
+        # Module-level arrays do not need dummy_this argument (issue #306)
+        if helper.is_type_member:
+            gen.write(
+                f"extern void {symbol}(int* dummy_this, int* nd, int* dtype, int* dshape, long long* handle);"
+            )
+        else:
+            gen.write(
+                f"extern void {symbol}(int* nd, int* dtype, int* dshape, long long* handle);"
+            )
     elif helper.kind == "array_getitem":
-        gen.write(
-            f"extern void {symbol}(int* dummy_this, int* index, int* handle);"
-        )
+        # Module-level arrays do not need dummy_this argument (issue #306)
+        if helper.is_type_member:
+            gen.write(
+                f"extern void {symbol}(int* dummy_this, int* index, int* handle);"
+            )
+        else:
+            gen.write(
+                f"extern void {symbol}(int* index, int* handle);"
+            )
     elif helper.kind == "array_setitem":
-        gen.write(
-            f"extern void {symbol}(int* dummy_this, int* index, int* handle);"
-        )
+        # Module-level arrays do not need dummy_this argument (issue #306)
+        if helper.is_type_member:
+            gen.write(
+                f"extern void {symbol}(int* dummy_this, int* index, int* handle);"
+            )
+        else:
+            gen.write(
+                f"extern void {symbol}(int* index, int* handle);"
+            )
     elif helper.kind == "array_len":
-        gen.write(
-            f"extern void {symbol}(int* dummy_this, int* length);"
-        )
+        # Module-level arrays do not need dummy_this argument (issue #306)
+        if helper.is_type_member:
+            gen.write(
+                f"extern void {symbol}(int* dummy_this, int* length);"
+            )
+        else:
+            gen.write(
+                f"extern void {symbol}(int* length);"
+            )
 
 
 def write_module_init(gen: DirectCGenerator, mod_name: str) -> None:
