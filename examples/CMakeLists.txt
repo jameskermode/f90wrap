@@ -8,50 +8,70 @@ list(APPEND tests
     arrays
     arrays_fixed
     arrays_in_derived_types_issue50
+    auto_raise_error
     class_names
     cylinder
+    decoded_strings
+    default_i8
+    derived-type-aliases
     derivedtypes
+    derivedtypes_procedure
+    docstring
+    dump_package
     elemental
+    errorbinding
     example2
     extends
+    fixed_1D_derived_type_array_argument
+    fortran_oo
+    intent_out_size
     interface
     issue105_function_definition_with_empty_lines
-    issue32
-    mockderivetype
-    mod_arg_clash
-    optional_args_issue53
-    optional_derived_arrays
-    passbyreference
-    strings
-    subroutine_contains_issue101
-    type_bn
-    kind_map_default
-    docstring
-    return_array
-    intent_out_size
-    string_array_input_f2py
-    type_check
-    optional_string
-    long_subroutine_name
-    output_kind
-    remove_pointer_arg
-    fortran_oo
-    issue254_getter
-    issue258_derived_type_attributes
     issue206_subroutine_oldstyle
     issue227_allocatable
     issue235_allocatable_classes
+    issue254_getter
+    issue258_derived_type_attributes
+    issue261_array_shapes
     issue297_ignored_abstract_classes
+    issue301_complex_types
+    issue302_pointer_warning
     issue305_multiple_abstract_interfaces
-    auto_raise_error
-    dump_package
-    method_optional
-    relative_import
-    decoded_strings
-    keep_single_interface
-    return_bool
     issue307_logical_array
+    issue32
+    keep_single_interface
+    keyword_renaming_issue160
+    kind_map_default
+    long_subroutine_name
+    method_optional
+    mockderivetype
+    mod_arg_clash
+    name_collision
+    optional_args_issue53
+    optional_derived_arrays
+    optional_string
+    output_kind
+    passbyreference
+    recursive_type_array
+    relative_import
+    remove_pointer_arg
+    return_array
+    return_bool
+    signature_vs_backend
+    string_array_input_f2py
+    strings
+    subroutine_args
+    subroutine_contains_issue101
+    type_bn
+    type_check
 )
+
+# TODO: Fix these failing examples
+#    callback_print_function_issue93  # undefined symbol: pyfunc_print_
+#    f2py_string_input                # undefined symbol: string_in_array_ (linking issue)
+#    issue41_abstract_classes         # AttributeError: 'myclass_t' object has no attribute 'get_value'
+#    issue299_directc_nested_functions# types.py shadows stdlib types module
+#    recursive_type                   # Error: Derived type 'node' at (1) has not been declared
 
 foreach(test ${tests})
     message(STATUS "Adding test ${test}")

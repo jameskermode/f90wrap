@@ -9,4 +9,5 @@ wrap :
 python :
 	f2py-f90wrap $(F2PYFLAGS) -c -m _test_python f90wrap_functions.f90 *.o
 clean :
-	rm -f *.o *.mod *.so f90wrap* test_python.py build
+	rm -f *.o *.mod *.so f90wrap* test_python.py
+	rm -rf build/

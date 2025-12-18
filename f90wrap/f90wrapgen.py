@@ -765,6 +765,9 @@ end type %(typename)s%(suffix)s"""
         self.write("subroutine %s%s" % (sub_name, arg_names))
         self.indent()
         self.write_uses_lines(node)
+        # Add iso_c_binding when we have derived type arguments (handle arrays use c_int)
+        if node.transfer_in or node.transfer_out:
+            self.write("use, intrinsic :: iso_c_binding, only: c_int")
         self.write("implicit none")
 
         if node.mod_name is None:
@@ -1048,6 +1051,8 @@ end type %(typename)s%(suffix)s"""
         owner_module = self._type_owner(el.type, getattr(t, "mod_name", getattr(t, "name", None)))
         self._add_extra_use(extra_uses, owner_module, None)
         self.write_uses_lines(el, extra_uses)
+        # Add iso_c_binding for handle arrays (c_int is immune to -fdefault-integer-8)
+        self.write("use, intrinsic :: iso_c_binding, only: c_int")
         self.write("implicit none")
         self.write()
 
@@ -1062,15 +1067,15 @@ end type %(typename)s%(suffix)s"""
         self.write_type_or_class_lines(el.type, same_type, pointer=True)
 
         if this is not None:
-            self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
+            self.write("integer(c_int), intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             array_name = self._get_type_member_array_name(t, el.name)
         else:
             array_name = shorten_long_name("%s_%s" % (t.name, el.name))
-        self.write("integer, intent(in) :: %s" % (safe_i))
+        self.write("integer(c_int), intent(in) :: %s" % (safe_i))
         self.write(
-            "integer, intent(%s) :: %s(%d)"
+            "integer(c_int), intent(%s) :: %s(%d)"
             % (inout, el.name + "item", sizeof_fortran_t)
         )
         if not same_type:
@@ -1184,6 +1189,8 @@ end type %(typename)s%(suffix)s"""
         owner_module = self._type_owner(el.type, getattr(t, "mod_name", getattr(t, "name", None)))
         self._add_extra_use(extra_uses, owner_module, None)
         self.write_uses_lines(el, extra_uses)
+        # Add iso_c_binding for handle arrays (c_int is immune to -fdefault-integer-8)
+        self.write("use, intrinsic :: iso_c_binding, only: c_int")
         self.write("implicit none")
         self.write()
         if "super-type" in t.doc:
@@ -1196,7 +1203,7 @@ end type %(typename)s%(suffix)s"""
         self.write_type_or_class_lines(el.type, same_type)
         self.write("integer, intent(out) :: %s" % (safe_n))
         if this is not None:
-            self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
+            self.write("integer(c_int), intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             self.write()
@@ -1291,6 +1298,9 @@ end type %(typename)s%(suffix)s"""
         self.indent()
 
         self.write_uses_lines(el, extra_uses)
+        # Add iso_c_binding for handle arrays (c_int is immune to -fdefault-integer-8)
+        if isinstance(t, ft.Type) or ft.is_derived_type(el.type):
+            self.write("use, intrinsic :: iso_c_binding, only: c_int")
 
         self.write("implicit none")
         if isinstance(t, ft.Type):
@@ -1300,7 +1310,7 @@ end type %(typename)s%(suffix)s"""
             self.write_type_or_class_lines(el.type, pointer=True)
 
         if isinstance(t, ft.Type):
-            self.write("integer, intent(in)   :: this(%d)" % sizeof_fortran_t)
+            self.write("integer(c_int), intent(in)   :: this(%d)" % sizeof_fortran_t)
             self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
 
         # Return/set by value
@@ -1313,7 +1323,7 @@ end type %(typename)s%(suffix)s"""
         if ft.is_derived_type(el.type):
             # For derived types elements, treat as opaque reference
             self.write(
-                "integer, intent(%s) :: %s(%d)" % (inout, localvar, sizeof_fortran_t)
+                "integer(c_int), intent(%s) :: %s(%d)" % (inout, localvar, sizeof_fortran_t)
             )
 
             self.write(
