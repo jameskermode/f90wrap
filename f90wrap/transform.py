@@ -424,6 +424,41 @@ class UnwrappablesRemover(ft.FortranTransformer):
         return self.generic_visit(node)
 
 
+def _build_parameter_map(tree):
+    """
+    Build a map of parameter names to their defining modules.
+
+    Returns dict mapping parameter_name -> module_name
+    """
+    params = {}
+    for mod in ft.walk_modules(tree):
+        for el in mod.elements:
+            if 'parameter' in el.attributes:
+                params[el.name] = mod.name
+    return params
+
+
+def _extract_kind(typename):
+    """
+    Extract the kind specifier from a type string.
+
+    real(kind=jprb) -> jprb
+    real(8) -> 8
+    real -> None
+    """
+    if '(' not in typename:
+        return None
+    # Extract content between parentheses
+    start = typename.index('(')
+    end = typename.rindex(')')
+    kind = typename[start+1:end]
+    # Remove 'kind=' prefix if present
+    kind = kind.replace('kind=', '').strip()
+    # Remove 'len=' for character types
+    kind = kind.replace('len=', '').strip()
+    return kind if kind else None
+
+
 def fix_subroutine_uses_clauses(tree, types):
     """Walk over all nodes in tree, updating subroutine uses
        clauses to include the parent module and all necessary
@@ -431,6 +466,9 @@ def fix_subroutine_uses_clauses(tree, types):
 
        Also rename any arguments that clash with module names.
     """
+
+    # Build map of kind parameters to their modules (issue #253)
+    params = _build_parameter_map(tree)
 
     for mod, sub, arguments in ft.walk_procedures(tree):
         sub.uses = set()
@@ -446,6 +484,11 @@ def fix_subroutine_uses_clauses(tree, types):
             typename = ft.strip_type(arg.type)
             if typename and typename in types:
                 sub.uses.add((types[ft.strip_type(arg.type)].mod_name, (ft.strip_type(arg.type),)))
+
+            # Handle kind parameters (issue #253)
+            kind = _extract_kind(arg.type)
+            if kind and kind in params:
+                sub.uses.add((params[kind], (kind,)))
 
     for mod, sub, arguments in ft.walk_procedures(tree):
         for arg in arguments:
