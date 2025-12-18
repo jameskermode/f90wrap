@@ -12,10 +12,11 @@ $(WRAPPER).c: $(SOURCES)
 	python -m f90wrap --direct-c -m $(NAME) $(SOURCES)
 
 # Test that C compilation succeeds (issue #299 is now fixed)
+# Note: Run python from parent dir to avoid types.py shadowing stdlib types module
 test: $(WRAPPER).c
 	@echo "Testing C compilation for issue #299 fix..."
-	@NUMPY_INC=$$(python -c "import numpy; print(numpy.get_include())") && \
-	 PYTHON_INC=$$(python -c "import sysconfig; print(sysconfig.get_path('include'))") && \
+	@NUMPY_INC=$$(cd .. && python -c "import numpy; print(numpy.get_include())") && \
+	 PYTHON_INC=$$(cd .. && python -c "import sysconfig; print(sysconfig.get_path('include'))") && \
 	 if gcc -c -I"$$NUMPY_INC" -I"$$PYTHON_INC" $(WRAPPER).c 2>/dev/null; then \
 	   echo "PASS: C compilation succeeded - issue #299 is fixed"; \
 	   exit 0; \

@@ -31,6 +31,7 @@ EXAMPLES = \
 	issue258_derived_type_attributes \
 	issue261_array_shapes \
 	issue297_ignored_abstract_classes \
+	issue299_directc_nested_functions \
 	issue301_complex_types \
 	issue302_pointer_warning \
 	issue305_multiple_abstract_interfaces \
@@ -68,7 +69,6 @@ EXAMPLES = \
 # TODO: Fix these failing examples
 #    callback_print_function_issue93 \  # TypeError on Python 3.10 (callback issue)
 #    f2py_string_input \                # undefined symbol: string_in_array_ (linking issue)
-#    issue299_directc_nested_functions \# types.py shadows stdlib types module
 
 DIRECTC ?= no
 
