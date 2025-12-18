@@ -12,24 +12,36 @@ if TYPE_CHECKING:
 
 def write_array_helper_body(gen: DirectCGenerator, helper: ModuleHelper, helper_symbol: str) -> None:
     """Emit the core body shared by array helpers."""
-    gen.write("PyObject* dummy_handle = Py_None;")
-    gen.write("static char *kwlist[] = {\"handle\", NULL};")
-    gen.write(
-        "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"|O\", kwlist, &dummy_handle)) {"
-    )
-    gen.indent()
-    gen.write("return NULL;")
-    gen.dedent()
-    gen.write("}")
-    gen.write("")
+    # Module-level arrays do not need handle argument (issue #306)
+    if helper.is_type_member:
+        gen.write("PyObject* dummy_handle = Py_None;")
+        gen.write("static char *kwlist[] = {\"handle\", NULL};")
+        gen.write(
+            "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"|O\", kwlist, &dummy_handle)) {"
+        )
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+        gen.write("")
 
-    _write_handle_extraction(gen)
+        _write_handle_extraction(gen)
+    else:
+        gen.write("if (args && PyTuple_Size(args) != 0) {")
+        gen.indent()
+        gen.write("PyErr_SetString(PyExc_TypeError, \"Module-level array accessors do not take arguments\");")
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
 
     gen.write("int nd = 0;")
     gen.write("int dtype = 0;")
     gen.write("int dshape[10] = {0};")
     gen.write("long long handle = 0;")
-    gen.write(f"{helper_symbol}(dummy_this, &nd, &dtype, dshape, &handle);")
+    if helper.is_type_member:
+        gen.write(f"{helper_symbol}(dummy_this, &nd, &dtype, dshape, &handle);")
+    else:
+        gen.write(f"{helper_symbol}(&nd, &dtype, dshape, &handle);")
     gen.write("if (PyErr_Occurred()) {")
     gen.indent()
     gen.write("return NULL;")
@@ -176,28 +188,49 @@ def write_module_array_getitem_wrapper(gen: DirectCGenerator, helper: ModuleHelp
     gen.write("{")
     gen.indent()
     gen.write("(void)self;")
-    gen.write("PyObject* py_parent;")
-    gen.write("int index = 0;")
-    gen.write("static char *kwlist[] = {\"handle\", \"index\", NULL};")
-    gen.write(
-        "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"Oi\", kwlist, &py_parent, &index)) {"
-    )
-    gen.indent()
-    gen.write("return NULL;")
-    gen.dedent()
-    gen.write("}")
 
-    extract_parent_handle(gen, "parent")
+    # Module-level arrays do not need handle argument (issue #306)
+    if helper.is_type_member:
+        gen.write("PyObject* py_parent;")
+        gen.write("int index = 0;")
+        gen.write("static char *kwlist[] = {\"handle\", \"index\", NULL};")
+        gen.write(
+            "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"Oi\", kwlist, &py_parent, &index)) {"
+        )
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+
+        extract_parent_handle(gen, "parent")
+    else:
+        gen.write("int index = 0;")
+        gen.write("static char *kwlist[] = {\"index\", NULL};")
+        gen.write(
+            "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"i\", kwlist, &index)) {"
+        )
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
 
     gen.write(f"int handle[{gen.handle_size}] = {{0}};")
-    gen.write(f"{helper_symbol}(parent_handle, &index, handle);")
-    gen.write("if (PyErr_Occurred()) {")
-    gen.indent()
-    gen.write("Py_DECREF(parent_sequence);")
-    gen.write("return NULL;")
-    gen.dedent()
-    gen.write("}")
-    gen.write("Py_DECREF(parent_sequence);")
+    if helper.is_type_member:
+        gen.write(f"{helper_symbol}(parent_handle, &index, handle);")
+        gen.write("if (PyErr_Occurred()) {")
+        gen.indent()
+        gen.write("Py_DECREF(parent_sequence);")
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+        gen.write("Py_DECREF(parent_sequence);")
+    else:
+        gen.write(f"{helper_symbol}(&index, handle);")
+        gen.write("if (PyErr_Occurred()) {")
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
 
     gen.write(f"PyObject* result = PyList_New({gen.handle_size});")
     gen.write("if (result == NULL) {")
@@ -298,24 +331,44 @@ def write_module_array_setitem_wrapper(gen: DirectCGenerator, helper: ModuleHelp
     gen.write("{")
     gen.indent()
     gen.write("(void)self;")
-    gen.write("PyObject* py_parent;")
-    gen.write("int index = 0;")
-    gen.write("PyObject* py_value;")
-    gen.write("static char *kwlist[] = {\"handle\", \"index\", \"value\", NULL};")
-    gen.write(
-        "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"OiO\", kwlist, &py_parent, &index, &py_value)) {"
-    )
-    gen.indent()
-    gen.write("return NULL;")
-    gen.dedent()
-    gen.write("}")
 
-    extract_parent_handle(gen, "parent")
-    _extract_value_handle(gen)
+    # Module-level arrays do not need handle argument (issue #306)
+    if helper.is_type_member:
+        gen.write("PyObject* py_parent;")
+        gen.write("int index = 0;")
+        gen.write("PyObject* py_value;")
+        gen.write("static char *kwlist[] = {\"handle\", \"index\", \"value\", NULL};")
+        gen.write(
+            "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"OiO\", kwlist, &py_parent, &index, &py_value)) {"
+        )
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
 
-    gen.write(f"{helper_symbol}(parent_handle, &index, value_handle);")
-    gen.write("Py_DECREF(parent_sequence);")
-    gen.write("if (value_sequence) { Py_DECREF(value_sequence); }")
+        extract_parent_handle(gen, "parent")
+        _extract_value_handle(gen)
+
+        gen.write(f"{helper_symbol}(parent_handle, &index, value_handle);")
+        gen.write("Py_DECREF(parent_sequence);")
+        gen.write("if (value_sequence) { Py_DECREF(value_sequence); }")
+    else:
+        gen.write("int index = 0;")
+        gen.write("PyObject* py_value;")
+        gen.write("static char *kwlist[] = {\"index\", \"value\", NULL};")
+        gen.write(
+            "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"iO\", kwlist, &index, &py_value)) {"
+        )
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+
+        _extract_value_handle(gen)
+
+        gen.write(f"{helper_symbol}(&index, value_handle);")
+        gen.write("if (value_sequence) { Py_DECREF(value_sequence); }")
+
     gen.write("Py_RETURN_NONE;")
     gen.dedent()
     gen.write("}")
@@ -333,21 +386,34 @@ def write_module_array_len_wrapper(gen: DirectCGenerator, helper: ModuleHelper) 
     gen.write("{")
     gen.indent()
     gen.write("(void)self;")
-    gen.write("PyObject* py_parent;")
-    gen.write("static char *kwlist[] = {\"handle\", NULL};")
-    gen.write(
-        "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"O\", kwlist, &py_parent)) {"
-    )
-    gen.indent()
-    gen.write("return NULL;")
-    gen.dedent()
-    gen.write("}")
 
-    extract_parent_handle(gen, "parent")
+    # Module-level arrays do not need handle argument (issue #306)
+    if helper.is_type_member:
+        gen.write("PyObject* py_parent;")
+        gen.write("static char *kwlist[] = {\"handle\", NULL};")
+        gen.write(
+            "if (!PyArg_ParseTupleAndKeywords(args, kwargs, \"O\", kwlist, &py_parent)) {"
+        )
+        gen.indent()
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
 
-    gen.write("int length = 0;")
-    gen.write(f"{helper_symbol}(parent_handle, &length);")
-    gen.write("Py_DECREF(parent_sequence);")
+        extract_parent_handle(gen, "parent")
+
+        gen.write("int length = 0;")
+        gen.write(f"{helper_symbol}(parent_handle, &length);")
+        gen.write("Py_DECREF(parent_sequence);")
+    else:
+        gen.write("if (args && PyTuple_Size(args) != 0) {")
+        gen.indent()
+        gen.write("PyErr_SetString(PyExc_TypeError, \"Module-level array length does not take arguments\");")
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+
+        gen.write("int length = 0;")
+        gen.write(f"{helper_symbol}(&length);")
     gen.write("return PyLong_FromLong((long)length);")
     gen.dedent()
     gen.write("}")

@@ -1191,6 +1191,10 @@ return %(el_name)s"""
             self.write()
 
     def write_sc_array_wrapper(self, node, el, dims, properties):
+        # For module-level arrays, we do not pass a handle to the Fortran
+        # subroutine (issue #306: sizeof_fortran_t may differ between
+        # generation and runtime environments).
+        is_module_array = isinstance(node, ft.Module)
         dct = dict(
             orig_name=el.orig_name,
             el_name=el.name,
@@ -1204,12 +1208,10 @@ return %(el_name)s"""
             selfdot="self.",
             selfcomma="self, ",
             doc=self._format_doc_string(el),
-            handle=isinstance(node, ft.Type)
-            and "self._handle"
-            or "f90wrap.runtime.empty_handle",
+            handle="self._handle" if not is_module_array else "",
         )
 
-        if not isinstance(node, ft.Module) or not self.make_package:
+        if not is_module_array or not self.make_package:
             self.write("@property")
             properties.append(el)
         else:
@@ -1222,7 +1224,7 @@ return %(el_name)s"""
         self.write("def %(el_name_get)s(%(self)s):" % dct)
         self.indent()
         self.write(self._format_doc_string(el))
-        if isinstance(node, ft.Module) and self.make_package:
+        if is_module_array and self.make_package:
             self.write("global %(el_name)s" % dct)
             node.array_initialisers.append(dct["el_name_get"])
 
@@ -1230,8 +1232,28 @@ return %(el_name)s"""
             "%(prefix)s%(scope_name)s__array__%(el_name)s" % dct
         )
 
-        self.write(
-            """array_ndim, array_type, array_shape, array_handle = \
+        if is_module_array:
+            # Module-level arrays: call without handle argument
+            self.write(
+                """array_ndim, array_type, array_shape, array_handle = \
+    %(mod_name)s.%(subroutine_name)s()
+if array_handle == 0:
+    %(el_name)s = None
+else:
+    array_shape = array_shape[:array_ndim].copy()
+    array_hash = hash((array_ndim, array_type, tuple(array_shape), array_handle))
+    if array_hash in %(selfdot)s_arrays:
+        %(el_name)s = %(selfdot)s_arrays[array_hash]
+    else:
+        %(el_name)s = f90wrap.runtime.direct_c_array(array_type, array_shape, array_handle)
+        %(selfdot)s_arrays[array_hash] = %(el_name)s
+return %(el_name)s"""
+                % dct
+            )
+        else:
+            # Type member arrays: pass handle argument
+            self.write(
+                """array_ndim, array_type, array_shape, array_handle = \
     %(mod_name)s.%(subroutine_name)s(%(handle)s)
 array_hash = hash((array_ndim, array_type, tuple(array_shape), array_handle))
 %(el_name)s = %(selfdot)s_arrays.get(array_hash)
@@ -1249,8 +1271,8 @@ if %(el_name)s is None:
         %(el_name)s = f90wrap.runtime.direct_c_array(array_type, array_shape, array_handle)
     %(selfdot)s_arrays[array_hash] = %(el_name)s
 return %(el_name)s"""
-            % dct
-        )
+                % dct
+            )
         self.dedent()
         self.write()
         if not isinstance(node, ft.Module) or not self.make_package:
@@ -1311,7 +1333,8 @@ return %(el_name)s"""
             cls_mod_name=normalise_class_name(cls_mod_name, self.class_names) + ".",
         )
 
-        if isinstance(node, ft.Module):
+        is_module_array = isinstance(node, ft.Module)
+        if is_module_array:
             dct["parent"] = "f90wrap.runtime.empty_type"
             if self.make_package:
                 dct["selfdot"] = ""
@@ -1326,7 +1349,7 @@ return %(el_name)s"""
 
         self.write("def %(func_name)s(%(self)s):" % dct)
         self.indent()
-        if isinstance(node, ft.Module) and self.make_package:
+        if is_module_array and self.make_package:
             self.write("global %(el_name)s" % dct)
 
         dct["getitem_name"] = shorten_long_name(
@@ -1338,6 +1361,8 @@ return %(el_name)s"""
         dct["len_name"] = shorten_long_name(
             "%(prefix)s%(scope_name)s__array_len__%(el_name)s" % dct
         )
+        # Module-level arrays do not pass handle to Fortran functions (issue #306)
+        dct["module_level"] = "True" if is_module_array else "False"
 
         # Polymorphic object (class) without assignment method cannot not have setitem
         if el.type.startswith("class") and "has_assignment" not in self.types[ft.strip_type(el.type)].attributes:
@@ -1346,7 +1371,8 @@ return %(el_name)s"""
                                     %(f90_mod_name)s.%(getitem_name)s,
                                     None,
                                     %(f90_mod_name)s.%(len_name)s,
-                                    %(doc)s, %(cls_mod_name)s%(cls_name)s)"""
+                                    %(doc)s, %(cls_mod_name)s%(cls_name)s,
+                                    module_level=%(module_level)s)"""
                 % dct
             )
         else:
@@ -1355,7 +1381,8 @@ return %(el_name)s"""
                                     %(f90_mod_name)s.%(getitem_name)s,
                                     %(f90_mod_name)s.%(setitem_name)s,
                                     %(f90_mod_name)s.%(len_name)s,
-                                    %(doc)s, %(cls_mod_name)s%(cls_name)s)"""
+                                    %(doc)s, %(cls_mod_name)s%(cls_name)s,
+                                    module_level=%(module_level)s)"""
                 % dct
             )
         self.write("return %(selfdot)s%(el_name)s" % dct)

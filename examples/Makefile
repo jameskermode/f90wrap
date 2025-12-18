@@ -42,6 +42,7 @@ EXAMPLES = arrayderivedtypes \
 	issue235_allocatable_classes \
 	issue297_ignored_abstract_classes \
 	issue305_multiple_abstract_interfaces \
+	issue306_allocatable_realloc \
 	auto_raise_error \
 	dump_package \
 	method_optional \
