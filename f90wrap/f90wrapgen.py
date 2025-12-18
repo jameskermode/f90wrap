@@ -884,8 +884,7 @@ end type %(typename)s%(suffix)s"""
             self.write_type_or_class_lines(t.orig_name)
             self.write("integer(c_int), intent(in) :: this(%d)" % sizeof_fortran_t)
             self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
-        else:
-            self.write("integer(c_int), intent(in) :: dummy_this(%d)" % sizeof_fortran_t)
+        # Module-level arrays do not need dummy_this declaration (issue #306)
 
         self.write("integer(c_int), intent(out) :: nd")
         self.write("integer(c_int), intent(out) :: dtype")
@@ -1069,7 +1068,7 @@ end type %(typename)s%(suffix)s"""
         self.write_type_or_class_lines(el.type, same_type, pointer=True)
 
         if this is not None:
-            self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
+            self.write("integer(c_int), intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             array_name = self._get_type_member_array_name(t, el.name)
@@ -1205,7 +1204,7 @@ end type %(typename)s%(suffix)s"""
         self.write_type_or_class_lines(el.type, same_type)
         self.write("integer, intent(out) :: %s" % (safe_n))
         if this is not None:
-            self.write("integer, intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
+            self.write("integer(c_int), intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
             self.write("type(%s_ptr_type) :: this_ptr" % t.name)
             self.write()
