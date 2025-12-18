@@ -127,8 +127,9 @@ def prepare_output_array(gen: DirectCGenerator, arg: ft.Argument) -> None:
     dims_array = f"{arg.name}_dims"
     gen.write(f"npy_intp {dims_array}[{len(dim_vars)}] = {{{', '.join(dim_vars)}}};")
     numpy_type = numpy_type_from_fortran(arg.type, gen.kind_map)
+    # Use PyArray_EMPTY with fortran=1 for Fortran-contiguous (column-major) layout
     gen.write(
-        f"py_{arg.name}_arr = PyArray_SimpleNew({len(dim_vars)}, {dims_array}, {numpy_type});"
+        f"py_{arg.name}_arr = PyArray_EMPTY({len(dim_vars)}, {dims_array}, {numpy_type}, 1);"
     )
     gen.write(f"if (py_{arg.name}_arr == NULL) {{")
     gen.indent()

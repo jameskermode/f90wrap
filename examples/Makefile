@@ -73,7 +73,6 @@ DIRECTC ?= no
 # Examples with known Direct-C limitations (expected to fail in DIRECTC=yes mode)
 # These are NOT skipped - they run and failures are allowed only in Direct-C mode
 DIRECTC_EXPECTED_FAILURES = \
-    issue261_array_shapes \
     keep_single_interface
 
 all: test
