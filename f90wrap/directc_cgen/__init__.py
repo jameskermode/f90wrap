@@ -682,10 +682,8 @@ class DirectCGenerator(cg.CodeGenerator):
                 for binding in all_bindings:
                     if binding.type not in ("procedure", "final"):
                         continue
-                    # Skip deferred bindings - they have no implementation
-                    binding_attrs = getattr(binding, "attributes", [])
-                    if "deferred" in binding_attrs:
-                        continue
+                    # Note: deferred bindings ARE wrapped - the Fortran wrapper uses
+                    # runtime polymorphism to dispatch to the correct implementation
                     targets = getattr(binding, "procedures", [])
                     if not targets:
                         continue
