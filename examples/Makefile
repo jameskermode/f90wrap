@@ -51,6 +51,7 @@ EXAMPLES = \
 	optional_string \
 	output_kind \
 	passbyreference \
+	recursive_type \
 	recursive_type_array \
 	relative_import \
 	remove_pointer_arg \
@@ -65,10 +66,9 @@ EXAMPLES = \
 	type_check
 
 # TODO: Fix these failing examples
-#    callback_print_function_issue93 \  # undefined symbol: pyfunc_print_
+#    callback_print_function_issue93 \  # TypeError on Python 3.10 (callback issue)
 #    f2py_string_input \                # undefined symbol: string_in_array_ (linking issue)
 #    issue299_directc_nested_functions \# types.py shadows stdlib types module
-#    recursive_type \                   # Error: Derived type 'node' at (1) has not been declared
 
 DIRECTC ?= no
 
