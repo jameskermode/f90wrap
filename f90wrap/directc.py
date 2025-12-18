@@ -138,6 +138,17 @@ def analyse_interop(tree: ft.Root, kind_map: Dict[str, Dict[str, str]]) -> Dict[
 
     for module in modules_iter:
         record(getattr(module, 'procedures', []))
+
+        # Also record procedures inside interfaces (for --keep-single-interface)
+        interfaces_attr = getattr(module, 'interfaces', [])
+        if interfaces_attr is not None:
+            try:
+                interfaces_iter = list(interfaces_attr)
+            except TypeError:
+                interfaces_iter = []
+            for iface in interfaces_iter:
+                record(getattr(iface, 'procedures', []))
+
         types_attr = getattr(module, 'types', [])
         if types_attr is None:
             types_iter = []

@@ -70,11 +70,6 @@ EXAMPLES = \
 
 DIRECTC ?= no
 
-# Examples with known Direct-C limitations (expected to fail in DIRECTC=yes mode)
-# These are NOT skipped - they run and failures are allowed only in Direct-C mode
-DIRECTC_EXPECTED_FAILURES = \
-    keep_single_interface
-
 all: test
 
 test:
@@ -113,7 +108,6 @@ clean_directc:
 
 test_meson:
 	@FAILED="" ; \
-	EXPECTED_FAILED="" ; \
 	for example in ${EXAMPLES}; do \
 	  echo "" ; \
 	  echo "# ---------------------------------------------------" ; \
@@ -121,29 +115,18 @@ test_meson:
 	  if make -C $$example -f Makefile.meson PYTHON=$(PYTHON) DIRECTC=$(DIRECTC) test; then \
 	    echo "PASS: $$example" ; \
 	  else \
-	    IS_EXPECTED=no ; \
-	    if [ "$(DIRECTC)" = "yes" ] && echo " ${DIRECTC_EXPECTED_FAILURES} " | grep -q " $$example "; then \
-	      IS_EXPECTED=yes ; \
-	      echo "EXPECTED FAIL (Direct-C limitation): $$example" ; \
-	      EXPECTED_FAILED="$$EXPECTED_FAILED $$example" ; \
-	    fi ; \
-	    if [ "$$IS_EXPECTED" = "no" ]; then \
-	      echo "FAIL: $$example" ; \
-	      FAILED="$$FAILED $$example" ; \
-	    fi ; \
+	    echo "FAIL: $$example" ; \
+	    FAILED="$$FAILED $$example" ; \
 	  fi ; \
 	done ; \
 	echo "" ; \
 	echo "========================================" ; \
-	if [ -n "$$EXPECTED_FAILED" ]; then \
-	  echo "Expected failures:$$EXPECTED_FAILED" ; \
-	fi ; \
 	if [ -n "$$FAILED" ]; then \
-	  echo "UNEXPECTED FAILURES:$$FAILED" ; \
+	  echo "FAILURES:$$FAILED" ; \
 	  echo "========================================" ; \
 	  exit 1 ; \
 	else \
-	  echo "All tests passed (or expected failures only)" ; \
+	  echo "All tests passed" ; \
 	  echo "========================================" ; \
 	fi
 
