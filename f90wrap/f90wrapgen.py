@@ -398,6 +398,8 @@ end type %(typename)s%(suffix)s"""
         Takes care of argument attributes, and opaque references for derived
         types, as well as f2py-specific lines.
         """
+        direct_c_integer_scalars = []
+
         for arg in node.arguments:
             if "callback" in arg.attributes:
                 return "external " + arg.name
@@ -435,6 +437,15 @@ end type %(typename)s%(suffix)s"""
             arg_dict["arg_attribs"] = ", ".join(attributes)
             arg_dict["comma"] = len(attributes) != 0 and ", " or ""
 
+            if self.direct_c_interop:
+                arg_type = str(arg_dict["arg_type"]).strip().lower()
+                is_integer_scalar = arg_type == "integer" and not any(
+                    str(attr).startswith("dimension(") for attr in getattr(arg, "attributes", [])
+                )
+                if is_integer_scalar and "optional" not in arg.attributes:
+                    arg_dict["arg_type"] = "integer(c_int)"
+                    direct_c_integer_scalars.append(arg.name)
+
             # character array definition
             # https://github.com/numpy/numpy/issues/18684
             if arg.type == "character(*)":
@@ -450,6 +461,10 @@ end type %(typename)s%(suffix)s"""
                 # No f2py instruction and no explicit intent : force f2py to make the argument intent(inout)
                 # This is put as an option to prserve backwards compatibility
                 self.write("!f2py intent(inout) " + arg.name)
+
+        if direct_c_integer_scalars:
+            for name in direct_c_integer_scalars:
+                self.write(f"integer :: {self.prefix}{name}_default")
 
         # For allocatable class returns, declare temporary variable for move_alloc
         orig_node = getattr(node, 'orig_node', node)
@@ -559,6 +574,13 @@ end type %(typename)s%(suffix)s"""
             if helper_forward:
                 return arg.name
             name = arg.name
+            if self.direct_c_interop:
+                arg_type = str(getattr(arg, "type", "")).strip().lower()
+                is_integer_scalar = arg_type == "integer" and not any(
+                    str(attr).startswith("dimension(") for attr in getattr(arg, "attributes", [])
+                )
+                if is_integer_scalar and "optional" not in getattr(arg, "attributes", []):
+                    return f"{self.prefix}{arg.name}_default"
             if (hasattr(node, "transfer_in") and arg.name in node.transfer_in) or (
                 hasattr(node, "transfer_out") and arg.name in node.transfer_out
             ):
@@ -604,13 +626,41 @@ end type %(typename)s%(suffix)s"""
             else:
                 func_name = "%s%%p%%%s" % (call_name, bound_name)
 
-        if (
-            self._err_num_var is not None and self._err_msg_var is not None
-            and f"{self._err_num_var}={self._err_num_var}" in arg_names
-            and f"{self._err_msg_var}={self._err_msg_var}" in arg_names
-        ):
-            self.write(f"{self._err_num_var}=0")
-            self.write(f"{self._err_msg_var}=''")
+        has_err_vars = False
+        if self._err_num_var is not None and self._err_msg_var is not None:
+            dummy_names = [
+                dummy_arg_name(arg)
+                for arg in arg_node.arguments
+                if "intent(hide)" not in arg.attributes
+            ]
+            has_err_vars = (
+                self._err_num_var in dummy_names and self._err_msg_var in dummy_names
+            )
+            if has_err_vars:
+                self.write(f"{self._err_num_var}=0")
+                self.write(f"{self._err_msg_var}=''")
+
+        direct_c_integer_scalars = []
+        if self.direct_c_interop:
+            for arg in arg_node.arguments:
+                arg_type = str(getattr(arg, "type", "")).strip().lower()
+                is_integer_scalar = arg_type == "integer" and not any(
+                    str(attr).startswith("dimension(") for attr in getattr(arg, "attributes", [])
+                )
+                if is_integer_scalar and "optional" not in getattr(arg, "attributes", []):
+                    direct_c_integer_scalars.append(arg)
+
+        for arg in direct_c_integer_scalars:
+            intent = "inout"
+            attrs = getattr(arg, "attributes", [])
+            if any(str(a).startswith("intent(in)") for a in attrs):
+                intent = "in"
+            if any(str(a).startswith("intent(out)") for a in attrs):
+                intent = "out"
+            if any(str(a).startswith("intent(inout)") for a in attrs):
+                intent = "inout"
+            if intent in {"in", "inout"}:
+                self.write(f"{self.prefix}{arg.name}_default = {arg.name}")
 
         if isinstance(orig_node, ft.Function):
             # For allocatable returns, use move_alloc or allocate+assign appropriately
@@ -680,11 +730,19 @@ end type %(typename)s%(suffix)s"""
                     % {"sub_name": func_name, "arg_names": ", ".join(arg_names)}
                 )
 
-        if (
-            self._err_num_var is not None and self._err_msg_var is not None
-            and f"{self._err_num_var}={self._err_num_var}" in arg_names
-            and f"{self._err_msg_var}={self._err_msg_var}" in arg_names
-        ):
+        for arg in direct_c_integer_scalars:
+            intent = "inout"
+            attrs = getattr(arg, "attributes", [])
+            if any(str(a).startswith("intent(in)") for a in attrs):
+                intent = "in"
+            if any(str(a).startswith("intent(out)") for a in attrs):
+                intent = "out"
+            if any(str(a).startswith("intent(inout)") for a in attrs):
+                intent = "inout"
+            if intent in {"out", "inout"}:
+                self.write(f"{arg.name} = {self.prefix}{arg.name}_default")
+
+        if has_err_vars:
             self.write(f"if ({self._err_num_var}.ne.0) then")
             self.indent()
             self.write(f"call {self.abort_func}({self._err_msg_var})")
@@ -765,8 +823,20 @@ end type %(typename)s%(suffix)s"""
         self.write("subroutine %s%s" % (sub_name, arg_names))
         self.indent()
         self.write_uses_lines(node)
-        # Add iso_c_binding when we have derived type arguments (handle arrays use c_int)
-        if node.transfer_in or node.transfer_out:
+
+        needs_c_int = False
+        if self.direct_c_interop:
+            for arg in node.arguments:
+                arg_type = str(getattr(arg, "type", "")).strip().lower()
+                is_integer_scalar = arg_type == "integer" and not any(
+                    str(attr).startswith("dimension(") for attr in getattr(arg, "attributes", [])
+                )
+                if is_integer_scalar:
+                    needs_c_int = True
+                    break
+
+        # Add iso_c_binding when we emit c_int declarations (handles and integer scalars).
+        if node.transfer_in or node.transfer_out or needs_c_int:
             self.write("use, intrinsic :: iso_c_binding, only: c_int")
         self.write("implicit none")
 
@@ -1201,7 +1271,7 @@ end type %(typename)s%(suffix)s"""
         if isinstance(t, ft.Type):
             self.write_type_or_class_lines(t.name)
         self.write_type_or_class_lines(el.type, same_type)
-        self.write("integer, intent(out) :: %s" % (safe_n))
+        self.write("integer(c_int), intent(out) :: %s" % (safe_n))
         if this is not None:
             self.write("integer(c_int), intent(in) :: %s(%d)" % (this, sizeof_fortran_t))
         if isinstance(t, ft.Type):
