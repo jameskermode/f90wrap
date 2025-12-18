@@ -37,6 +37,7 @@ list(APPEND tests
     issue301_complex_types
     issue302_pointer_warning
     issue305_multiple_abstract_interfaces
+    issue306_allocatable_realloc
     issue307_logical_array
     issue32
     issue41_abstract_classes
