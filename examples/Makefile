@@ -73,27 +73,8 @@ DIRECTC ?= no
 # Examples with known Direct-C limitations (expected to fail in DIRECTC=yes mode)
 # These are NOT skipped - they run and failures are allowed only in Direct-C mode
 DIRECTC_EXPECTED_FAILURES = \
-    arrays \
-    arrays_in_derived_types_issue50 \
-    default_i8 \
-    derivedtypes \
-    derivedtypes_procedure \
-    dump_package \
-    fixed_1D_derived_type_array_argument \
-    fortran_oo \
-    issue235_allocatable_classes \
     issue261_array_shapes \
-    issue301_complex_types \
-    issue302_pointer_warning \
-    issue306_allocatable_realloc \
-    issue41_abstract_classes \
-    keep_single_interface \
-    keyword_renaming_issue160 \
-    long_subroutine_name \
-    method_optional \
-    mockderivetype \
-    strings \
-    callback_print_function_issue93
+    keep_single_interface
 
 all: test
 
