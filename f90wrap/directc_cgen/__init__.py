@@ -357,6 +357,8 @@ class DirectCGenerator(cg.CodeGenerator):
         self.write("#include <complex.h>")
         self.write("")
         self.write("#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION")
+        self.write("/* Use same array API symbol as numpy f2py for fortranobject.c compatibility */")
+        self.write("#define PY_ARRAY_UNIQUE_SYMBOL _npy_f2py_ARRAY_API")
         self.write("#include <numpy/arrayobject.h>")
         self.write("")
         self.write("#define F90WRAP_F_SYMBOL(name) name##_")

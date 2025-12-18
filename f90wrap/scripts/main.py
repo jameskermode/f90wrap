@@ -490,6 +490,16 @@ USAGE
                 if len(parts) == 2:
                     error_num_arg, error_msg_arg = parts
 
+            # C file basename from --mod-name (e.g., "lib" -> "_lib.c")
+            c_file_basename = f"_{mod_name}"
+
+            # PyInit function name from --f90-mod-name if provided
+            # f90_mod_name may be like "package._module" - extract the last component
+            if f90_mod_name and f90_mod_name != f"_{mod_name}":
+                init_module_name = f90_mod_name.split('.')[-1]
+            else:
+                init_module_name = c_file_basename
+
             generator = DirectCGenerator(
                 root=f90_tree,
                 interop_info=interop_info,
@@ -500,11 +510,8 @@ USAGE
                 error_msg_arg=error_msg_arg,
                 callbacks=callback,
                 shape_hints=shape_hints,
-                py_module_name=mod_name
+                py_module_name=init_module_name.lstrip('_')
             )
-
-            # Use Python module name for C extension (with _ prefix)
-            extension_basename = f"_{mod_name}"
 
             # Collect all procedures for Direct-C code generation
             # Procedures can be in multiple places after transformation:
@@ -528,10 +535,10 @@ USAGE
             # Top-level procedures
             all_procs.extend(getattr(f90_tree, 'procedures', []))
 
-            c_code = generator.generate_module(extension_basename, procedures=all_procs)
+            c_code = generator.generate_module(init_module_name, procedures=all_procs)
 
             if c_code:
-                c_filename = f"{extension_basename}.c"
+                c_filename = f"{c_file_basename}.c"
                 with open(c_filename, 'w') as c_file:
                     c_file.write(c_code)
                 logger.info(f"Generated {c_filename}")
