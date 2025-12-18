@@ -30,6 +30,7 @@ Created on Tue Jan 25 2018
 from __future__ import print_function
 
 import unittest
+import sys
 
 import numpy as np
 
@@ -41,6 +42,8 @@ class TestExample(unittest.TestCase):
 
         pass
 
+    @unittest.skipIf(sys.version_info[:2] == (3, 10),
+                     "f2py callback issue on Python 3.10")
     def test_basic(self):
         print(CBF._CBF.cback.write_message.__doc__)
         def f(msg): 
