@@ -884,8 +884,6 @@ end type %(typename)s%(suffix)s"""
             self.write_type_or_class_lines(t.orig_name)
             self.write("integer(c_int), intent(in) :: this(%d)" % sizeof_fortran_t)
             self.write("type(%s_ptr_type) :: this_ptr" % t.orig_name)
-        else:
-            self.write("integer(c_int), intent(in) :: dummy_this(%d)" % sizeof_fortran_t)
 
         self.write("integer(c_int), intent(out) :: nd")
         self.write("integer(c_int), intent(out) :: dtype")
