@@ -259,8 +259,8 @@ class DirectCGenerator(cg.CodeGenerator):
         if type_obj is None:
             return False
 
-        has_assignment = getattr(type_obj, "has_assignment", False)
-        return not has_assignment
+        attributes = getattr(type_obj, "attributes", [])
+        return "has_assignment" not in attributes
 
     def _collect_type_elements(self, module: ft.Module, derived: ft.Type) -> List[ModuleHelper]:
         """Collect helpers for derived type elements."""
@@ -280,17 +280,9 @@ class DirectCGenerator(cg.CodeGenerator):
 
         for element in derived_elements:
             is_array = any(attr.startswith("dimension(") for attr in element.attributes)
-            is_pointer = "pointer" in element.attributes
             is_parameter = any(attr.startswith("parameter") for attr in element.attributes)
             element_type = element.type.strip().lower()
             is_derived = element_type.startswith("type(") or element_type.startswith("class(")
-
-            # Pointer arrays are not supported in direct-c mode
-            if is_pointer and is_array:
-                print(f"f90wrap: skipping {derived.name}.{element.name} "
-                      "(pointer arrays not supported in direct-c mode)",
-                      file=sys.stderr)
-                continue
 
             if not is_array:
                 if is_derived:
