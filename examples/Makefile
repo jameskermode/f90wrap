@@ -6,7 +6,6 @@ EXAMPLES = \
 	arrays_fixed \
 	arrays_in_derived_types_issue50 \
 	auto_raise_error \
-	callback_print_function_issue93 \
 	class_names \
 	cylinder \
 	decoded_strings \
@@ -20,7 +19,6 @@ EXAMPLES = \
 	errorbinding \
 	example2 \
 	extends \
-	f2py_string_input \
 	fixed_1D_derived_type_array_argument \
 	fortran_oo \
 	intent_out_size \
@@ -33,14 +31,12 @@ EXAMPLES = \
 	issue258_derived_type_attributes \
 	issue261_array_shapes \
 	issue297_ignored_abstract_classes \
-	issue299_directc_nested_functions \
 	issue301_complex_types \
 	issue302_pointer_warning \
 	issue305_multiple_abstract_interfaces \
 	issue306_allocatable_realloc \
 	issue307_logical_array \
 	issue32 \
-	issue41_abstract_classes \
 	keep_single_interface \
 	keyword_renaming_issue160 \
 	kind_map_default \
@@ -54,7 +50,6 @@ EXAMPLES = \
 	optional_string \
 	output_kind \
 	passbyreference \
-	recursive_type \
 	recursive_type_array \
 	relative_import \
 	remove_pointer_arg \
