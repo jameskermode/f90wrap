@@ -7,7 +7,7 @@ SRC_AR = libsrc.a
 
 all: main.o
 	$(F90WRAP) -m itest -P main.f90 -v
-	ar rcs ${SRC_AR} main.o myclass_base.o
+	ar rcs ${SRC_AR} main.o
 	f2py-f90wrap $(F2PYFLAGS) -c -m _itest f90wrap_main.f90 -L. -lsrc
 
 test: all
