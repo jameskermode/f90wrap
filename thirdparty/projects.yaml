@@ -24,12 +24,13 @@ projects:
     timeout: 1200
 
   - repo: itpplasma/SIMPLE
-    branch: v1.5.1
+    branch: main
     description: Symplectic Integration for Particle Loss (uses f90wrap via cmake)
     build_cmd: pip install . --no-build-isolation
     import_test: "import pysimple"
     enabled: true
     timeout: 1200
+    notes: main @ 42c15911a9c8b0d55b29c1f63a48f7ddfb1d8eb3
 
   # Smoke test: exercises f90wrap on inline selected_kind usage (issue #353).
   - repo: ecmwf-ifs/loki
