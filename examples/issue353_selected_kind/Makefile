@@ -9,6 +9,5 @@ test: all
 	$(PYTHON) run.py
 
 clean:
-	rm -f f90wrap*.f90 .f2py_f2cmap
+	rm -f f90wrap*.f90 .f2py_f2cmap mod.py
 	rm -rf __pycache__/ build/ _build_dir/
-
