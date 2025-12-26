@@ -56,3 +56,30 @@ jobs:
       run: |
         cd examples
         make test_directc
+
+  thirdparty:
+    name: Third-party smoke tests
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.13'
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y gfortran
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install meson ninja pyyaml pytest
+        python -m pip install numpy
+    - name: Install f90wrap (from this PR)
+      run: |
+        python -m pip install . --no-build-isolation
+    - name: Run third-party checks
+      run: |
+        python thirdparty/test_project.py --verbose

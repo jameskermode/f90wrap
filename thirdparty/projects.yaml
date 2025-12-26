@@ -1,0 +1,27 @@
+# Third-party projects for f90wrap integration smoke tests.
+#
+# Notes:
+# - Do not vendor third-party code in this repository.
+# - The runner clones repos on demand and runs build/import/test commands.
+#
+# Keys:
+#   repo: GitHub repository (owner/name)
+#   branch: Branch to clone (optional, default: default branch)
+#   build_cmd: Command to build/install the project (optional)
+#   import_test: Python statement to import the built module/package (optional)
+#   test_cmd: Command to run tests (optional)
+#   enabled: false to skip by default (optional)
+#   timeout: seconds (optional)
+#   notes: free-form notes (optional)
+
+projects:
+  # Smoke test: exercises f90wrap on inline selected_kind usage (issue #353).
+  - repo: ecmwf-ifs/loki
+    description: Fortran source-to-source translation (JIT uses f90wrap)
+    build_cmd: pip install . --no-build-isolation
+    import_test: "import loki"
+    test_cmd: pytest -q loki/jit_build/tests/test_build.py::test_build_object
+    enabled: true
+    timeout: 900
+    notes: Expected to fail on some f90wrap versions; keep as smoke test
+
