@@ -15,6 +15,22 @@
 #   notes: free-form notes (optional)
 
 projects:
+  - repo: gvec-group/gvec
+    branch: v1.3.0
+    description: 3D MHD equilibrium solver (builds with f90wrap)
+    build_cmd: pip install . --no-build-isolation
+    import_test: "from gvec.lib import modgvec_py_state"
+    enabled: true
+    timeout: 1200
+
+  - repo: itpplasma/SIMPLE
+    branch: v1.5.1
+    description: Symplectic Integration for Particle Loss (uses f90wrap via cmake)
+    build_cmd: pip install . --no-build-isolation
+    import_test: "import pysimple"
+    enabled: true
+    timeout: 1200
+
   # Smoke test: exercises f90wrap on inline selected_kind usage (issue #353).
   - repo: ecmwf-ifs/loki
     description: Fortran source-to-source translation (JIT uses f90wrap)
@@ -24,4 +40,3 @@ projects:
     enabled: true
     timeout: 900
     notes: Expected to fail on some f90wrap versions; keep as smoke test
-
