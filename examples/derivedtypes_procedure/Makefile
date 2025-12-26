@@ -1,16 +1,16 @@
 include ../make.inc
 all: test
 
-%.o : %.f90
-	${F90} ${F90FLAGS} -c $< -o $@
+.PHONY: build test clean
 
 library.o: library.f90
+	${F90} ${F90FLAGS} -c $< -o $@
 
-tests.py: library.o
+build: library.o
 	python -m f90wrap -m library library.f90 -v
-	python -m f90wrap --f2py-f90wrap $(F2PYFLAGS) -c -m _library f90wrap_*.f90 library.o
+	python -m f90wrap --f2py-f90wrap $(F2PYFLAGS) -c -m _library f90wrap_*.f90 --link-objects library.o
 
-test: tests.py
+test: build
 	$(PYTHON) tests.py
 
 clean:
