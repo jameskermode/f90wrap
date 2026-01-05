@@ -29,8 +29,9 @@ projects:
     description: Symplectic Integration for Particle Loss (uses f90wrap via cmake)
     build_cmd: pip install . --no-build-isolation
     import_test: "import pysimple"
-    enabled: true
+    enabled: false
     timeout: 1200
+    notes: "Disabled: upstream pyproject.toml has invalid 'package-data' key"
 
   - repo: ExeQuantCode/RAFFLE
     description: Material interface structure prediction (uses f90wrap)
