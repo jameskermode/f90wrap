@@ -222,7 +222,16 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         all_uses = {}
         node_module = getattr(node, "mod_name", None)
         if node_module:
-            self._add_extra_use(all_uses, node_module, None)
+            # For procedures, use selective import to avoid name conflicts
+            # with module-level variables (issue #357)
+            call_name = getattr(node, "call_name", None) or getattr(node, "orig_name", None)
+            if call_name:
+                # Import only the procedure, avoiding blanket module import
+                # that could bring in conflicting module-level variables
+                self._add_extra_use(all_uses, node_module, call_name)
+            else:
+                # Fallback to full import if no call_name (e.g., for types)
+                self._add_extra_use(all_uses, node_module, None)
         if hasattr(node, "uses"):
             for use in node.uses:
                 if isinstance(use, str):

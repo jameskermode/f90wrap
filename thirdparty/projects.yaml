@@ -46,6 +46,5 @@ projects:
     import_test: "import loki"
     test_cmd: pytest -q loki/jit_build/tests/test_build.py::test_build_object
     enabled: true
-    expected_fail: true
     timeout: 900
-    notes: "Test fails due to issue #357 (module variable/argument name conflict)"
+    notes: "JIT build tests f90wrap wrapper generation"

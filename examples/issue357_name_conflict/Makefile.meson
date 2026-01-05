@@ -1,0 +1,9 @@
+include ../make.meson.inc
+
+NAME     := base
+LIBSRC_WRAP_FPP_FILES := base.f90
+
+test: build
+	$(PYTHON) run.py
+
+.PHONY: test
