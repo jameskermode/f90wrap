@@ -71,7 +71,10 @@ def _clone(repo: str, dest: Path, branch: str) -> None:
 def _run_import(import_stmt: str) -> tuple[bool, str]:
     cmd = f'python -c "{import_stmt}"'
     try:
-        proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
+        # Run from /tmp to avoid importing local f90wrap source instead of installed package
+        proc = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=60, cwd="/tmp"
+        )
     except Exception as e:
         return False, str(e)
     out = (proc.stdout or "") + (proc.stderr or "")
