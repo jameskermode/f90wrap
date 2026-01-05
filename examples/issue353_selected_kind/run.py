@@ -1,6 +1,13 @@
 from pathlib import Path
+import glob
 
-wrapper = Path("f90wrap_toplevel.f90").read_text(encoding="utf-8")
+wrapper_files = glob.glob("f90wrap_*.f90")
+if not wrapper_files:
+    raise SystemExit("No f90wrap_*.f90 files found")
+
+wrapper = ""
+for f in wrapper_files:
+    wrapper += Path(f).read_text(encoding="utf-8")
 
 expected = [
     "integer(selected_int_kind(9)), intent(out) :: i",
