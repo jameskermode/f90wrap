@@ -519,21 +519,23 @@ USAGE
             # 2. module.interfaces[].procedures (generic interface procedures)
             # 3. type.procedures (type-bound procedures)
             # 4. tree.procedures (top-level procedures)
+            # Note: Prototype objects (interface declarations) are filtered out as they
+            # lack the attributes/arguments needed for code generation.
             all_procs = []
             for module in f90_tree.modules:
                 # Module-level procedures
-                all_procs.extend(module.procedures)
+                all_procs.extend(p for p in module.procedures if not isinstance(p, fortran.Prototype))
 
                 # Generic interface procedures (including module procedures wrapped in interfaces)
                 for iface in getattr(module, 'interfaces', []):
-                    all_procs.extend(getattr(iface, 'procedures', []))
+                    all_procs.extend(p for p in getattr(iface, 'procedures', []) if not isinstance(p, fortran.Prototype))
 
                 # Type-bound procedures
                 for derived in getattr(module, 'types', []):
-                    all_procs.extend(getattr(derived, 'procedures', []))
+                    all_procs.extend(p for p in getattr(derived, 'procedures', []) if not isinstance(p, fortran.Prototype))
 
             # Top-level procedures
-            all_procs.extend(getattr(f90_tree, 'procedures', []))
+            all_procs.extend(p for p in getattr(f90_tree, 'procedures', []) if not isinstance(p, fortran.Prototype))
 
             c_code = generator.generate_module(init_module_name, procedures=all_procs)
 
