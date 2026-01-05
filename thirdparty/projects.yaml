@@ -16,30 +16,12 @@
 #   notes: free-form notes (optional)
 
 projects:
-  - repo: gvec-group/gvec
-    branch: v1.3.0
-    description: 3D MHD equilibrium solver (builds with f90wrap)
-    build_cmd: pip install . --no-build-isolation
-    import_test: "from gvec.lib import modgvec_py_state"
-    enabled: true
-    timeout: 1200
-
-  - repo: itpplasma/SIMPLE
-    branch: main
-    description: Symplectic Integration for Particle Loss (uses f90wrap via cmake)
-    build_cmd: pip install . --no-build-isolation
-    import_test: "import pysimple"
-    enabled: false
-    timeout: 1200
-    notes: "Disabled: upstream pyproject.toml has invalid 'package-data' key"
-
   - repo: ExeQuantCode/RAFFLE
     description: Material interface structure prediction (uses f90wrap)
     build_cmd: pip install . --no-build-isolation
     import_test: "from raffle import _raffle"
     enabled: true
     timeout: 600
-    notes: Materials science application
 
   - repo: ecmwf-ifs/loki
     description: Fortran source-to-source translation (JIT uses f90wrap)
