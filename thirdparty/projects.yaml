@@ -11,6 +11,7 @@
 #   import_test: Python statement to import the built module/package (optional)
 #   test_cmd: Command to run tests (optional)
 #   enabled: false to skip by default (optional)
+#   expected_fail: true if test is known to fail (optional)
 #   timeout: seconds (optional)
 #   notes: free-form notes (optional)
 
@@ -30,14 +31,21 @@ projects:
     import_test: "import pysimple"
     enabled: true
     timeout: 1200
-    notes: main @ 42c15911a9c8b0d55b29c1f63a48f7ddfb1d8eb3
 
-  # Smoke test: exercises f90wrap on inline selected_kind usage (issue #353).
+  - repo: ExeQuantCode/RAFFLE
+    description: Material interface structure prediction (uses f90wrap)
+    build_cmd: pip install . --no-build-isolation
+    import_test: "from raffle import _raffle"
+    enabled: true
+    timeout: 600
+    notes: Materials science application
+
   - repo: ecmwf-ifs/loki
     description: Fortran source-to-source translation (JIT uses f90wrap)
     build_cmd: pip install . --no-build-isolation
     import_test: "import loki"
     test_cmd: pytest -q loki/jit_build/tests/test_build.py::test_build_object
     enabled: true
+    expected_fail: true
     timeout: 900
-    notes: Expected to fail on some f90wrap versions; keep as smoke test
+    notes: "Test fails due to issue #357 (module variable/argument name conflict)"
