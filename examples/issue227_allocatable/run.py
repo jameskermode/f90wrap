@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import unittest
 import gc
-import tracemalloc
 import re
 import os
 
@@ -27,41 +26,79 @@ class TestAllocOutput(unittest.TestCase):
 
     @unittest.skipIf(re.search("nvfortran", os.environ.get('F90', '')), "Fails with nvfortran")
     def test_memory_leak(self):
-        # Run multiple rounds to detect real memory leaks vs one-time overhead.
-        # Python's weakref.finalize uses a dict that doesn't shrink after pop(),
-        # but the memory IS reused. A real leak would show growth between rounds.
-        num_objects = 8192
+        # Test for memory leaks by verifying all finalizers are called.
+        # This directly tests the memory management rather than relying on
+        # tracemalloc which can be flaky due to Python runtime variations.
+        num_objects = 100
+        call_count = [0]
+        original_finalise = itest._itest.f90wrap_alloc_output__alloc_output_type_finalise
+
+        def counting_finalise(handle):
+            call_count[0] += 1
+            return original_finalise(handle)
+
+        try:
+            itest._itest.f90wrap_alloc_output__alloc_output_type_finalise = counting_finalise
+            gc.collect()
+            call_count[0] = 0
+
+            # Create objects
+            objs = [itest.alloc_output.alloc_output_type_func(VAL) for _ in range(num_objects)]
+            self.assertEqual(call_count[0], 0, "Finalizer called prematurely")
+
+            # Delete objects and force GC
+            del objs
+            gc.collect()
+
+            # All finalizers should have been called
+            self.assertEqual(call_count[0], num_objects,
+                f"Expected {num_objects} finalizer calls, got {call_count[0]}")
+        finally:
+            itest._itest.f90wrap_alloc_output__alloc_output_type_finalise = original_finalise
+
+    @unittest.skipIf(re.search("nvfortran", os.environ.get('F90', '')), "Fails with nvfortran")
+    @unittest.skipIf(os.name == 'nt', "resource module not available on Windows")
+    def test_memory_stability(self):
+        # Test that memory usage stabilizes over multiple rounds.
+        # A real memory leak would show continuous growth; normal behavior
+        # shows initial growth that stabilizes as allocator reuses memory.
+        import sys
+        import resource
+        num_objects = 4096
+        num_rounds = 10
 
         def run_round():
-            t = []
-            for i in range(num_objects):
-                t.append(itest.alloc_output.alloc_output_type_func(VAL))
+            t = [itest.alloc_output.alloc_output_type_func(VAL) for _ in range(num_objects)]
             del t
             gc.collect()
 
-        # Round 1: warm up (allocates dict space)
+        def get_rss_kb():
+            rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            # macOS returns bytes, Linux returns KB
+            if sys.platform == 'darwin':
+                rss = rss // 1024
+            return rss
+
+        # Warmup
         gc.collect()
-        run_round()
+        for _ in range(3):
+            run_round()
 
-        # Round 2: measure baseline after warmup
-        tracemalloc.start()
-        baseline = tracemalloc.take_snapshot()
-        run_round()
-        after_round2 = tracemalloc.take_snapshot()
+        gc.collect()
+        rss_after_warmup = get_rss_kb()
 
-        # Round 3: check for growth
-        run_round()
-        after_round3 = tracemalloc.take_snapshot()
-        tracemalloc.stop()
+        # Run multiple rounds
+        for _ in range(num_rounds):
+            run_round()
 
-        # Memory should not grow significantly between rounds 2 and 3
-        # (allowing small overhead for tracemalloc itself)
-        diff_r2 = sum(s.size_diff for s in after_round2.compare_to(baseline, 'lineno'))
-        diff_r3 = sum(s.size_diff for s in after_round3.compare_to(after_round2, 'lineno'))
+        gc.collect()
+        rss_final = get_rss_kb()
 
-        # Round 2 may have some growth from tracemalloc overhead, but round 3
-        # should show no significant growth - a real leak would grow each round
-        self.assertLess(diff_r3, 4096, f"Memory grew between rounds: {diff_r3} bytes")
+        # Check growth - a real leak with 4096*10=40960 objects would leak MB
+        # Allow 1MB growth for normal allocator overhead
+        growth_kb = rss_final - rss_after_warmup
+        self.assertLess(growth_kb, 1024,
+            f"RSS grew by {growth_kb} KB over {num_rounds} rounds - possible leak")
 
 if __name__ == '__main__':
     unittest.main()

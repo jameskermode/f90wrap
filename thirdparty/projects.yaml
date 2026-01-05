@@ -1,0 +1,43 @@
+# Third-party projects for f90wrap integration smoke tests.
+#
+# Notes:
+# - Do not vendor third-party code in this repository.
+# - The runner clones repos on demand and runs build/import/test commands.
+#
+# Keys:
+#   repo: GitHub repository (owner/name)
+#   branch: Branch to clone (optional, default: default branch)
+#   build_cmd: Command to build/install the project (optional)
+#   import_test: Python statement to import the built module/package (optional)
+#   test_cmd: Command to run tests (optional)
+#   enabled: false to skip by default (optional)
+#   expected_fail: true if test is known to fail (optional)
+#   recursive: true to clone with --recursive (for submodules)
+#   timeout: seconds (optional)
+#   notes: free-form notes (optional)
+
+projects:
+  - repo: libAtoms/QUIP
+    description: Interatomic potentials library (extensive f90wrap user)
+    recursive: true
+    build_cmd: meson setup builddir && meson compile -C builddir && cd quippy && pip install . --no-build-isolation
+    import_test: "import quippy"
+    enabled: true
+    timeout: 1800
+    notes: "Most prominent f90wrap user, tests full wrapper generation"
+
+  - repo: ExeQuantCode/RAFFLE
+    description: Material interface structure prediction (uses f90wrap)
+    build_cmd: pip install . --no-build-isolation
+    import_test: "from raffle import _raffle"
+    enabled: true
+    timeout: 600
+
+  - repo: ecmwf-ifs/loki
+    description: Fortran source-to-source translation (JIT uses f90wrap)
+    build_cmd: pip install . --no-build-isolation
+    import_test: "import loki"
+    test_cmd: pytest -q loki/jit_build/tests/test_build.py::test_build_object
+    enabled: true
+    timeout: 900
+    notes: "JIT build tests f90wrap wrapper generation"
