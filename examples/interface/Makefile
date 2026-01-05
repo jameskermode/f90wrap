@@ -1,6 +1,8 @@
 include ../make.inc
 F90FLAGS += -x f95-cpp-input
 
+SRC_AR = libsrc.a
+
 all: test
 
 example.o: example.f90
@@ -8,11 +10,13 @@ example.o: example.f90
 
 mod: example.o
 	f90wrap -m example ./example.f90
-	f2py-f90wrap $(F2PYFLAGS) -c -m _example f90wrap_example.f90 example.o
+	ar rcs ${SRC_AR} example.o
+	f2py-f90wrap $(F2PYFLAGS) -c -m _example f90wrap_example.f90 -L. -lsrc
 
 package: example.o
 	f90wrap -P -m examplepkg ./example.f90
-	f2py-f90wrap $(F2PYFLAGS) -c -m _examplepkg f90wrap_example.f90 example.o
+	ar rcs ${SRC_AR} example.o
+	f2py-f90wrap $(F2PYFLAGS) -c -m _examplepkg f90wrap_example.f90 -L. -lsrc
 
 test: mod package
 	$(PYTHON) test.py
@@ -21,6 +25,6 @@ test: mod package
 clean:
 	-rm -rf examplepkg
 	-rm -f example.py
-	-rm -f f90wrap*.f90 *.o *.pyc *.mod
+	-rm -f f90wrap*.f90 *.o ${SRC_AR} *.pyc *.mod
 	-rm -f _example*.so _examplepkg*.so
 	-rm -rf src.*/ .f2py_f2cmap .libs/ __pycache__/ build/

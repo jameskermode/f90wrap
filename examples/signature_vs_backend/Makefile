@@ -31,17 +31,17 @@ f2py-f90wrap-distutils: ${OBJ} ${SIGNATURES}
 	@SUFFIX=f2py_f90wrap_distutils; \
 	CFLAGS="${CFLAGS}" f2py-f90wrap -c -m ${MOD_PREFIX}_$$SUFFIX ${F2PYFLAGS} --backend distutils ${LINK} ${OBJ} ${SIGNATURES}_$$SUFFIX.pyf
 
-f2py-f90wrap-meson: ${OBJ} ${SIGNATURES}
+f2py-f90wrap-meson: ${SIGNATURES}
 	@SUFFIX=f2py_f90wrap_meson; \
-	CFLAGS="${CFLAGS}" f2py-f90wrap -c -m ${MOD_PREFIX}_$$SUFFIX ${F2PYFLAGS} --backend meson ${LINK} ${OBJ} ${SIGNATURES}_$$SUFFIX.pyf
+	CFLAGS="${CFLAGS}" f2py-f90wrap -c -m ${MOD_PREFIX}_$$SUFFIX ${F2PYFLAGS} --backend meson ${LINK} ${F90_SRC} ${SIGNATURES}_$$SUFFIX.pyf
 
 f2py-distutils: ${OBJ} ${SIGNATURES}
 	@SUFFIX=f2py_distutils; \
 	CFLAGS="${CFLAGS}" f2py -c -m ${MOD_PREFIX}_$$SUFFIX ${F2PYFLAGS} --backend distutils ${LINK} ${OBJ} ${SIGNATURES}_$$SUFFIX.pyf
 
-f2py-meson: ${OBJ} ${SIGNATURES}
+f2py-meson: ${SIGNATURES}
 	@SUFFIX=f2py_meson; \
-	CFLAGS="${CFLAGS}" f2py -c -m ${MOD_PREFIX}_$$SUFFIX ${F2PYFLAGS} --backend meson ${LINK} ${OBJ} ${SIGNATURES}_$$SUFFIX.pyf
+	CFLAGS="${CFLAGS}" f2py -c -m ${MOD_PREFIX}_$$SUFFIX ${F2PYFLAGS} --backend meson ${LINK} ${F90_SRC} ${SIGNATURES}_$$SUFFIX.pyf
 
 test-f2py-distutils: f2py-distutils
 	${PYTHON} tests_common.py

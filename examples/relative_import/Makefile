@@ -10,12 +10,13 @@ F90WRAP_SRC = $(addprefix f90wrap_,${F90_SRC})
 WRAPFLAGS   = -v --package --relative
 F2PY        = f2py-f90wrap
 TOP_MODULE  = top_module
+SRC_AR      = libsrc.a
 .PHONY: all clean f90wrap f2py test topmodule
 
 all: test
 
 clean:
-	rm -rf *.mod *.smod *.o f90wrap*.f90 ${PY_MOD}.py _${PY_MOD}*.so __pycache__/ .f2py_f2cmap build ${PY_MOD}/ ${TOP_MODULE}
+	rm -rf *.mod *.smod *.o ${SRC_AR} f90wrap*.f90 ${PY_MOD}.py _${PY_MOD}*.so __pycache__/ .f2py_f2cmap build ${PY_MOD}/ ${TOP_MODULE}
 
 # Dependencies between Fortran modules
 base_type.o:
@@ -29,8 +30,11 @@ main.o: $(filter-out main.o, ${OBJ})
 f90wrap: ${OBJ}
 	${F90WRAP} -m ${PY_MOD} ${WRAPFLAGS} ${F90_SRC}
 
-f2py: f90wrap
-	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} f90wrap_*.f90 *.o
+${SRC_AR}: ${OBJ}
+	ar rcs $@ ${OBJ}
+
+f2py: f90wrap ${SRC_AR}
+	CFLAGS="${CFLAGS}" ${F2PY} -c -m _${PY_MOD} ${F2PYFLAGS} f90wrap_*.f90 -L. -lsrc
 
 test: topmodule
 	${PYTHON} tests.py
