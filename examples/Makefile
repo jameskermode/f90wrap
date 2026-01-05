@@ -40,6 +40,7 @@ EXAMPLES = \
 	issue306_allocatable_realloc \
 	issue307_logical_array \
 	issue32 \
+	issue353_selected_kind \
 	issue41_abstract_classes \
 	keep_single_interface \
 	keyword_renaming_issue160 \

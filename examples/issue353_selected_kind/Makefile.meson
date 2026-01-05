@@ -1,0 +1,7 @@
+include ../make.meson.inc
+
+NAME     := test_selected_kind
+LIBSRC_WRAP_FPP_FILES := test_selected_kind.f90
+
+test: extension
+	$(PYTHON) run.py

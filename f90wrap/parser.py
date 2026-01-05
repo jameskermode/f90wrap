@@ -1481,7 +1481,17 @@ def check_decl(cl, file):
         filename = file.filename
         lineno = file.lineno
 
-        tp = re.match(types_re, cl).group()
+        tp_match = re.match(types_re, cl)
+        tp = tp_match.group()
+        tp_end = tp_match.end()
+        while tp.count('(') > tp.count(')') and tp_end < len(cl):
+            while tp_end < len(cl) and cl[tp_end].isspace():
+                tp_end += 1
+            if tp_end < len(cl) and cl[tp_end] == ')':
+                tp += ')'
+                tp_end += 1
+            else:
+                break
         atr = re.search(attr_re, cl)
         if atr != None:
             atrl = s_attrib_re.findall(atr.group())
@@ -1493,7 +1503,7 @@ def check_decl(cl, file):
         if m is not None:
             names = cl[m.end():]
         else:
-            names = types_re.sub('', cl)
+            names = cl[tp_end:]
 
         # old line - doesn't handle array constants
         # nl=re.split(r'\s*,\s*',names)
@@ -1575,15 +1585,24 @@ def check_arg(cl, file):
         filename = file.filename
         lineno = file.lineno
 
-        tp = re.match(types_re, cl).group()
+        tp_match = re.match(types_re, cl)
+        tp = tp_match.group()
+        tp_end = tp_match.end()
+        while tp.count('(') > tp.count(')') and tp_end < len(cl):
+            while tp_end < len(cl) and cl[tp_end].isspace():
+                tp_end += 1
+            if tp_end < len(cl) and cl[tp_end] == ')':
+                tp += ')'
+                tp_end += 1
+            else:
+                break
         m = re.search(d_colon, cl)
         if m is not None:
-            atr_temp = cl[re.match(types_re, cl).end():m.start()]
+            atr_temp = cl[tp_end:m.start()]
             names = cl[m.end():]
         else:
             atr_temp = ''
-            # Need to remove ONLY THE FIRST type string (the name may have the type in it)
-            names = types_re.sub('', cl, 1)
+            names = cl[tp_end:]
 
         atrl = split_attribs(atr_temp)
 
