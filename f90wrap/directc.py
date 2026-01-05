@@ -122,7 +122,10 @@ def analyse_interop(tree: ft.Root, kind_map: Dict[str, Dict[str, str]]) -> Dict[
         except TypeError:
             return
         for proc in iterator:
-            key = ProcedureKey(proc.mod_name, getattr(proc, 'type_name', None), proc.name)
+            # Skip Prototype objects - they lack attributes/arguments needed for analysis
+            if isinstance(proc, ft.Prototype):
+                continue
+            key = ProcedureKey(getattr(proc, 'mod_name', None), getattr(proc, 'type_name', None), proc.name)
             classification[key] = InteropInfo(
                 requires_helper=_procedure_requires_helper(proc, kind_map)
             )
