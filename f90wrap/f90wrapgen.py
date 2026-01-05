@@ -222,19 +222,24 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         all_uses = {}
         node_module = getattr(node, "mod_name", None)
         if node_module:
-            # Check if this is a constructor/destructor (generated wrapper, not a real procedure)
+            # Check if this needs full module import:
+            # - constructors/destructors: generated wrappers, not real procedures
+            # - methods (type-bound procedures): accessed via type%procedure, not importable
             attrs = getattr(node, "attributes", [])
             is_ctor_dtor = "constructor" in attrs or "destructor" in attrs
+            is_method = "method" in attrs or any(
+                a.startswith("bound(") for a in attrs if isinstance(a, str)
+            )
 
-            # For procedures, use selective import to avoid name conflicts
+            # For regular procedures, use selective import to avoid name conflicts
             # with module-level variables (issue #357)
             call_name = getattr(node, "call_name", None) or getattr(node, "orig_name", None)
-            if call_name and not is_ctor_dtor:
+            if call_name and not is_ctor_dtor and not is_method:
                 # Import only the procedure, avoiding blanket module import
                 # that could bring in conflicting module-level variables
                 self._add_extra_use(all_uses, node_module, call_name)
             else:
-                # Full import for constructors/destructors (need type access)
+                # Full import for constructors/destructors/methods (need type access)
                 # or when no call_name
                 self._add_extra_use(all_uses, node_module, None)
         if hasattr(node, "uses"):
