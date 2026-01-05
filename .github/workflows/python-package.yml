@@ -61,6 +61,7 @@ jobs:
     name: Third-party smoke tests
     needs: build
     runs-on: ubuntu-latest
+    # Temporary during rollout: allow failures until third-party projects stabilize
     continue-on-error: true
     steps:
     - uses: actions/checkout@v2

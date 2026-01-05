@@ -85,8 +85,8 @@ def main() -> int:
     ap.add_argument("project_dir", type=Path)
     args = ap.parse_args()
 
-    changed = patch_project(args.project_dir)
-    return 0 if changed else 0
+    patch_project(args.project_dir)
+    return 0
 
 
 if __name__ == "__main__":

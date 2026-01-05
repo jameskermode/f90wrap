@@ -5,6 +5,10 @@ Run third-party integration checks for f90wrap.
 This script clones external repositories into a temporary directory, patches
 their build metadata to prefer the locally-installed f90wrap, then runs build,
 import, and optional test commands defined in `thirdparty/projects.yaml`.
+
+Security note: This script executes shell commands from projects.yaml using
+shell=True. The YAML file is assumed to be trusted (checked into this repo).
+Do not run this script with untrusted YAML configurations.
 """
 
 from __future__ import annotations
@@ -32,6 +36,7 @@ class ProjectConfig:
     env: dict = field(default_factory=dict)
     timeout: int = 600
     enabled: bool = True
+    expected_fail: bool = False
 
 
 def _run(cmd: str, cwd: Path, timeout: int, env: Optional[dict] = None) -> tuple[bool, str, float]:
@@ -79,7 +84,7 @@ def _run_import(import_stmt: str) -> tuple[bool, str]:
             cmd, shell=True, capture_output=True, text=True, timeout=60, cwd="/tmp"
         )
     except Exception as e:
-        return False, str(e)
+        return False, f"{type(e).__name__}: {e}"
     out = (proc.stdout or "") + (proc.stderr or "")
     return proc.returncode == 0, out.strip()
 
@@ -100,6 +105,7 @@ def load_projects(config_path: Path) -> dict[str, ProjectConfig]:
             test_cmd=proj.get("test_cmd", "") or "",
             timeout=int(proj.get("timeout", 600)),
             enabled=bool(proj.get("enabled", True)),
+            expected_fail=bool(proj.get("expected_fail", False)),
         )
     return configs
 
@@ -146,13 +152,19 @@ def main() -> int:
             cwd=str(project_dir),
         )
 
+        project_failed = False
+        if cfg.expected_fail:
+            print("(expected_fail: failures will not affect overall status)")
+
         print(f"Build: {cfg.build_cmd}")
         ok, out, elapsed = _run(cfg.build_cmd, project_dir, cfg.timeout, cfg.env)
         if args.verbose or not ok:
             print(out[-4000:] if len(out) > 4000 else out)
         print(f"Build {'OK' if ok else 'FAIL'} in {elapsed:.1f}s")
         if not ok:
-            overall_ok = False
+            project_failed = True
+            if not cfg.expected_fail:
+                overall_ok = False
             continue
 
         if cfg.import_test:
@@ -162,7 +174,9 @@ def main() -> int:
                 print(imp_out)
             print(f"Import {'OK' if imp_ok else 'FAIL'}")
             if not imp_ok:
-                overall_ok = False
+                project_failed = True
+                if not cfg.expected_fail:
+                    overall_ok = False
 
         if cfg.test_cmd and not args.skip_tests:
             print(f"Test: {cfg.test_cmd}")
@@ -171,7 +185,12 @@ def main() -> int:
                 print(test_out[-4000:] if len(test_out) > 4000 else test_out)
             print(f"Test {'OK' if test_ok else 'FAIL'} in {test_elapsed:.1f}s")
             if not test_ok:
-                overall_ok = False
+                project_failed = True
+                if not cfg.expected_fail:
+                    overall_ok = False
+
+        if cfg.expected_fail and not project_failed:
+            print(f"UNEXPECTED PASS: {cfg.name} was expected to fail but passed")
 
     return 0 if overall_ok else 1
 
