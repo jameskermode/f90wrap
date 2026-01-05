@@ -18,7 +18,6 @@
 
 projects:
   - repo: libAtoms/QUIP
-    branch: mesonify
     description: Interatomic potentials library (extensive f90wrap user)
     recursive: true
     build_cmd: meson setup builddir && meson compile -C builddir && cd quippy && pip install . --no-build-isolation
