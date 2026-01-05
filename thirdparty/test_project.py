@@ -25,6 +25,7 @@ class ProjectConfig:
     name: str
     repo: str
     branch: str = ""
+    recursive: bool = False
     build_cmd: str = "pip install . --no-build-isolation"
     import_test: str = ""
     test_cmd: str = ""
@@ -56,12 +57,14 @@ def _run(cmd: str, cwd: Path, timeout: int, env: Optional[dict] = None) -> tuple
     return proc.returncode == 0, out, time.time() - start
 
 
-def _clone(repo: str, dest: Path, branch: str) -> None:
+def _clone(repo: str, dest: Path, branch: str, recursive: bool = False) -> None:
     if dest.exists():
         return
     dest.parent.mkdir(parents=True, exist_ok=True)
     url = f"https://github.com/{repo}.git"
     cmd = ["git", "clone", "--depth", "1"]
+    if recursive:
+        cmd += ["--recursive", "--shallow-submodules"]
     if branch:
         cmd += ["--branch", branch]
     cmd += [url, str(dest)]
@@ -91,6 +94,7 @@ def load_projects(config_path: Path) -> dict[str, ProjectConfig]:
             name=name,
             repo=repo,
             branch=proj.get("branch", "") or "",
+            recursive=bool(proj.get("recursive", False)),
             build_cmd=proj.get("build_cmd", "pip install . --no-build-isolation"),
             import_test=proj.get("import_test", "") or "",
             test_cmd=proj.get("test_cmd", "") or "",
@@ -129,7 +133,7 @@ def main() -> int:
         print("=" * 60)
 
         try:
-            _clone(cfg.repo, project_dir, cfg.branch)
+            _clone(cfg.repo, project_dir, cfg.branch, cfg.recursive)
         except subprocess.CalledProcessError as e:
             print(f"Clone FAILED: {e}")
             overall_ok = False
