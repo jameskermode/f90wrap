@@ -62,6 +62,7 @@ class TestAllocOutput(unittest.TestCase):
         # Test that memory usage stabilizes over multiple rounds.
         # A real memory leak would show continuous growth; normal behavior
         # shows initial growth that stabilizes as allocator reuses memory.
+        import sys
         import resource
         num_objects = 4096
         num_rounds = 10
@@ -72,7 +73,11 @@ class TestAllocOutput(unittest.TestCase):
             gc.collect()
 
         def get_rss_kb():
-            return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            # macOS returns bytes, Linux returns KB
+            if sys.platform == 'darwin':
+                rss = rss // 1024
+            return rss
 
         # Warmup
         gc.collect()
