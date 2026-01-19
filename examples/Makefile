@@ -6,7 +6,6 @@ EXAMPLES = \
 	arrays_fixed \
 	arrays_in_derived_types_issue50 \
 	auto_raise_error \
-	callback_print_function_issue93 \
 	class_names \
 	cylinder \
 	decoded_strings \
@@ -69,6 +68,13 @@ EXAMPLES = \
 	subroutine_contains_issue101 \
 	type_bn \
 	type_check
+
+# Append callback_print_function_issue93 only if Python >= 3.11
+# This test is known not to work with older python version
+HAS_PY311 := $(shell $(PYTHON) -c "import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)" 2>/dev/null; echo $$?)
+ifeq ($(HAS_PY311),0)
+EXAMPLES += callback_print_function_issue93
+endif
 
 DIRECTC ?= no
 
