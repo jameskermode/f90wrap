@@ -915,6 +915,22 @@ def split_type_kind(typename):
     kind = kind.replace('kind=', '')
     return (type.strip(), kind.strip())
 
+def f2f_kind(typename, kind_map):
+    """
+    Expand kind constants defined in `kind_map`
+
+    real(kind=dp) -> real(kind=8), etc.
+    """
+
+    type, kind = split_type_kind(typename)
+    kind = kind.replace('(', '').replace(')', '')
+
+    try:
+        expanded_kind = kind_map[kind.lower()]
+    except KeyError:
+        return typename
+    else:
+        return f"{type}(kind={expanded_kind})"
 
 def f2c_type(typename, kind_map):
     """

@@ -182,6 +182,9 @@ USAGE
                             help="Build extension module after generating wrappers")
         parser.add_argument('--clean-build', action='store_true', default=False,
                             help="Clean build artifacts before building")
+        parser.add_argument('--define', default=[],
+                            action='append',
+                            help="""Define preprocessor symbols of the form SYMBOL=VALUE (case insensitive)""")
 
         args = parser.parse_args()
         logger.debug("sys.argv parsed: %s", sys.argv)
@@ -258,6 +261,10 @@ USAGE
 
         if args.joint_modules:
             joint_modules = eval(open(args.joint_modules).read())
+
+        defines = {}
+        if args.define:
+            defines = {variable.split('=')[0].lower(): variable.split('=')[1] for variable in args.define}
 
         # documentation plugin
         if args.documentation_plugin:
@@ -475,6 +482,7 @@ USAGE
             auto_raise=auto_raise_error,
             direct_c_interop=interop_info,
             toplevel_basename=(mod_name if args.direct_c else "toplevel"),
+            defines=defines,
         ).visit(f90_tree)
 
         if args.direct_c and interop_info:
