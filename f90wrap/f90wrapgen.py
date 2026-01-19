@@ -87,6 +87,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         default_string_length=None,
         direct_c_interop=None,
         toplevel_basename="toplevel",
+        defines=None,
     ):
         if max_length is None:
             max_length = 120
@@ -113,6 +114,7 @@ class F90WrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             self.types,
             namespace_types=bool(self.direct_c_interop),
         )
+        self._defines = defines or {}
 
     def _scope_identifier_for(self, container):
         """Build a stable identifier used to namespace generated helper names."""
@@ -430,13 +432,16 @@ end type %(typename)s%(suffix)s"""
                 in ("optional", "pointer", "intent(in)", "intent(out)", "intent(inout)")
                 or attr.startswith("dimension")
             ]
+
+            expanded_type = ft.f2f_kind(arg.type, self._defines)
+
             arg_dict = {
-                "arg_type": arg.type,
+                "arg_type": expanded_type,
                 "type_name": (arg.type.startswith("type") and arg.type[5:-1])
                 or (arg.type.startswith("class") and arg.type[6:-1])
                 or None,
                 "arg_name": arg.name,
-            }  # self.prefix+arg.name}
+            }
 
             if arg.name in node.transfer_in or arg.name in node.transfer_out:
                 if not helper_forward:
