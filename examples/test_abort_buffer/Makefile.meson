@@ -1,0 +1,2 @@
+# Just include the regular makefile for now
+include Makefile
