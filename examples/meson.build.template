@@ -15,11 +15,17 @@ endif
 
 link_args = []
 if ff.get_id() == 'nvidia_hpc'
-    link_args = ['-lnvf', '-lrt']
+    link_args += ['-lnvf', '-lrt']
 endif
 
 py = import('python').find_installation(pure: false)
 py_dep = py.dependency()
+
+dir_f90wrap = run_command(py,
+  ['-c', 'import os; import f90wrap; print(os.path.dirname(f90wrap.__file__))'],
+  check : true
+).stdout().strip()
+link_args += ['-l_abort_buffers', '-L'+dir_f90wrap]
 
 incdir_numpy = run_command(py,
   ['-c', 'import os; os.chdir(".."); import numpy; print(numpy.get_include())'],
@@ -48,4 +54,6 @@ py.extension_module(name,
   dependencies : [py_dep, quadmath_dep],
   install : true,
   link_args: link_args,
+  install_rpath: dir_f90wrap,
+  build_rpath: dir_f90wrap,
   )
