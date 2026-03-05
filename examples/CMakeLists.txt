@@ -71,6 +71,7 @@ list(APPEND tests
     type_bn
     type_check
     f2f_kind
+    test_abort_buffer
 )
 
 foreach(test ${tests})

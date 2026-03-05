@@ -35,6 +35,13 @@ py3.extension_module(
     link_args: link_args,
 )
 
+shared_library(
+    '_abort_buffers',
+    'abort_buffers.c',
+    install: true,
+    install_dir: py3.get_install_dir() / 'f90wrap',
+)
+
 py3.install_sources(
     'build.py',
     'codegen.py',

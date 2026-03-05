@@ -68,7 +68,8 @@ EXAMPLES = \
 	subroutine_contains_issue101 \
 	type_bn \
 	type_check \
-	f2f_kind
+	f2f_kind \
+	test_abort_buffer
 
 # Append callback_print_function_issue93 only if Python >= 3.11
 # This test is known not to work with older python version

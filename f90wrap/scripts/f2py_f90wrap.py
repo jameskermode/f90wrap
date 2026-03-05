@@ -44,6 +44,9 @@ is generated. We make several changes to f2py:
 
 from __future__ import print_function
 import sys
+import os
+import re
+from pathlib import Path
 from numpy.f2py.auxfuncs import *
 
 # __all__ = []
@@ -80,35 +83,10 @@ def main():
     extern char abort_message[ABORT_BUFFER_SIZE];
     void f90wrap_abort_(char *message, int len);
     void f90wrap_abort_int_handler(int signum);
+    void f90wrap_abort__(char *message, int len_message);
 
     #include <stdlib.h>
     #include <string.h>
-
-    jmp_buf environment_buffer;
-    char abort_message[ABORT_BUFFER_SIZE];
-
-    void f90wrap_abort_(char *message, int len_message)
-    {
-      strncpy(abort_message, message, ABORT_BUFFER_SIZE);
-      abort_message[ABORT_BUFFER_SIZE-1] = '\\0';
-      longjmp(environment_buffer, 0);
-    }
-
-    // copy of f90wrap_abort_ with a second underscore
-    // void (*f90wrap_abort__)(char *, int) = &f90wrap_abort_;
-    void f90wrap_abort__(char *message, int len_message)
-    {
-      strncpy(abort_message, message, ABORT_BUFFER_SIZE);
-      abort_message[ABORT_BUFFER_SIZE-1] = '\\0';
-      longjmp(environment_buffer, 0);
-    }
-
-
-    void f90wrap_abort_int_handler(int signum)
-    {
-      char message[] = "Interrupt occured";
-      f90wrap_abort_(message, strlen(message));
-    }
 
     /* end of custom abort handler  */
     """
@@ -259,11 +237,42 @@ def main():
             sys.argv.insert(1, '--backend')
             sys.argv.insert(2, 'meson')
 
-    # Monkey-patch numpy's meson backend to fix include and library paths
-    # for separate build directories when using --build-dir
-    import os
-    from pathlib import Path
+    # Determine which backend will be used (after the forced insertion above)
+    use_meson = ('--backend' in sys.argv and
+                 sys.argv[sys.argv.index('--backend') + 1] == 'meson')
 
+    # -------------------------------------------------------------------------
+    # Link the _abort_buffers shared library
+    # -------------------------------------------------------------------------
+    # _abort_buffers contains environment_buffer and abort_message variable
+    # allocations used for error handling with the setjmp/longjmp mechanism.
+    # These variables must be allocated once for every extension module
+    # generated with f90wrap.
+    #
+    # Linking strategy differs by backend:
+    #   - distutils: pass -L, -l, and -Wl,-rpath via sys.argv and LDFLAGS
+    #   - meson:     inject fc.find_library() + abort_buffers_dep
+    #                directly into the generated meson.build (monkey-patch)
+    # -------------------------------------------------------------------------
+    f90wrap_path = None
+    if "-c" in sys.argv:
+        import f90wrap
+        f90wrap_path = os.path.dirname(f90wrap.__file__)
+
+        if not use_meson:
+            # distutils: pass linker flags directly via sys.argv and LDFLAGS
+            sys.argv.append(f"-L{f90wrap_path}")
+            sys.argv.append("-l_abort_buffers")
+            os.environ['LDFLAGS'] = (os.environ.get('LDFLAGS', '') + f" -Wl,-rpath,{f90wrap_path}")
+
+    # -------------------------------------------------------------------------
+    # Monkey-patch numpy's meson backend
+    # -------------------------------------------------------------------------
+    # When using the meson backend we need to patch the generated meson.build:
+    #   1. Always: inject install_rpath/build_rpath for the _abort_buffers lib
+    #   2. When --build-dir is a separate directory: fix include paths, library
+    #      search paths, and translate .o files to Fortran sources
+    # -------------------------------------------------------------------------
     build_dir_to_patch = None
     if '--build-dir' in sys.argv:
         build_dir_idx = sys.argv.index('--build-dir') + 1
@@ -273,94 +282,143 @@ def main():
             if build_dir != '.':
                 build_dir_to_patch = build_dir
 
-    if build_dir_to_patch:
-        # Monkey-patch the meson backend's write_meson_build method
-        try:
-            from numpy.f2py._backends import _meson
-            original_write_meson_build = _meson.MesonBackend.write_meson_build
+    if use_meson:
+        from numpy.f2py._backends import _meson
+        original_write_meson_build = _meson.MesonBackend.write_meson_build
 
-            def patched_write_meson_build(self, build_dir):
-                # Call original method to generate meson.build
-                original_write_meson_build(self, build_dir)
+        def patched_write_meson_build(self, build_dir):
+            # Call original method to generate meson.build
+            original_write_meson_build(self, build_dir)
 
-                # Now patch the generated file
-                meson_build = Path(build_dir) / 'meson.build'
-                if meson_build.exists():
-                    content = meson_build.read_text()
-                    modified = False
+            # Now patch the generated file
+            meson_build = Path(build_dir) / 'meson.build'
+            if not meson_build.exists():
+                return
 
-                    # Add include path for parent directory (for .mod files)
-                    if 'inc_parent = include_directories' not in content:
-                        content = content.replace(
-                            "inc_np = include_directories(incdir_numpy, incdir_f2py)",
-                            "inc_np = include_directories(incdir_numpy, incdir_f2py)\ninc_parent = include_directories('..')"
+            content = meson_build.read_text()
+            modified = False
+
+            # --- _abort_buffers library + rpath (always needed for meson) ---
+            if f90wrap_path:
+                if 'abort_buffers_dep' not in content:
+                    # Build the block to insert before py.extension_module.
+                    # NumPy 1.26 templates do not declare 'fc', so we
+                    # conditionally add it when missing.
+                    decl_lines = []
+                    if 'fc = meson.get_compiler' not in content:
+                        decl_lines.append(
+                            "fc = meson.get_compiler('fortran')"
+                        )
+                    decl_lines.append(
+                        f"abort_buffers_dep = fc.find_library("
+                        f"'_abort_buffers', dirs: ['{f90wrap_path}'])"
+                    )
+                    abort_buf_block = '\n'.join(decl_lines) + '\n\n'
+
+                    # Insert before py.extension_module(
+                    ext_mod_pattern = r"(py\.extension_module\()"
+                    if re.search(ext_mod_pattern, content):
+                        content = re.sub(
+                            ext_mod_pattern,
+                            abort_buf_block + r'\1',
+                            content,
                         )
                         modified = True
 
-                        # Also add inc_parent to the include_directories list in py.extension_module
-                        # Look for the include_directories list and add inc_parent if not already there
-                        import re
-                        # Find the include_directories section in extension_module
-                        pattern = r'(include_directories:\s*\[\s*inc_np,)'
-                        if re.search(pattern, content):
-                            content = re.sub(pattern, r'\1\n                     inc_parent,', content)
+                    # Add abort_buffers_dep to the dependencies list
+                    dep_pattern = r'(dependencies\s*:\s*\[)'
+                    if re.search(dep_pattern, content):
+                        content = re.sub(
+                            dep_pattern,
+                            r'\1\n                     abort_buffers_dep,',
+                            content,
+                        )
+                        modified = True
+
+            # --- Patches for separate build directories ---
+            if build_dir_to_patch:
+                # Add include path for parent directory (for .mod files)
+                if 'inc_parent = include_directories' not in content:
+                    content = content.replace(
+                        "inc_np = include_directories(incdir_numpy, incdir_f2py)",
+                        "inc_np = include_directories(incdir_numpy, incdir_f2py)\n"
+                        "inc_parent = include_directories('..')"
+                    )
+                    modified = True
+
+                    # Add inc_parent to the include_directories list in
+                    # py.extension_module
+                    pattern = r'(include_directories:\s*\[\s*inc_np,)'
+                    if re.search(pattern, content):
+                        content = re.sub(
+                            pattern,
+                            r'\1\n                     inc_parent,',
+                            content,
+                        )
+                        modified = True
+
+                # Replace '''.''' with inc_parent in include_directories list
+                if "'''.'''," in content:
+                    content = content.replace("'''.''',", "inc_parent,")
+                    modified = True
+
+                # Fix library search path to point to parent directory
+                if "lib_dir_0 = declare_dependency(link_args : ['''-L.'''])" in content:
+                    content = content.replace(
+                        "lib_dir_0 = declare_dependency(link_args : ['''-L.'''])",
+                        "lib_dir_0 = declare_dependency(link_args : ['''-L../..'''])",
+                    )
+                    modified = True
+
+                # Add Fortran source files corresponding to .o files
+                # (meson doesn't handle .o files properly)
+                fortran_obj_files = [
+                    arg for arg in sys.argv if arg.endswith('.o')
+                ]
+                if fortran_obj_files:
+                    additional_sources = []
+                    for obj_file in fortran_obj_files:
+                        for ext in ['.f90', '.F90', '.f']:
+                            f90_file = obj_file.replace('.o', ext)
+                            if os.path.exists(f90_file):
+                                rel_path = os.path.join(
+                                    '..', os.path.basename(f90_file)
+                                )
+                                additional_sources.append(
+                                    f"                     '''{rel_path}''',"
+                                )
+                                break
+
+                    if additional_sources:
+                        pattern = (
+                            r'(py\.extension_module\([^,]+,\s*\[[^\]]*)'
+                            r'(fortranobject_c)'
+                        )
+                        match = re.search(pattern, content, re.DOTALL)
+                        if match:
+                            new_content = (
+                                match.group(1)
+                                + '\n'.join(additional_sources)
+                                + '\n                     '
+                                + match.group(2)
+                            )
+                            content = (
+                                content[:match.start()]
+                                + new_content
+                                + content[match.end():]
+                            )
                             modified = True
 
-                    # Replace '''.''' with inc_parent in include_directories list (for -I. flag)
-                    if "'''.'''," in content:
-                        content = content.replace("'''.''',", "inc_parent,")
-                        modified = True
+            if modified:
+                meson_build.write_text(content)
+                detail = (
+                    " for separate build directory"
+                    if build_dir_to_patch
+                    else " with rpath"
+                )
+                print(f"\nPatched {meson_build}{detail}")
 
-                    # Fix library search path to point to parent directory
-                    if "lib_dir_0 = declare_dependency(link_args : ['''-L.'''])" in content:
-                        content = content.replace(
-                            "lib_dir_0 = declare_dependency(link_args : ['''-L.'''])",
-                            "lib_dir_0 = declare_dependency(link_args : ['''-L../..'''])"
-                        )
-                        modified = True
-
-                    # Add Fortran source files corresponding to .o files
-                    # Meson doesn't handle .o files properly, need to compile from source
-                    # Collect .o files from command line
-                    fortran_obj_files = []
-                    for arg in sys.argv:
-                        if arg.endswith('.o'):
-                            fortran_obj_files.append(arg)
-
-                    if fortran_obj_files:
-                        import re
-                        # Convert .o files to .f90 files and add them to py.extension_module sources
-                        additional_sources = []
-                        for obj_file in fortran_obj_files:
-                            # Try .f90, .F90, and .f extensions
-                            for ext in ['.f90', '.F90', '.f']:
-                                f90_file = obj_file.replace('.o', ext)
-                                if os.path.exists(f90_file):
-                                    # Get relative path from build directory to source
-                                    rel_path = os.path.join('..', os.path.basename(f90_file))
-                                    additional_sources.append(f"                     '''{rel_path}''',")
-                                    break
-
-                        if additional_sources:
-                            # Find the sources list in py.extension_module and add our files
-                            # Look for the pattern: py.extension_module('name', [ ... fortranobject_c ], ...)
-                            # We want to insert before fortranobject_c
-                            pattern = r'(py\.extension_module\([^,]+,\s*\[[^\]]*)(fortranobject_c)'
-                            match = re.search(pattern, content, re.DOTALL)
-                            if match:
-                                # Insert additional sources before fortranobject_c
-                                new_content = match.group(1) + '\n'.join(additional_sources) + '\n                     ' + match.group(2)
-                                content = content[:match.start()] + new_content + content[match.end():]
-                                modified = True
-
-                    if modified:
-                        meson_build.write_text(content)
-                        print(f"\nPatched {meson_build} for separate build directory")
-
-            _meson.MesonBackend.write_meson_build = patched_write_meson_build
-        except (ImportError, AttributeError):
-            # numpy doesn't have meson backend (older version), no patching needed
-            pass
+        _meson.MesonBackend.write_meson_build = patched_write_meson_build
 
     numpy.f2py.main()
 
