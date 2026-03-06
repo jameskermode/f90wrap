@@ -676,8 +676,38 @@ except ValueError:
             self.indent()
             self.write(self._format_doc_string(node))
 
+            # Convert python booleans to 4 bytes integer to match fortran logical memory layout
+            # python_bool_to_int maps the original argument name to the new variable name used for the integer version of the argument
+            # Needed to convert back to bool and for type checking
+            python_bool_to_int = dict()
+            for arg in self._filtered_arguments:
+                if arg.type == 'logical':
+                    numpy_type = ft.f2numpy_type(arg.type, self.kind_map)
+                    test_is_numpy_array = f"isinstance({arg.py_name},(numpy.ndarray, numpy.generic))"
+                    test_is_bool = f"{arg.py_name}.dtype.num == numpy.dtype(bool).num"
+                    if "intent(in)" in arg.attributes:
+                        self.write(f"if {test_is_numpy_array} and {test_is_bool}:")
+                        self.indent()
+                        self.write("{0} = {0}.astype('{1}')".format(arg.py_name, numpy_type))
+                        self.dedent()
+                    elif "intent(inout)" in arg.attributes:
+                        python_bool_to_int[arg.py_name] = f"{arg.py_name}_to_int"
+                        self.write(f"if {test_is_numpy_array} and {test_is_bool}:")
+                        self.indent()
+                        self.write("{0} = {1}.astype('{2}')".format(python_bool_to_int[arg.py_name], arg.py_name, numpy_type))
+                        self.dedent()
+                        self.write("else:")
+                        self.indent()
+                        self.write("{0} = {1}".format(python_bool_to_int[arg.py_name], arg.py_name))
+                        self.dedent()
+
+                        dct['f90_arg_names'] = dct['f90_arg_names'].replace(
+                            f"={arg.py_name}",
+                            f"={python_bool_to_int[arg.py_name]}"
+                        )
+
             if self.type_check:
-                self.write_type_checks(node)
+                self.write_type_checks(node, python_bool_to_int)
 
             for arg in self._filtered_arguments:
                 if "optional" in arg.attributes and "._handle" in arg.py_value:
@@ -756,6 +786,10 @@ except ValueError:
             )
             self.write(call_line)
 
+            for arg in self._filtered_arguments:
+                if arg.type == 'logical' and 'intent(inout)' in arg.attributes:
+                    self.write(f"{arg.py_name}[...] = {python_bool_to_int[arg.py_name]}.astype(bool)")
+
             if isinstance(node, ft.Function):
                 # convert any derived type return values to Python objects
                 for ret_val in self._filtered_ret_val:
@@ -783,15 +817,23 @@ except ValueError:
                         self.write("%s._setup_finalizer()" % ret_val.name)
                     # strip white space for string returns
                     pytype = ft.f2py_type(ret_val.type)
+                    dims = list(filter(lambda x: x.startswith("dimension"), ret_val.attributes))
                     if self.return_decoded and pytype == "str":
                         dct["result"] = dct["result"].replace(
                             ret_val.name, '%s.strip().decode("utf-8")' % ret_val.name
                         )
                     # convert back Fortran logical to Python bool
                     if self.return_bool and ret_val.type == "logical":
-                        dct["result"] = dct["result"].replace(
-                            ret_val.name, 'bool(%s)' % ret_val.name
-                        )
+                        if len(dims) > 0:
+                            # array of logicals
+                            dct["result"] = dct["result"].replace(
+                                ret_val.name, '%s.astype(bool)' % ret_val.name
+                            )
+                        else:
+                            # single logical
+                            dct["result"] = dct["result"].replace(
+                                ret_val.name, 'bool(%s)' % ret_val.name
+                            )
 
                 if dct["result"]:
                     self.write("return %(result)s" % dct)
@@ -1407,14 +1449,15 @@ return %(el_name)s"""
         self.dedent()
         self.write()
 
-    def write_type_checks(self, node):
+    def write_type_checks(self, node, python_bool_to_int):
         # This adds tests that checks data types and dimensions
         # to ensure either the correct version of an interface is used
         # either an exception is returned
         for arg in self._filtered_arguments:
+            arg_py_name = python_bool_to_int.get(arg.py_name, arg.py_name)
             # Check if optional argument is being passed
             if "optional" in arg.attributes:
-                self.write("if {0} is not None:".format(arg.py_name))
+                self.write("if {0} is not None:".format(arg_py_name))
                 self.indent()
 
             ft_array_dim_list = list(
@@ -1440,11 +1483,11 @@ return %(el_name)s"""
                 )
                 self.write(
                     "if not isinstance({0}, {1}.{2}) :".format(
-                        arg.py_name, cls_mod_name, cls_name
+                        arg_py_name, cls_mod_name, cls_name
                     )
                 )
                 self.indent()
-                self.write(f"msg = f\"Expecting '{{{cls_mod_name}.{cls_name}}}' but got '{{type({arg.py_name})}}'\"")
+                self.write(f"msg = f\"Expecting '{{{cls_mod_name}.{cls_name}}}' but got '{{type({arg_py_name})}}'\"")
                 self.write(f"raise TypeError(msg)")
                 self.dedent()
 
@@ -1453,16 +1496,17 @@ return %(el_name)s"""
             else:
                 # Checks for Numpy array dimension and types
                 # It will fail for types that are not in the kind map
-                # Good enough for now if it works on standrad types
+                # Good enough for now if it works on standard types
                 try:
                     array_type = ft.fortran_array_type(arg.type, self.kind_map)
                     pytype = ft.f2numpy_type(arg.type, self.kind_map)
                 except RuntimeError:
                     continue
 
+
                 self.write(
                     "if isinstance({0},(numpy.ndarray, numpy.generic)):".format(
-                        arg.py_name
+                        arg_py_name
                     )
                 )
                 self.indent()
@@ -1484,14 +1528,14 @@ return %(el_name)s"""
                 if ft_array_dim == 0 and "intent(in)" in arg.attributes:
                     self.write(
                         "if not interface_call and {0}.dtype.num in {{{1}}}:".format(
-                            arg.py_name,
+                            arg_py_name,
                             ", ".join(
                                 [str(atype().dtype.num) for atype in convertible_types]
                             ),
                         )
                     )
                     self.indent()
-                    self.write("{0} = {0}.astype('{1}')".format(arg.py_name, pytype))
+                    self.write("{0} = {0}.astype('{1}')".format(arg_py_name, pytype))
                     self.dedent()
 
                 # Allow fortran character to match python ubyte, unicode_ or string_
@@ -1514,23 +1558,23 @@ return %(el_name)s"""
                     if ft_array_dim == -1:
                         self.write(
                             "if {0}.dtype.num not in {{{1}}}:".format(
-                                arg.py_name, ",".join(str_types)
+                                arg_py_name, ",".join(str_types)
                             )
                         )
                     else:
                         self.write(
                             "if {0}.ndim not in {{{1}}} or {0}.dtype.num not in {{{2}}}:".format(
-                                arg.py_name, ",".join(str_dims), ",".join(str_types)
+                                arg_py_name, ",".join(str_dims), ",".join(str_types)
                             )
                         )
                 elif ft_array_dim == -1:
                     self.write(
-                        "if {0}.dtype.num != {1}:".format(arg.py_name, array_type)
+                        "if {0}.dtype.num != {1}:".format(arg_py_name, array_type)
                     )
                 else:
                     self.write(
                         "if {0}.ndim != {1} or {0}.dtype.num != {2}:".format(
-                            arg.py_name, str(ft_array_dim), array_type
+                            arg_py_name, str(ft_array_dim), array_type
                         )
                     )
 
@@ -1542,7 +1586,7 @@ return %(el_name)s"""
                         ft.f2py_type(arg.type),
                         array_type,
                         str(ft_array_dim),
-                        arg.py_name,
+                        arg_py_name,
                     )
                 )
                 self.dedent()
@@ -1550,13 +1594,13 @@ return %(el_name)s"""
                 if ft_array_dim == 0:
                     self.write(
                         "elif not isinstance({0},{1}):".format(
-                            arg.py_name, ft.f2py_type(arg.type)
+                            arg_py_name, ft.f2py_type(arg.type)
                         )
                     )
                     self.indent()
                     self.write(
                         "raise TypeError(\"Expecting '{0}' but got '%s'\"%type({1}))".format(
-                            ft.f2py_type(arg.type), arg.py_name
+                            ft.f2py_type(arg.type), arg_py_name
                         )
                     )
                     self.dedent()
@@ -1565,7 +1609,7 @@ return %(el_name)s"""
                     self.indent()
                     self.write(
                         "raise TypeError(\"Expecting numpy array but got '%s'\"%type({0}))".format(
-                            arg.py_name
+                            arg_py_name
                         )
                     )
                     self.dedent()

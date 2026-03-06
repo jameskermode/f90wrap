@@ -71,6 +71,7 @@ list(APPEND tests
     type_bn
     type_check
     f2f_kind
+    boolean_support
 )
 
 foreach(test ${tests})
