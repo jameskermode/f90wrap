@@ -1790,7 +1790,13 @@ def add_external_packages(root, class_names, external_packages):
             module.is_external = True
             for typ in mod["types"]:
                 new_type = Type(name=typ["name"], mod_name=module.name)
-                new_type.attributes = typ["attributes"]
+                try:
+                    new_type.attributes = typ["attributes"]
+                except KeyError:
+                    # This is for retrocompatibility with old json files
+                    new_type.attributes = []
+                    if typ["has_assignment"]:
+                        new_type.attributes.append("has_assignment")
                 new_type.py_mod_name = mod["package"]
                 new_type.is_external = True
                 module.types.append(new_type)
