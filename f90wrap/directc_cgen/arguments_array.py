@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from f90wrap import fortran as ft
 from f90wrap.numpy_utils import c_type_from_fortran, numpy_type_from_fortran
 from .utils import (
+    character_length_expr,
     dimension_c_expression,
     extract_dimensions,
     is_output_argument,
@@ -127,10 +128,32 @@ def prepare_output_array(gen: DirectCGenerator, arg: ft.Argument) -> None:
     dims_array = f"{arg.name}_dims"
     gen.write(f"npy_intp {dims_array}[{len(dim_vars)}] = {{{', '.join(dim_vars)}}};")
     numpy_type = numpy_type_from_fortran(arg.type, gen.kind_map)
-    # Use PyArray_EMPTY with fortran=1 for Fortran-contiguous (column-major) layout
-    gen.write(
-        f"py_{arg.name}_arr = PyArray_EMPTY({len(dim_vars)}, {dims_array}, {numpy_type}, 1);"
-    )
+    char_len = character_length_expr(arg.type) if arg.type.lower().startswith("character") else None
+    if char_len is not None:
+        # For character arrays with a known length, create a numpy array with the
+        # correct item size so the Fortran function receives a buffer large enough
+        # to hold all characters (dim * char_len bytes).
+        # Use PyArray_DescrConverter with "S{N}" to avoid direct elsize mutation,
+        # which is not supported in NumPy 2.x.
+        gen.write(f"PyObject* {arg.name}_dtype_str = PyUnicode_FromString(\"S{char_len}\");")
+        gen.write(f"if ({arg.name}_dtype_str == NULL) return NULL;")
+        gen.write(f"PyArray_Descr* {arg.name}_descr = NULL;")
+        gen.write(f"if (!PyArray_DescrConverter({arg.name}_dtype_str, &{arg.name}_descr)) {{")
+        gen.indent()
+        gen.write(f"Py_DECREF({arg.name}_dtype_str);")
+        gen.write("return NULL;")
+        gen.dedent()
+        gen.write("}")
+        gen.write(f"Py_DECREF({arg.name}_dtype_str);")
+        gen.write(
+            f"py_{arg.name}_arr = PyArray_NewFromDescr(&PyArray_Type, {arg.name}_descr,"
+            f" {len(dim_vars)}, {dims_array}, NULL, NULL, 1, NULL);"
+        )
+    else:
+        # Use PyArray_EMPTY with fortran=1 for Fortran-contiguous (column-major) layout
+        gen.write(
+            f"py_{arg.name}_arr = PyArray_EMPTY({len(dim_vars)}, {dims_array}, {numpy_type}, 1);"
+        )
     gen.write(f"if (py_{arg.name}_arr == NULL) {{")
     gen.indent()
     gen.write("return NULL;")
@@ -139,5 +162,7 @@ def prepare_output_array(gen: DirectCGenerator, arg: ft.Argument) -> None:
     gen.write(f"{arg.name}_arr = (PyArrayObject*)py_{arg.name}_arr;")
     c_type = c_type_from_fortran(arg.type, gen.kind_map)
     gen.write(f"{arg.name} = ({c_type}*)PyArray_DATA({arg.name}_arr);")
+    if char_len is not None:
+        gen.write(f"{arg.name}_elem_len = {char_len};")
     gen.write("")
 

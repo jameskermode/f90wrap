@@ -64,7 +64,9 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             relative=False,
             return_decoded=False,
             return_bool=False,
-            namespace_types=False):
+            input_decoded=False,
+            namespace_types=False,
+            ):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(
@@ -89,6 +91,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.relative = relative
         self.return_decoded = return_decoded
         self.return_bool = return_bool
+        self.input_decoded = input_decoded
         try:
             self._err_num_var, self._err_msg_var = auto_raise.split(',')
         except ValueError:
@@ -783,10 +786,19 @@ except ValueError:
                         self.write("%s._setup_finalizer()" % ret_val.name)
                     # strip white space for string returns
                     pytype = ft.f2py_type(ret_val.type)
+                    dims = list(filter(lambda x: x.startswith("dimension"), ret_val.attributes))
                     if self.return_decoded and pytype == "str":
-                        dct["result"] = dct["result"].replace(
-                            ret_val.name, '%s.strip().decode("utf-8")' % ret_val.name
-                        )
+                        if len(dims) > 0:
+                            # array of strings
+                            dct["result"] = dct["result"].replace(
+                                ret_val.name, '[s.strip().decode("utf-8") for s in %s]' % ret_val.name
+                            )
+                        else:
+                            # single string
+                            dct["result"] = dct["result"].replace(
+                                ret_val.name, '%s.strip().decode("utf-8")' % ret_val.name
+                            )
+
                     # convert back Fortran logical to Python bool
                     if self.return_bool and ret_val.type == "logical":
                         dct["result"] = dct["result"].replace(
@@ -1250,6 +1262,9 @@ return %(el_name)s"""
             "%(prefix)s%(scope_name)s__array__%(el_name)s" % dct
         )
 
+
+        is_string = (ft.f2py_type(el.type) == "str")
+
         if is_module_array:
             # Module-level arrays: call without handle argument
             self.write(
@@ -1287,21 +1302,52 @@ if %(el_name)s is None:
                                 %(mod_name)s.%(subroutine_name)s)
     except TypeError:
         %(el_name)s = f90wrap.runtime.direct_c_array(array_type, array_shape, array_handle)
-    %(selfdot)s_arrays[array_hash] = %(el_name)s
-return %(el_name)s"""
+    %(selfdot)s_arrays[array_hash] = %(el_name)s"""
+            % dct
+        )
+        if is_string:
+            self.write(
+                """# Decode Arrays of characters to numpy array of strings
+import numpy as np
+%(el_name)s = np.array([''.join([chr(i[j]) for i in %(el_name)s]).strip() for j in range(len(%(el_name)s[0]))], dtype=str)"""
                 % dct
             )
+        self.write(
+            """return %(el_name)s"""
+            % dct
+        )
         self.dedent()
         self.write()
         if not isinstance(node, ft.Module) or not self.make_package:
             self.write("@%(el_name)s.setter" % dct)
         if dct["selfdot"]:
-            self.write(
-                """def %(el_name_set)s(%(selfcomma)s%(el_name)s):
-    %(selfdot)s%(el_name)s[...] = %(el_name)s
+            if is_string:
+                self.write(
+                    """def %(el_name_set)s(%(selfcomma)s%(el_name)s):
+    array_ndim, array_type, array_shape, array_handle = \
+        %(mod_name)s.%(subroutine_name)s(%(handle)s)
+    array_hash = hash((array_ndim, array_type, tuple(array_shape), array_handle))
+    if array_hash not in %(selfdot)s_arrays:
+        try:
+            %(selfdot)s_arrays[array_hash] = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
+                                    %(handle)s,
+                                    %(mod_name)s.%(subroutine_name)s)
+        except TypeError:
+            %(selfdot)s_arrays[array_hash] = f90wrap.runtime.direct_c_array(array_type, array_shape, array_handle)
+    # Convert array of strings into array of encoded characters
+    import numpy as np
+    char_array = np.array([np.frombuffer(s[:array_shape[0]].ljust(array_shape[0]).encode(), dtype=np.uint8) for s in %(el_name)s[:array_shape[1]]], dtype=np.uint8).T
+    %(selfdot)s_arrays[array_hash][...] = char_array
 """
                 % dct
-            )
+                    )
+            else:
+                self.write(
+                    """def %(el_name_set)s(%(selfcomma)s%(el_name)s):
+    %(selfdot)s%(el_name)s[...] = %(el_name)s
+"""
+                    % dct
+                )
         else:
             self.write(
                 """def %(el_name_set)s(%(selfcomma)s%(el_name)s):
@@ -1546,6 +1592,21 @@ return %(el_name)s"""
                     )
                 )
                 self.dedent()
+
+                # Special case: allow conversion of input strings array into bytes array
+                if self.input_decoded:
+                    if ft_array_dim != 0 and "intent(in)" in arg.attributes:
+                        self.write(
+                            "if {0}.dtype.num == {1}:".format(
+                                arg.py_name, str(np.str_().dtype.num)
+                            )
+                        )
+                        self.indent()
+                        self.write(
+                            "{0} = {0}.astype('S')".format(arg.py_name)
+                        )
+                        self.dedent()
+
                 self.dedent()
                 if ft_array_dim == 0:
                     self.write(

@@ -54,6 +54,7 @@ list(APPEND tests
     optional_string
     output_kind
     passbyreference
+    list_strings
     recursive_type_array
     relative_import
     remove_pointer_arg

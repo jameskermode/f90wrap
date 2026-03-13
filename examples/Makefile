@@ -55,6 +55,7 @@ EXAMPLES = \
 	optional_string \
 	output_kind \
 	passbyreference \
+	list_strings \
 	recursive_type \
 	recursive_type_array \
 	relative_import \
