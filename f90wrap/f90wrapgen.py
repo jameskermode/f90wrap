@@ -1409,8 +1409,14 @@ end type %(typename)s%(suffix)s"""
         # Check if the type has recursive definition:
         same_type = ft.strip_type(t.name) == ft.strip_type(el.type)
 
-        if el.type.startswith("type") and not same_type:
-            owner_module = self._type_owner(el.type, getattr(t, "mod_name", getattr(t, "name", None)))
+        expanded_type = el.type
+        if not ft.is_derived_type(el.type):
+            expanded_type = ft.f2f_kind(el.type, self._defines)
+
+        if ft.is_derived_type(expanded_type) and not same_type:
+            owner_module = self._type_owner(
+                expanded_type, getattr(t, "mod_name", getattr(t, "name", None))
+            )
             self._add_extra_use(extra_uses, owner_module, None)
 
         # Prepend prefix to element name
@@ -1430,15 +1436,15 @@ end type %(typename)s%(suffix)s"""
 
         self.write_uses_lines(el, extra_uses)
         # Add iso_c_binding for handle arrays (c_int is immune to -fdefault-integer-8)
-        if isinstance(t, ft.Type) or ft.is_derived_type(el.type):
+        if isinstance(t, ft.Type) or ft.is_derived_type(expanded_type):
             self.write("use, intrinsic :: iso_c_binding, only: c_int")
 
         self.write("implicit none")
         if isinstance(t, ft.Type):
             self.write_type_or_class_lines(t.orig_name)
 
-        if ft.is_derived_type(el.type) and not (el.type == "type(" + t.name + ")"):
-            self.write_type_or_class_lines(el.type, pointer=True)
+        if ft.is_derived_type(expanded_type) and not (expanded_type == "type(" + t.name + ")"):
+            self.write_type_or_class_lines(expanded_type, pointer=True)
 
         if isinstance(t, ft.Type):
             self.write("integer(c_int), intent(in)   :: this(%d)" % sizeof_fortran_t)
@@ -1451,21 +1457,21 @@ end type %(typename)s%(suffix)s"""
             if attr not in ["pointer", "allocatable", "public", "parameter", "save"]
         ]
 
-        if ft.is_derived_type(el.type):
+        if ft.is_derived_type(expanded_type):
             # For derived types elements, treat as opaque reference
             self.write(
                 "integer(c_int), intent(%s) :: %s(%d)" % (inout, localvar, sizeof_fortran_t)
             )
 
             self.write(
-                "type(%s_ptr_type) :: %s_ptr" % (ft.strip_type(el.type), el.orig_name)
+                "type(%s_ptr_type) :: %s_ptr" % (ft.strip_type(expanded_type), el.orig_name)
             )
             self.write()
             if isinstance(t, ft.Type):
                 self.write("this_ptr = transfer(this, this_ptr)")
             if getset == "get":
                 if isinstance(t, ft.Type):
-                    if (self.is_class(el.type)):
+                    if (self.is_class(expanded_type)):
                         self.write("allocate(%s_ptr%%p)" % el.orig_name)
                         source = "%s_ptr%%p%%obj =>" % el.orig_name
                     else:
@@ -1488,7 +1494,7 @@ end type %(typename)s%(suffix)s"""
                     % (el.orig_name, localvar, el.orig_name)
                 )
                 if isinstance(t, ft.Type):
-                    if (self.is_class(el.type)):
+                    if (self.is_class(expanded_type)):
                         target = "%s_ptr%%p%%obj" % el.orig_name
                     else:
                         target = "%s_ptr%%p" % el.orig_name
@@ -1505,10 +1511,10 @@ end type %(typename)s%(suffix)s"""
             if attributes != []:
                 self.write(
                     "%s, %s, intent(%s) :: %s"
-                    % (el.type, ",".join(attributes), inout, localvar)
+                    % (expanded_type, ",".join(attributes), inout, localvar)
                 )
             else:
-                self.write("%s, intent(%s) :: %s" % (el.type, inout, localvar))
+                self.write("%s, intent(%s) :: %s" % (expanded_type, inout, localvar))
             self.write()
             if isinstance(t, ft.Type):
                 self.write("this_ptr = transfer(this, this_ptr)")
