@@ -68,6 +68,11 @@ def _write_scalar_number_handling(gen: 'DirectCGenerator', arg: ft.Argument, c_t
         gen.write(f"{arg.name}_val = ({c_type})PyFloat_AsDouble(py_{arg.name});")
     elif fmt == "p":
         gen.write(f"{arg.name}_val = ({c_type})PyObject_IsTrue(py_{arg.name});")
+    elif fmt == "D":
+        gen.write(f"Py_complex {arg.name}_pc = PyComplex_AsCComplex(py_{arg.name});")
+        gen.write(
+            f"{arg.name}_val = ({c_type})({arg.name}_pc.real + {arg.name}_pc.imag * _Complex_I);"
+        )
     else:
         gen.write(
             f'PyErr_SetString(PyExc_TypeError, "Unsupported argument {arg.name}");'

@@ -37,6 +37,12 @@ def _normalize_fortran_type(ftype: str) -> Tuple[str, Optional[str], Dict[str, b
         if not kind_str:
             kind_str = "8"
 
+    if base == "double complex":
+        base = "complex"
+        modifiers["force_double"] = True
+        if not kind_str:
+            kind_str = "8"
+
     return base, kind_str, modifiers
 
 
@@ -103,7 +109,10 @@ def numpy_type_from_fortran(ftype: str, kind_map: Dict[str, Dict[str, str]]) -> 
                 return "NPY_CLONGDOUBLE"
             if bits >= 8:
                 return "NPY_CDOUBLE"
-        return "NPY_CDOUBLE"
+            return "NPY_COMPLEX64"
+        if force_double:
+            return "NPY_CDOUBLE"
+        return "NPY_COMPLEX64"
 
     elif base == "character":
         return "NPY_STRING"
@@ -172,7 +181,10 @@ def c_type_from_fortran(ftype: str, kind_map: Dict[str, Dict[str, str]]) -> str:
                 return "long double _Complex"
             if bits >= 8:
                 return "double _Complex"
-        return "double _Complex"
+            return "float _Complex"
+        if force_double:
+            return "double _Complex"
+        return "float _Complex"
 
     elif base == "character":
         return "char"

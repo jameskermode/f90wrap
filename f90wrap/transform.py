@@ -332,11 +332,6 @@ class UnwrappablesRemover(ft.FortranTransformer):
 
         dims = [attrib for attrib in node.attributes if attrib.startswith('dimension')]
 
-        # remove optional complex scalar arguments
-        if node.type.startswith('complex') and len(dims) == 0:
-            log.warning('removing optional argument %s as it is a complex scalar' % node.name)
-            return None
-
         # remove optional derived types not in self.types
         typename = ft.derived_typename(node.type)
         if typename and typename not in self.types:

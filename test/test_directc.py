@@ -52,8 +52,14 @@ class TestNumpyUtils(unittest.TestCase):
         self.assertEqual(numpy_utils.numpy_type_from_fortran('logical', {}), 'NPY_INT32')
 
     def test_numpy_type_from_fortran_complex(self):
-        """Test complex type mapping to NumPy."""
-        self.assertEqual(numpy_utils.numpy_type_from_fortran('complex', {}), 'NPY_CDOUBLE')
+        """Test complex type mapping to NumPy.
+
+        Default complex is two default reals (single precision), so it maps to
+        NPY_COMPLEX64, mirroring real -> NPY_FLOAT32.
+        """
+        self.assertEqual(numpy_utils.numpy_type_from_fortran('complex', {}), 'NPY_COMPLEX64')
+        self.assertEqual(numpy_utils.numpy_type_from_fortran('complex(4)', {}), 'NPY_COMPLEX64')
+        self.assertEqual(numpy_utils.numpy_type_from_fortran('double complex', {}), 'NPY_CDOUBLE')
         self.assertEqual(
             numpy_utils.numpy_type_from_fortran('complex(dp)', self.kind_map),
             'NPY_COMPLEX128'
@@ -84,8 +90,14 @@ class TestNumpyUtils(unittest.TestCase):
         self.assertEqual(numpy_utils.c_type_from_fortran('logical', {}), 'int')
 
     def test_c_type_from_fortran_complex(self):
-        """Test complex type mapping to C."""
-        self.assertEqual(numpy_utils.c_type_from_fortran('complex', {}), 'double _Complex')
+        """Test complex type mapping to C.
+
+        Default complex is single precision (two default reals), so it maps to
+        float _Complex, mirroring real -> float.
+        """
+        self.assertEqual(numpy_utils.c_type_from_fortran('complex', {}), 'float _Complex')
+        self.assertEqual(numpy_utils.c_type_from_fortran('complex(4)', {}), 'float _Complex')
+        self.assertEqual(numpy_utils.c_type_from_fortran('double complex', {}), 'double _Complex')
         self.assertEqual(
             numpy_utils.c_type_from_fortran('complex(sp)', self.kind_map),
             'float _Complex'

@@ -107,6 +107,17 @@ class TestTransform(unittest.TestCase):
         # Same input should produce same output (deterministic)
         self.assertEqual(shorten_long_name(long_name), shortened)
 
+    def test_optional_complex_scalar_kept(self):
+        '''
+        Optional complex scalar arguments must not be dropped.
+        Regression test for issue #371.
+        '''
+        root = parser.read_files([str(test_samples_dir/'optional_complex.f90')])
+        root = transform.UnwrappablesRemover([], [], [], [], []).visit(root)
+
+        sub = next(p for p in root.modules[0].procedures if p.name == 'opt_complex')
+        self.assertIn('z', [arg.name for arg in sub.arguments])
+
     def test_kind_parameter_uses_clause(self):
         '''
         Verify that kind parameters used in procedure arguments are imported.
