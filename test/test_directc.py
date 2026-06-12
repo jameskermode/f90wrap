@@ -324,6 +324,39 @@ class TestDirectCGenerator(unittest.TestCase):
         self.assertNotIn('def ', c_code)
         self.assertNotIn('import ', c_code)
 
+    def _generate_with_argument(self, name, type_spec, attributes):
+        arg = Mock(spec=ft.Argument)
+        arg.name = name
+        arg.type = type_spec
+        arg.attributes = attributes
+        self.generator.root.modules[0].procedures[0].arguments = [arg]
+        return self.generator.generate_module('testmod')
+
+    def test_optional_scalar_passes_null(self):
+        """Issue #369: an absent optional scalar passes NULL, not a zeroed value."""
+        c_code = self._generate_with_argument('n', 'integer', ['intent(in)', 'optional'])
+
+        self.assertIn('if (py_n == Py_None)', c_code)
+        self.assertIn('n = NULL;', c_code)
+
+    def test_optional_character_input_passes_null(self):
+        """An absent optional character input passes NULL so present() is .false."""
+        c_code = self._generate_with_argument(
+            'name', 'character(len=8)', ['intent(in)', 'optional']
+        )
+
+        self.assertIn('name = NULL;', c_code)
+
+    def test_optional_character_output_passes_null_and_returns_none(self):
+        """An absent optional character output passes NULL and is returned as None."""
+        c_code = self._generate_with_argument(
+            'label', 'character(len=8)', ['intent(out)', 'optional']
+        )
+
+        self.assertIn('label = NULL;', c_code)
+        self.assertIn('if (label == NULL)', c_code)
+        self.assertIn('py_label_obj = Py_None;', c_code)
+
     def test_c_code_has_character_setter(self):
         """Character module variables should generate setter wrappers."""
         element = Mock(spec=ft.Element)

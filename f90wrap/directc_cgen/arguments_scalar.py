@@ -102,7 +102,9 @@ def prepare_scalar_argument(gen: 'DirectCGenerator', arg: ft.Argument, intent: s
     if optional:
         gen.write(f"if (py_{arg.name} == Py_None) {{")
         gen.indent()
-        gen.write(f"{arg.name}_val = 0;")
+        # Pass a NULL pointer so the Fortran side sees present(arg) == .false.
+        # instead of an argument whose value happens to be zero.
+        gen.write(f"{arg.name} = NULL;")
         gen.dedent()
         gen.write("} else {")
         gen.indent()
@@ -121,7 +123,11 @@ def _prepare_character_none_case(
     """Handle None value for character arguments."""
     gen.write(f"if (py_{arg.name} == Py_None) {{")
     gen.indent()
-    if optional or intent != "in":
+    if optional:
+        # Absent optional argument: pass a NULL pointer so present(arg) == .false.
+        # The output path returns None for a NULL character buffer.
+        gen.write(f"{arg.name} = NULL;")
+    elif intent != "in":
         gen.write(f"{arg.name}_len = {default_len};")
         gen.write(f"if ({arg.name}_len <= 0) {{")
         gen.indent()
