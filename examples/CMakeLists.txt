@@ -40,6 +40,7 @@ list(APPEND tests
     issue306_allocatable_realloc
     issue307_logical_array
     issue32
+    issue373_optional_constructor
     issue41_abstract_classes
     keep_single_interface
     keyword_renaming_issue160

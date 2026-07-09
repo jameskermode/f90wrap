@@ -554,12 +554,10 @@ def convert_derived_type_arguments(tree, init_lines, sizeof_fortran_t):
         if 'constructor' in sub.attributes:
             # Put the return value of the fortran constructors at first position in the arguments list
             if 'fortranconstructor' in sub.attributes:
-                j = -1
-                for i, arg in enumerate(sub.arguments):
-                    if 'optional' in arg.attributes:
-                        j = i
-                        break
-                assert(sub.arguments[j].name[:4]=='ret_')
+                j = next((i for i, arg in enumerate(sub.arguments)
+                          if arg.name.startswith('ret_')), None)
+                assert j is not None, \
+                    'no ret_ argument found in constructor %s' % sub.name
                 sub.arguments.insert(0, sub.arguments.pop(j))
             sub.arguments[0].attributes = set_intent(sub.arguments[0].attributes, 'intent(out)')
 
