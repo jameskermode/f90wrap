@@ -41,6 +41,7 @@ EXAMPLES = \
 	issue32 \
 	issue353_selected_kind \
 	issue357_name_conflict \
+	issue374_polymorphic_global \
 	issue41_abstract_classes \
 	keep_single_interface \
 	keyword_renaming_issue160 \

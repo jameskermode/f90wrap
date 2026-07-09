@@ -1476,9 +1476,15 @@ end type %(typename)s%(suffix)s"""
                         target = "this_ptr%%p%%%s" % el.orig_name
                     self.write("%s %s" % (source, target))
                 else:
-                    self.write(
-                        "%s_ptr%%p => %s" % (el.orig_name, module_local_name)
-                    )
+                    if (self.is_class(el.type)):
+                        self.write("allocate(%s_ptr%%p)" % el.orig_name)
+                        self.write(
+                            "%s_ptr%%p%%obj => %s" % (el.orig_name, module_local_name)
+                        )
+                    else:
+                        self.write(
+                            "%s_ptr%%p => %s" % (el.orig_name, module_local_name)
+                        )
                 self.write(
                     "%s = transfer(%s_ptr,%s)" % (localvar, el.orig_name, localvar)
                 )
@@ -1498,9 +1504,14 @@ end type %(typename)s%(suffix)s"""
                         source = "this_ptr%%p%%%s" % el.orig_name
                     self.write("%s = %s" % (source, target))
                 else:
-                    self.write(
-                        "%s = %s_ptr%%p" % (module_local_name, el.orig_name)
-                    )
+                    if (self.is_class(el.type)):
+                        self.write(
+                            "%s = %s_ptr%%p%%obj" % (module_local_name, el.orig_name)
+                        )
+                    else:
+                        self.write(
+                            "%s = %s_ptr%%p" % (module_local_name, el.orig_name)
+                        )
         else:
             if attributes != []:
                 self.write(
