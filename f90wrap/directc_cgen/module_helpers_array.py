@@ -53,7 +53,7 @@ def write_array_helper_body(gen: DirectCGenerator, helper: ModuleHelper, helper_
 
 def _write_handle_extraction(gen: DirectCGenerator) -> None:
     """Helper to extract handle from Python object."""
-    gen.write("int dummy_this[4] = {0, 0, 0, 0};")
+    gen.write(f"int dummy_this[{gen.handle_size}] = {{0}};")
     gen.write("if (dummy_handle != Py_None) {")
     gen.indent()
     gen.write("PyObject* handle_sequence = PySequence_Fast(dummy_handle, \"Handle must be a sequence\");")

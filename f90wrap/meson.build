@@ -60,6 +60,8 @@ py3.install_sources(
     'parser.py',
     'pywrapgen.py',
     'runtime.py',
+    'sizeof_fortran.py',
+    'sizeoffortran.f90',
     'transform.py',
     'scripts/f2py_f90wrap.py',
     'scripts/f90doc.py',

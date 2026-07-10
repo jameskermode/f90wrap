@@ -35,6 +35,7 @@ import logging
 import pprint
 import warnings
 import re
+import shlex
 
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
@@ -43,7 +44,7 @@ from f90wrap import __version__
 
 from f90wrap import parser as fparse
 from f90wrap import fortran
-from f90wrap.sizeof_fortran_t import sizeof_fortran_t
+from f90wrap.sizeof_fortran import resolve_sizeof_fortran_t
 from f90wrap import transform as tf
 
 from f90wrap import f90wrapgen as fwrap
@@ -179,6 +180,14 @@ USAGE
                             help="Python functions return bool (instead of integer) when associated Fortran type is a logical")
         parser.add_argument('--direct-c', action='store_true', default=False,
                             help="Generate direct-C extension instead of relying on f2py")
+        parser.add_argument('--fortran-compiler',
+                            default=os.environ.get(
+                                'F90WRAP_FC',
+                                os.environ.get('F90', os.environ.get('FC')),
+                            ),
+                            help="Fortran compiler used to determine the opaque handle size")
+        parser.add_argument('--sizeof-fortran-t', type=int,
+                            help="Opaque handle size in integer(c_int) elements")
         parser.add_argument('--build', action='store_true', default=False,
                             help="Build extension module after generating wrappers")
         parser.add_argument('--clean-build', action='store_true', default=False,
@@ -332,8 +341,27 @@ USAGE
         logger.info('Argument name map:')
         logger.info(pprint.pformat(argument_name_map))
 
-        fsize = sizeof_fortran_t()
-        logger.info(f'Size of Fortran derived type pointers is {fsize} bytes.')
+        compiler_command = args.fortran_compiler
+        if args.build and not compiler_command:
+            compiler_command = 'gfortran'
+        compiler_parts = shlex.split(compiler_command) if compiler_command else []
+        compiler_flags = shlex.split(os.environ.get('FFLAGS', ''))
+        if args.build and not compiler_flags:
+            compiler_flags = ['-fPIC']
+        probe_command = (
+            shlex.join(compiler_parts + compiler_flags)
+            if compiler_parts
+            else None
+        )
+
+        fsize = resolve_sizeof_fortran_t(
+            explicit_size=args.sizeof_fortran_t,
+            compiler=probe_command,
+        )
+        logger.info(
+            'Fortran derived type handles use %d integer(c_int) elements.',
+            fsize,
+        )
 
         # parse input Fortran source files
         logger.info(f'Parsing Fortran source files {args.files} ...')
@@ -473,6 +501,7 @@ USAGE
             return_decoded=return_decoded,
             return_bool=return_bool,
             namespace_types=bool(args.direct_c),
+            sizeof_fortran_t=fsize,
         ).visit(py_tree)
         fwrap.F90WrapperGenerator(
             prefix,
@@ -566,11 +595,18 @@ USAGE
             from f90wrap import build
 
             logger.info("Building extension module...")
+            build_env = None
+            if compiler_parts:
+                build_env = {
+                    'F90': compiler_parts[0],
+                    'FFLAGS': ' '.join(compiler_parts[1:] + compiler_flags),
+                }
             ret = build.build_extension(
                 module_name=args.mod_name,
                 source_files=args.files,
                 package_mode=args.package,
                 clean_first=args.clean_build,
+                env=build_env,
                 verbose=args.verbose > 0
             )
 

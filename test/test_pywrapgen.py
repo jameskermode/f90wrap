@@ -6,6 +6,34 @@ from f90wrap import fortran, parser, pywrapgen
 
 class TestPyWrapGen(unittest.TestCase):
 
+    def test_array_handle_size_matches_generated_wrappers(self):
+        node = fortran.Type(name='owner', mod_name='testmod')
+        element = fortran.Element(
+            name='values',
+            type='real',
+            attributes=['dimension(:)'],
+        )
+        element.orig_name = element.name
+        generator = pywrapgen.PythonWrapperGenerator(
+            prefix='f90wrap_',
+            mod_name='test',
+            types={},
+            py_mod_names={},
+            class_names={},
+            kind_map={},
+            auto_raise='',
+            sizeof_fortran_t=10,
+        )
+
+        generator.write_sc_array_wrapper(
+            node,
+            element,
+            'dimension(:)',
+            [],
+        )
+
+        self.assertIn('f90wrap.runtime.get_array(10,', str(generator))
+
     def test_py_mod_names_mapping(self):
         '''
         Verify that --py-mod-names option correctly maps module instance names.

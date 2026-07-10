@@ -44,7 +44,7 @@ class DirectCGenerator(cg.CodeGenerator):
     interop_info: Dict[ProcedureKey, InteropInfo]
     kind_map: Dict[str, Dict[str, str]]
     prefix: str = "f90wrap_"
-    handle_size: int = 4
+    handle_size: Optional[int] = None
     error_num_arg: Optional[str] = None
     error_msg_arg: Optional[str] = None
     callbacks: Optional[Iterable[str]] = None
@@ -53,6 +53,9 @@ class DirectCGenerator(cg.CodeGenerator):
 
     def __post_init__(self):
         """Initialize CodeGenerator parent after dataclass init."""
+        if self.handle_size is None:
+            from f90wrap.sizeof_fortran_t import sizeof_fortran_t
+            self.handle_size = sizeof_fortran_t()
         cg.CodeGenerator.__init__(self, indent="    ", max_length=120,
                                    continuation="\\", comment="//")
         if self.callbacks:

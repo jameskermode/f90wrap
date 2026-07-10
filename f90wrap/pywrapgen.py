@@ -64,7 +64,8 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
             relative=False,
             return_decoded=False,
             return_bool=False,
-            namespace_types=False):
+            namespace_types=False,
+            sizeof_fortran_t=None):
         if max_length is None:
             max_length = 80
         cg.CodeGenerator.__init__(
@@ -89,6 +90,7 @@ class PythonWrapperGenerator(ft.FortranVisitor, cg.CodeGenerator):
         self.relative = relative
         self.return_decoded = return_decoded
         self.return_bool = return_bool
+        self.sizeof_fortran_t = sizeof_fortran_t
         try:
             self._err_num_var, self._err_msg_var = auto_raise.split(',')
         except ValueError:
@@ -1227,6 +1229,11 @@ return %(el_name)s"""
             selfcomma="self, ",
             doc=self._format_doc_string(el),
             handle="self._handle" if not is_module_array else "",
+            sizeof_fortran_t=(
+                self.sizeof_fortran_t
+                if self.sizeof_fortran_t is not None
+                else "f90wrap.runtime.sizeof_fortran_t"
+            ),
         )
 
         if not is_module_array or not self.make_package:
@@ -1282,7 +1289,7 @@ if %(el_name)s is not None:
         %(el_name)s = None
 if %(el_name)s is None:
     try:
-        %(el_name)s = f90wrap.runtime.get_array(f90wrap.runtime.sizeof_fortran_t,
+        %(el_name)s = f90wrap.runtime.get_array(%(sizeof_fortran_t)s,
                                 %(handle)s,
                                 %(mod_name)s.%(subroutine_name)s)
     except TypeError:

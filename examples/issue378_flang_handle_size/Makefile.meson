@@ -1,0 +1,5 @@
+test:
+	$(MAKE) -f Makefile test
+
+clean:
+	$(MAKE) -f Makefile clean

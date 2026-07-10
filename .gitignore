@@ -2,6 +2,7 @@
 build
 *~
 *.fpp
+!test/samples/*.fpp
 *.o
 *.mod
 *.a

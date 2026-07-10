@@ -337,6 +337,25 @@ class TestDirectCGenerator(unittest.TestCase):
 
         self.assertIn("wrap_testmod_helper_set_greeting", c_code)
 
+    def test_type_member_array_uses_target_handle_size(self):
+        """Type member arrays should use the selected handle size."""
+        element = ft.Element(
+            name="values",
+            type="real",
+            attributes=["allocatable", "dimension(:)"],
+        )
+        derived = ft.Type(
+            name="owner",
+            mod_name="testmod",
+            elements=[element],
+        )
+        self.generator.root.modules[0].types = [derived]
+        self.generator.handle_size = 10
+
+        c_code = self.generator.generate_module("testmod")
+
+        self.assertIn("int dummy_this[10] = {0};", c_code)
+
 
 class TestDirectCRuntime(unittest.TestCase):
     """Runtime utilities for Direct-C mode."""
