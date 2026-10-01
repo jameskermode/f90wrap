@@ -43,7 +43,7 @@ jobs:
         mkdir -p test_run
         cp -r test test_run/
         cd test_run
-        python -m unittest test.test_directc
+        python -m unittest test.test_directc test.test_parser test.test_transform
     - name: Run example tests
       run: |
         cd examples
