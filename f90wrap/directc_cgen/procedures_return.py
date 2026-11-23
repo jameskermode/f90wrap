@@ -152,7 +152,13 @@ def _prepare_character_output(gen: DirectCGenerator, arg: ft.Argument) -> None:
     if parsed:
         # Check if buffer is from numpy array
         gen.write(f"PyObject* py_{arg.name}_obj = NULL;")
-        gen.write(f"if ({arg.name}_is_array) {{")
+        # An absent optional argument has a NULL buffer: return None for it.
+        gen.write(f"if ({arg.name} == NULL) {{")
+        gen.indent()
+        gen.write("Py_INCREF(Py_None);")
+        gen.write(f"py_{arg.name}_obj = Py_None;")
+        gen.dedent()
+        gen.write(f"}} else if ({arg.name}_is_array) {{")
         gen.indent()
         gen.write("/* Numpy array was modified in place, no return object or free needed */")
         gen.dedent()
