@@ -40,6 +40,7 @@ EXAMPLES = \
 	issue307_logical_array \
 	issue32 \
 	issue353_selected_kind \
+	issue363_missing_only_import \
 	issue357_name_conflict \
 	issue369_optional_present \
 	issue41_abstract_classes \
